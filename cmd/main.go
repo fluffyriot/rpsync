@@ -17,13 +17,21 @@ type ServiceStatus struct {
 
 func main() {
 
+	dbStatus := "DOWN"
 	dbQueries, err := config.LoadDatabase()
 	if err != nil {
 		log.Fatalln(err)
+		dbStatus = "DOWN"
 	}
 
 	r := gin.Default()
+
 	r.LoadHTMLGlob("templates/*")
+	r.Static("/static", "./static")
+
+	r.GET("/", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "index.html", nil)
+	})
 
 	// Setup page
 	r.GET("/setup", func(c *gin.Context) {
@@ -51,7 +59,6 @@ func main() {
 	// Status page
 	r.GET("/status", func(c *gin.Context) {
 		// TODO: replace with real checks
-		dbStatus := "OK"
 		brokerStatus := "OK"
 
 		status := map[string]string{

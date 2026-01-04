@@ -66,7 +66,12 @@
 <div class="container">
   <h1>Initial Setup</h1>
   {{if .Message1}}<div class="message">{{.Message1}}</div>{{end}}
-  {{if .Message2}}<div class="message">{{.Message2}}</div>
+  {{if .Message2}}<div class="message">{{.Message2}}
+    <form method="GET" action="/status">
+    <button class="proceed" type="submit">Go To Status</button>
+  </form>
+
+  </div>
   {{else}}
   <form method="POST">
     <label for="username">Username</label>
