@@ -1,19 +1,19 @@
--include ./.env
+-include .env
 export
 
 .PHONY: up run build clean stop migrate-up migrate-down migrate-create
 
 up:
-	docker compose --env-file ./.env -f docker/docker-compose.yml up -d
+	docker-compose --env-file .env -f docker/docker-compose.yml up -d
 
 stop:
-	docker compose --env-file ./.env -f docker/docker-compose.yml stop
+	docker-compose --env-file .env -f docker/docker-compose.yml stop
 
 run:
-	go run ./cmd
+	go run .
 
 build:
-	go build -o bin/commission-tracker ./cmd
+	go build -o bin/commission-tracker .
 
 clean:
 	rm -f bin/commission-tracker

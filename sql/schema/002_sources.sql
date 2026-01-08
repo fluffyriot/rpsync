@@ -6,6 +6,7 @@ CREATE TABLE sources (
     network TEXT NOT NULL,
     CONSTRAINT network_check
         CHECK (network IN ('Instagram', 'Bluesky')),
+    user_name TEXT NOT NULL,
     user_id UUID NOT NULL,
     CONSTRAINT fk_user
         FOREIGN KEY (user_id)

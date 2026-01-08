@@ -35,6 +35,7 @@ type Source struct {
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	Network     string
+	UserName    string
 	UserID      uuid.UUID
 	IsActive    bool
 	HashedToken sql.NullString
