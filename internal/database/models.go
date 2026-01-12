@@ -31,13 +31,16 @@ type PostsReactionsHistory struct {
 }
 
 type Source struct {
-	ID        uuid.UUID
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	Network   string
-	UserName  string
-	UserID    uuid.UUID
-	IsActive  bool
+	ID           uuid.UUID
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+	Network      string
+	UserName     string
+	UserID       uuid.UUID
+	IsActive     bool
+	SyncStatus   string
+	StatusReason sql.NullString
+	LastSynced   sql.NullTime
 }
 
 type Token struct {

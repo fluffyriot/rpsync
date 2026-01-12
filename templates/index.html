@@ -36,22 +36,85 @@
     <p>User Id: <span class="ok">{{.user_id}}</span></p>
 
     <div class="card">
-      <div class="card-header">Active Sync Sources</div>
-      <ul>
+      <div class="card-header">Sync Sources</div>
+
+      <ul class="source-list">
         {{range .sources}}
-        <li>
-          {{.UserName}}
-          <span class="source-network">{{.Network}}</span>
+        <li class="source-item">
+
+          <div class="source-main">
+            <strong>{{.UserName}}</strong>
+            <span class="source-network">{{.Network}}</span>
+          </div>
+
+          <div class="source-meta">
+            <span class="sync-status
+  {{if eq .SyncStatus " Initialized"}}status-initialized{{end}} {{if eq .SyncStatus "Syncing" }}status-syncing{{end}}
+              {{if eq .SyncStatus "Synced" }}status-synced{{end}} {{if eq .SyncStatus "Failed" }}status-failed{{end}}
+              {{if not .IsActive}}status-disabled{{end}}">
+
+              {{if not .IsActive}}
+              Disabled
+              {{else}}
+              {{.SyncStatus}}
+              {{end}}
+
+              {{if .StatusReason.Valid}}
+              <span class="tooltip">
+                ⓘ
+                <span class="tooltip-text">
+                  {{.StatusReason.String}}
+                </span>
+              </span>
+              {{end}}
+            </span>
+
+
+            <span class="last-sync">
+              {{if .LastSynced.Valid}}
+              Last sync: {{.LastSynced.Time.Format "2006-01-02 15:04"}}
+              {{else}}
+              Last sync: never
+              {{end}}
+            </span>
+          </div>
+
+          <div class="source-actions">
+
+            <!-- Sync Button -->
+            <form method="POST" action="/sources/sync" style="display:inline;" onsubmit="return submitAndRefresh(this);">
+              <input type="hidden" name="source_id" value="{{.ID}}">
+              <button type="submit" class="sync" {{if not .IsActive}}disabled{{end}}>Sync</button>
+            </form>
+
+            <!-- Activate / Deactivate -->
+            {{if .IsActive}}
+            <form method="POST" action="/sources/deactivate" onsubmit="return confirm('Deactivate this source?');"
+              style="display:inline;">
+              <input type="hidden" name="source_id" value="{{.ID}}">
+              <button type="submit" class="fail">Deactivate</button>
+            </form>
+            {{else}}
+            <form method="POST" action="/sources/activate" style="display:inline;" onsubmit="return submitAndRefresh(this);">
+              <input type="hidden" name="source_id" value="{{.ID}}">
+              <button type="submit" class="ok">Activate</button>
+            </form>
+            {{end}}
+
+          </div>
+
         </li>
         {{end}}
+
         {{if not .sources}}
         <p class="fail">No active sources yet.</p>
         {{end}}
       </ul>
     </div>
 
+    <!-- Add Source Form -->
     <div class="form-section inline-form">
-      <form method="POST" action="/sources/setup"  id="source_form">
+      <form method="POST" action="/sources/setup" id="source_form" >
         <input type="hidden" name="user_id" value="{{.user_id}}">
         <select id="network" name="network" required>
           <option value="" disabled selected>Select Network</option>
@@ -78,44 +141,59 @@
   </div>
 
   <script>
-  document.addEventListener("DOMContentLoaded", function () {
-    const form = document.getElementById("source_form");
-    const networkSelect = document.getElementById("network");
-    const tokenInput = document.getElementById("api_token");
-    const tokenLabel = document.getElementById("api_token_label");
+    document.addEventListener("DOMContentLoaded", function () {
+      const form = document.getElementById("source_form");
+      const networkSelect = document.getElementById("network");
+      const tokenInput = document.getElementById("api_token");
+      const tokenLabel = document.getElementById("api_token_label");
 
-    if (!form || !networkSelect || !tokenInput || !tokenLabel) {
-      return;
-    }
+      if (!form || !networkSelect || !tokenInput || !tokenLabel) return;
 
-    function updateTokenVisibility() {
-      if (networkSelect.value === "Instagram") {
-        tokenInput.style.display = "block";
-        tokenLabel.style.display = "block";
-        tokenInput.required = true;
-      } else {
-        tokenInput.style.display = "none";
-        tokenLabel.style.display = "none";
-        tokenInput.required = false;
-        tokenInput.value = "";
+      function updateTokenVisibility() {
+        if (networkSelect.value === "Instagram") {
+          tokenInput.style.display = "block";
+          tokenLabel.style.display = "block";
+          tokenInput.required = true;
+        } else {
+          tokenInput.style.display = "none";
+          tokenLabel.style.display = "none";
+          tokenInput.required = false;
+          tokenInput.value = "";
+        }
       }
-    }
 
-    networkSelect.addEventListener("change", updateTokenVisibility);
+      networkSelect.addEventListener("change", updateTokenVisibility);
 
-    form.addEventListener("submit", function (e) {
-      if (
-        networkSelect.value === "Instagram" &&
-        tokenInput.value.trim() === ""
-      ) {
-        e.preventDefault();
-        alert("Instagram requires an API token.");
-        tokenInput.focus();
-      }
+      form.addEventListener("submit", function (e) {
+        if (networkSelect.value === "Instagram" && tokenInput.value.trim() === "") {
+          e.preventDefault();
+          alert("Instagram requires an API token.");
+          tokenInput.focus();
+        }
+      });
     });
-  });
-</script>
 
+    
+  </script>
+
+  <script>
+    function submitAndRefresh(form) {
+  fetch(form.action, {
+    method: form.method,
+    body: new FormData(form)
+  }).then(res => {
+    if (res.ok) {
+      window.location.reload();
+    } else {
+      alert("Operation failed");
+    }
+  }).catch(err => {
+    console.error(err);
+    alert("Error performing operation");
+  });
+  return false;
+}
+  </script>
 
 </body>
 

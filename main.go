@@ -2,14 +2,18 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"encoding/base64"
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/fluffyriot/commission-tracker/internal/config"
 	"github.com/fluffyriot/commission-tracker/internal/database"
+	"github.com/fluffyriot/commission-tracker/internal/fetcher"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 var (
@@ -21,6 +25,11 @@ var (
 
 func main() {
 
+	instVer := os.Getenv("INSTAGRAM_API_VERSION")
+	if instVer == "" {
+		log.Fatal("INSTAGRAM_API_VERSION not set")
+	}
+
 	keyB64 := os.Getenv("TOKEN_ENCRYPTION_KEY")
 	if keyB64 == "" {
 		log.Fatal("TOKEN_ENCRYPTION_KEY not set")
@@ -30,6 +39,8 @@ func main() {
 	if err != nil || len(encryptKey) != 32 {
 		log.Fatal("TOKEN_ENCRYPTION_KEY must be 32 bytes (base64)")
 	}
+
+	client := fetcher.NewClient(60 * time.Second)
 
 	r := gin.Default()
 
@@ -45,6 +56,9 @@ func main() {
 	r.GET("/", rootHandler)
 	r.POST("/user/setup", userSetupHandler)
 	r.POST("/sources/setup", sourcesSetupHandler(encryptKey))
+	r.POST("/sources/deactivate", deactivateSourceHandler)
+	r.POST("/sources/activate", activateSourceHandler)
+	r.POST("/sources/sync", syncSourceHandler(encryptKey, dbQueries, client, instVer))
 
 	r.POST("/reset", func(c *gin.Context) {
 		err := dbQueries.EmptyUsers(context.Background())
@@ -100,7 +114,7 @@ func rootHandler(c *gin.Context) {
 
 	user := users[0]
 
-	sources, err := dbQueries.GetUserActiveSources(ctx, user.ID)
+	sources, err := dbQueries.GetUserSources(ctx, user.ID)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
 			"error": err.Error(),
@@ -170,6 +184,76 @@ func sourcesSetupHandler(encryptKey []byte) gin.HandlerFunc {
 			})
 			return
 		}
+
+		c.Redirect(http.StatusSeeOther, "/")
+	}
+}
+
+func deactivateSourceHandler(c *gin.Context) {
+	sourceID, err := uuid.Parse(c.PostForm("source_id"))
+	if err != nil {
+		c.HTML(http.StatusBadRequest, "error.html", gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	_, err = dbQueries.ChangeSourceStatusById(
+		context.Background(),
+		database.ChangeSourceStatusByIdParams{
+			ID:       sourceID,
+			IsActive: false,
+		},
+	)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.Redirect(http.StatusSeeOther, "/")
+}
+
+func activateSourceHandler(c *gin.Context) {
+	sourceID, err := uuid.Parse(c.PostForm("source_id"))
+	if err != nil {
+		c.HTML(http.StatusBadRequest, "error.html", gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	_, err = dbQueries.ChangeSourceStatusById(
+		context.Background(),
+		database.ChangeSourceStatusByIdParams{
+			ID:           sourceID,
+			IsActive:     true,
+			SyncStatus:   "Initialized",
+			StatusReason: sql.NullString{},
+		},
+	)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.Redirect(http.StatusSeeOther, "/")
+}
+
+func syncSourceHandler(encryptKey []byte, dbQueries *database.Queries, client *fetcher.Client, ver string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		sourceID, err := uuid.Parse(c.PostForm("source_id"))
+		if err != nil {
+			c.HTML(http.StatusBadRequest, "error.html", gin.H{
+				"error": err.Error(),
+			})
+			return
+		}
+
+		fetcher.SyncBySource(sourceID, dbQueries, client, ver, encryptKey)
 
 		c.Redirect(http.StatusSeeOther, "/")
 	}

@@ -7,13 +7,51 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
 )
 
+const changeSourceStatusById = `-- name: ChangeSourceStatusById :one
+UPDATE sources
+SET is_active = $2, sync_status = $3, status_reason = $4
+WHERE id = $1
+RETURNING id, created_at, updated_at, network, user_name, user_id, is_active, sync_status, status_reason, last_synced
+`
+
+type ChangeSourceStatusByIdParams struct {
+	ID           uuid.UUID
+	IsActive     bool
+	SyncStatus   string
+	StatusReason sql.NullString
+}
+
+func (q *Queries) ChangeSourceStatusById(ctx context.Context, arg ChangeSourceStatusByIdParams) (Source, error) {
+	row := q.db.QueryRowContext(ctx, changeSourceStatusById,
+		arg.ID,
+		arg.IsActive,
+		arg.SyncStatus,
+		arg.StatusReason,
+	)
+	var i Source
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Network,
+		&i.UserName,
+		&i.UserID,
+		&i.IsActive,
+		&i.SyncStatus,
+		&i.StatusReason,
+		&i.LastSynced,
+	)
+	return i, err
+}
+
 const createSource = `-- name: CreateSource :one
-INSERT INTO sources (id, created_at, updated_at, network, user_name, user_id, is_active)
+INSERT INTO sources (id, created_at, updated_at, network, user_name, user_id, is_active, sync_status, status_reason, last_synced)
 VALUES (
     $1,
     $2,
@@ -21,19 +59,25 @@ VALUES (
     $4,
     $5,
     $6,
-    $7
+    $7,
+    $8,
+    $9,
+    $10
 )
-RETURNING id, created_at, updated_at, network, user_name, user_id, is_active
+RETURNING id, created_at, updated_at, network, user_name, user_id, is_active, sync_status, status_reason, last_synced
 `
 
 type CreateSourceParams struct {
-	ID        uuid.UUID
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	Network   string
-	UserName  string
-	UserID    uuid.UUID
-	IsActive  bool
+	ID           uuid.UUID
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+	Network      string
+	UserName     string
+	UserID       uuid.UUID
+	IsActive     bool
+	SyncStatus   string
+	StatusReason sql.NullString
+	LastSynced   sql.NullTime
 }
 
 func (q *Queries) CreateSource(ctx context.Context, arg CreateSourceParams) (Source, error) {
@@ -45,6 +89,9 @@ func (q *Queries) CreateSource(ctx context.Context, arg CreateSourceParams) (Sou
 		arg.UserName,
 		arg.UserID,
 		arg.IsActive,
+		arg.SyncStatus,
+		arg.StatusReason,
+		arg.LastSynced,
 	)
 	var i Source
 	err := row.Scan(
@@ -55,12 +102,38 @@ func (q *Queries) CreateSource(ctx context.Context, arg CreateSourceParams) (Sou
 		&i.UserName,
 		&i.UserID,
 		&i.IsActive,
+		&i.SyncStatus,
+		&i.StatusReason,
+		&i.LastSynced,
+	)
+	return i, err
+}
+
+const getSourceById = `-- name: GetSourceById :one
+SELECT id, created_at, updated_at, network, user_name, user_id, is_active, sync_status, status_reason, last_synced FROM sources
+where id = $1
+`
+
+func (q *Queries) GetSourceById(ctx context.Context, id uuid.UUID) (Source, error) {
+	row := q.db.QueryRowContext(ctx, getSourceById, id)
+	var i Source
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Network,
+		&i.UserName,
+		&i.UserID,
+		&i.IsActive,
+		&i.SyncStatus,
+		&i.StatusReason,
+		&i.LastSynced,
 	)
 	return i, err
 }
 
 const getUserActiveSourceByName = `-- name: GetUserActiveSourceByName :one
-SELECT id, created_at, updated_at, network, user_name, user_id, is_active FROM sources
+SELECT id, created_at, updated_at, network, user_name, user_id, is_active, sync_status, status_reason, last_synced FROM sources
 where user_id = $1 and network = $2 and is_active = TRUE
 LIMIT 1
 `
@@ -81,12 +154,15 @@ func (q *Queries) GetUserActiveSourceByName(ctx context.Context, arg GetUserActi
 		&i.UserName,
 		&i.UserID,
 		&i.IsActive,
+		&i.SyncStatus,
+		&i.StatusReason,
+		&i.LastSynced,
 	)
 	return i, err
 }
 
 const getUserActiveSources = `-- name: GetUserActiveSources :many
-SELECT id, created_at, updated_at, network, user_name, user_id, is_active FROM sources
+SELECT id, created_at, updated_at, network, user_name, user_id, is_active, sync_status, status_reason, last_synced FROM sources
 where user_id = $1 and is_active = TRUE
 `
 
@@ -107,6 +183,9 @@ func (q *Queries) GetUserActiveSources(ctx context.Context, userID uuid.UUID) ([
 			&i.UserName,
 			&i.UserID,
 			&i.IsActive,
+			&i.SyncStatus,
+			&i.StatusReason,
+			&i.LastSynced,
 		); err != nil {
 			return nil, err
 		}
@@ -119,4 +198,80 @@ func (q *Queries) GetUserActiveSources(ctx context.Context, userID uuid.UUID) ([
 		return nil, err
 	}
 	return items, nil
+}
+
+const getUserSources = `-- name: GetUserSources :many
+SELECT id, created_at, updated_at, network, user_name, user_id, is_active, sync_status, status_reason, last_synced FROM sources
+where user_id = $1
+`
+
+func (q *Queries) GetUserSources(ctx context.Context, userID uuid.UUID) ([]Source, error) {
+	rows, err := q.db.QueryContext(ctx, getUserSources, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Source
+	for rows.Next() {
+		var i Source
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Network,
+			&i.UserName,
+			&i.UserID,
+			&i.IsActive,
+			&i.SyncStatus,
+			&i.StatusReason,
+			&i.LastSynced,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateSourceSyncStatusById = `-- name: UpdateSourceSyncStatusById :one
+UPDATE sources
+SET sync_status = $2, status_reason = $3, last_synced = $4
+WHERE id = $1
+RETURNING id, created_at, updated_at, network, user_name, user_id, is_active, sync_status, status_reason, last_synced
+`
+
+type UpdateSourceSyncStatusByIdParams struct {
+	ID           uuid.UUID
+	SyncStatus   string
+	StatusReason sql.NullString
+	LastSynced   sql.NullTime
+}
+
+func (q *Queries) UpdateSourceSyncStatusById(ctx context.Context, arg UpdateSourceSyncStatusByIdParams) (Source, error) {
+	row := q.db.QueryRowContext(ctx, updateSourceSyncStatusById,
+		arg.ID,
+		arg.SyncStatus,
+		arg.StatusReason,
+		arg.LastSynced,
+	)
+	var i Source
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Network,
+		&i.UserName,
+		&i.UserID,
+		&i.IsActive,
+		&i.SyncStatus,
+		&i.StatusReason,
+		&i.LastSynced,
+	)
+	return i, err
 }

@@ -12,7 +12,10 @@ CREATE TABLE sources (
         FOREIGN KEY (user_id)
         REFERENCES users(id)
         ON DELETE CASCADE,
-    is_active BOOLEAN NOT NULL
+    is_active BOOLEAN NOT NULL,
+    sync_status TEXT NOT NULL,
+    status_reason TEXT,
+    last_synced TIMESTAMP
 );
 
 

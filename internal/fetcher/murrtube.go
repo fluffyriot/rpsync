@@ -3,6 +3,7 @@ package fetcher
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"net/http"
 	"regexp"
@@ -158,6 +159,10 @@ func FetchMurrtubePosts(uid uuid.UUID, dbQueries *database.Queries, c *Client, s
 		})
 
 	})
+
+	if len(processedLinks) == 0 {
+		return errors.New("No content found")
+	}
 
 	return nil
 }

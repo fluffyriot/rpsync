@@ -85,13 +85,15 @@ func CreateSourceFromForm(dbQueries *database.Queries, uid, network, username, t
 	}
 
 	s, err := dbQueries.CreateSource(context.Background(), database.CreateSourceParams{
-		ID:        uuid.New(),
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-		Network:   network,
-		UserName:  username,
-		UserID:    uidParse,
-		IsActive:  true,
+		ID:           uuid.New(),
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
+		Network:      network,
+		UserName:     username,
+		UserID:       uidParse,
+		IsActive:     true,
+		SyncStatus:   "Initialized",
+		StatusReason: sql.NullString{},
 	})
 
 	if err != nil {

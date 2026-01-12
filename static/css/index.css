@@ -230,3 +230,85 @@ button:hover {
     padding: 10px;
   }
 }
+
+.source-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.source-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border-bottom: 1px solid #333;
+}
+
+.source-main {
+  display: flex;
+  justify-content: space-between;
+}
+
+.source-meta {
+  display: flex;
+  gap: 16px;
+  font-size: 0.9em;
+  opacity: 0.85;
+}
+
+.source-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.sync-status {
+  font-weight: bold;
+}
+
+.status-initialized {
+  color: #9e9e9e;
+}
+
+.status-syncing {
+  color: #ffc107;
+}
+
+.status-synced {
+  color: #4caf50;
+}
+
+.status-failed {
+  color: #f44336;
+}
+
+.status-disabled {
+  color: #f44336;
+}
+
+/* Tooltip */
+.tooltip {
+  position: relative;
+  cursor: pointer;
+  margin-left: 6px;
+}
+
+.tooltip-text {
+  visibility: hidden;
+  position: absolute;
+  background-color: #222;
+  color: #fff;
+  padding: 6px;
+  border-radius: 4px;
+  font-size: 0.8em;
+  bottom: 125%;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  z-index: 10;
+}
+
+.tooltip:hover .tooltip-text {
+  visibility: visible;
+}
+

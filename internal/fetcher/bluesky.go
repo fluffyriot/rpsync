@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -106,6 +107,10 @@ func FetchBlueskyPosts(
 			return err
 		}
 
+		if resp.StatusCode != 200 {
+			return fmt.Errorf("Failed to get a successfull response. %v: %v", resp.StatusCode, resp.Status)
+		}
+
 		data, err := io.ReadAll(resp.Body)
 		resp.Body.Close()
 		if err != nil {
@@ -180,6 +185,10 @@ func FetchBlueskyPosts(
 		}
 
 		cursor = feed.Cursor
+	}
+
+	if len(processedLinks) == 0 {
+		return errors.New("No content found")
 	}
 
 	return nil

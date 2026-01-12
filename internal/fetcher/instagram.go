@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -88,6 +89,10 @@ func FetchInstagramPosts(
 		resp, err := c.httpClient.Do(req)
 		if err != nil {
 			return err
+		}
+
+		if resp.StatusCode != 200 {
+			return fmt.Errorf("Failed to get a successfull response. %v: %v", resp.StatusCode, resp.Status)
 		}
 
 		data, err := io.ReadAll(resp.Body)
@@ -178,6 +183,10 @@ func FetchInstagramPosts(
 		}
 
 		next = feed.Paging.Next
+	}
+
+	if len(processedLinks) == 0 {
+		return errors.New("No content found")
 	}
 
 	return nil
