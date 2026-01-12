@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/fluffyriot/commission-tracker/internal/config"
 	"github.com/fluffyriot/commission-tracker/internal/database"
@@ -11,11 +13,24 @@ import (
 )
 
 var (
-	dbQueries *database.Queries
-	dbInitErr error
+	dbQueries  *database.Queries
+	dbInitErr  error
+	keyB64err1 error
+	keyB64err2 error
 )
 
 func main() {
+
+	keyB64 := os.Getenv("TOKEN_ENCRYPTION_KEY")
+	if keyB64 == "" {
+		log.Fatal("TOKEN_ENCRYPTION_KEY not set")
+	}
+
+	encryptKey, err := base64.StdEncoding.DecodeString(keyB64)
+	if err != nil || len(encryptKey) != 32 {
+		log.Fatal("TOKEN_ENCRYPTION_KEY must be 32 bytes (base64)")
+	}
+
 	r := gin.Default()
 
 	r.Static("/static", "./static")
@@ -29,7 +44,7 @@ func main() {
 
 	r.GET("/", rootHandler)
 	r.POST("/user/setup", userSetupHandler)
-	r.POST("/sources/setup", sourcesSetupHandler)
+	r.POST("/sources/setup", sourcesSetupHandler(encryptKey))
 
 	r.POST("/reset", func(c *gin.Context) {
 		err := dbQueries.EmptyUsers(context.Background())
@@ -50,6 +65,20 @@ func rootHandler(c *gin.Context) {
 	if dbInitErr != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
 			"error": dbInitErr.Error(),
+		})
+		return
+	}
+
+	if keyB64err1 != nil {
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+			"error": keyB64err1.Error(),
+		})
+		return
+	}
+
+	if keyB64err2 != nil {
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+			"error": keyB64err2.Error(),
 		})
 		return
 	}
@@ -88,7 +117,7 @@ func rootHandler(c *gin.Context) {
 func userSetupHandler(c *gin.Context) {
 	username := c.PostForm("username")
 	if username == "" {
-		c.HTML(http.StatusBadRequest, "user-setup.html", gin.H{
+		c.HTML(http.StatusBadRequest, "error.html", gin.H{
 			"error": "username is required",
 		})
 		return
@@ -96,7 +125,7 @@ func userSetupHandler(c *gin.Context) {
 
 	syncMethod := c.PostForm("sync_method")
 	if syncMethod == "" {
-		c.HTML(http.StatusBadRequest, "user-setup.html", gin.H{
+		c.HTML(http.StatusBadRequest, "error.html", gin.H{
 			"error": "Sync method is required",
 		})
 		return
@@ -104,7 +133,7 @@ func userSetupHandler(c *gin.Context) {
 
 	_, _, err := config.CreateUserFromForm(dbQueries, username, syncMethod)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "user-setup.html", gin.H{
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
 			"error": err.Error(),
 		})
 		return
@@ -113,25 +142,35 @@ func userSetupHandler(c *gin.Context) {
 	c.Redirect(http.StatusSeeOther, "/")
 }
 
-func sourcesSetupHandler(c *gin.Context) {
-	userID := c.PostForm("user_id")
-	network := c.PostForm("network")
-	username := c.PostForm("username")
+func sourcesSetupHandler(encryptKey []byte) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID := c.PostForm("user_id")
+		network := c.PostForm("network")
+		username := c.PostForm("username")
+		token := c.PostForm("api_token")
 
-	if userID == "" || network == "" || username == "" {
-		c.HTML(http.StatusBadRequest, "sources-setup.html", gin.H{
-			"error": "all fields are required",
-		})
-		return
+		if userID == "" || network == "" || username == "" {
+			c.HTML(http.StatusBadRequest, "error.html", gin.H{
+				"error": "all fields are required",
+			})
+			return
+		}
+
+		_, _, err := config.CreateSourceFromForm(
+			dbQueries,
+			userID,
+			network,
+			username,
+			token,
+			encryptKey,
+		)
+		if err != nil {
+			c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+				"error": err.Error(),
+			})
+			return
+		}
+
+		c.Redirect(http.StatusSeeOther, "/")
 	}
-
-	_, _, err := config.CreateSourceFromForm(dbQueries, userID, network, username)
-	if err != nil {
-		c.HTML(http.StatusInternalServerError, "sources-setup.html", gin.H{
-			"error": err.Error(),
-		})
-		return
-	}
-
-	c.Redirect(http.StatusSeeOther, "/")
 }

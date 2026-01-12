@@ -42,12 +42,11 @@ type Source struct {
 
 type Token struct {
 	ID                   uuid.UUID
-	UserID               uuid.UUID
 	EncryptedAccessToken []byte
 	Nonce                []byte
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
-	Network              string
+	SourceID             uuid.UUID
 }
 
 type User struct {

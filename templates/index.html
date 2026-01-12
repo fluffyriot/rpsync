@@ -25,7 +25,6 @@
       }
     }
   </script>
-
 </head>
 
 <body>
@@ -52,9 +51,9 @@
     </div>
 
     <div class="form-section inline-form">
-      <form method="POST" action="/sources/setup">
+      <form method="POST" action="/sources/setup"  id="source_form">
         <input type="hidden" name="user_id" value="{{.user_id}}">
-        <select name="network" required>
+        <select id="network" name="network" required>
           <option value="" disabled selected>Select Network</option>
           <option value="Bluesky">Bluesky</option>
           <option value="Instagram">Instagram</option>
@@ -62,6 +61,8 @@
           <option value="BadPups">BadPups</option>
         </select>
         <input type="text" name="username" placeholder="Username" required>
+        <label for="api_token" id="api_token_label" style="display:none;">API Token</label>
+        <input id="api_token" name="api_token" type="password" placeholder="Add your API token" style="display:none;">
         <button type="submit">Add Source</button>
       </form>
 
@@ -75,6 +76,45 @@
       </div>
     </div>
   </div>
+
+  <script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const form = document.getElementById("source_form");
+    const networkSelect = document.getElementById("network");
+    const tokenInput = document.getElementById("api_token");
+    const tokenLabel = document.getElementById("api_token_label");
+
+    if (!form || !networkSelect || !tokenInput || !tokenLabel) {
+      return;
+    }
+
+    function updateTokenVisibility() {
+      if (networkSelect.value === "Instagram") {
+        tokenInput.style.display = "block";
+        tokenLabel.style.display = "block";
+        tokenInput.required = true;
+      } else {
+        tokenInput.style.display = "none";
+        tokenLabel.style.display = "none";
+        tokenInput.required = false;
+        tokenInput.value = "";
+      }
+    }
+
+    networkSelect.addEventListener("change", updateTokenVisibility);
+
+    form.addEventListener("submit", function (e) {
+      if (
+        networkSelect.value === "Instagram" &&
+        tokenInput.value.trim() === ""
+      ) {
+        e.preventDefault();
+        alert("Instagram requires an API token.");
+        tokenInput.focus();
+      }
+    });
+  });
+</script>
 
 
 </body>

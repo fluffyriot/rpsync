@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/fluffyriot/commission-tracker/internal/auth"
 	"github.com/fluffyriot/commission-tracker/internal/database"
 	"github.com/google/uuid"
 
@@ -72,11 +73,15 @@ func CreateUserFromForm(dbQueries *database.Queries, userName, syncMethod string
 	return u.Username, u.ID.String(), nil
 }
 
-func CreateSourceFromForm(dbQueries *database.Queries, uid, network, username string) (id, networkName string, e error) {
+func CreateSourceFromForm(dbQueries *database.Queries, uid, network, username, token string, encryptionKey []byte) (id, networkName string, e error) {
 
 	uidParse, err := uuid.Parse(uid)
 	if err != nil {
 		return "", "", fmt.Errorf("Failed to parse UUID. Error: %v", err)
+	}
+
+	if network == "Instagram" && token == "" {
+		return "", "", fmt.Errorf("Failed to create Instagram source. Api token is required.")
 	}
 
 	s, err := dbQueries.CreateSource(context.Background(), database.CreateSourceParams{
@@ -91,6 +96,10 @@ func CreateSourceFromForm(dbQueries *database.Queries, uid, network, username st
 
 	if err != nil {
 		return "", "", fmt.Errorf("Failed to create source. Error: %v", err)
+	}
+
+	if network == "Instagram" {
+		err = auth.InsertToken(dbQueries, s.ID, token, encryptionKey)
 	}
 
 	return s.ID.String(), s.Network, nil

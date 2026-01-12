@@ -13,73 +13,63 @@ import (
 )
 
 const createToken = `-- name: CreateToken :one
-INSERT INTO tokens (id, user_id, encrypted_access_token, nonce, created_at, updated_at, network)
+INSERT INTO tokens (id, encrypted_access_token, nonce, created_at, updated_at, source_id)
 VALUES (
     $1,
     $2,
     $3,
     $4,
     $5,
-    $6,
-    $7
+    $6
 )
-RETURNING id, user_id, encrypted_access_token, nonce, created_at, updated_at, network
+RETURNING id, encrypted_access_token, nonce, created_at, updated_at, source_id
 `
 
 type CreateTokenParams struct {
 	ID                   uuid.UUID
-	UserID               uuid.UUID
 	EncryptedAccessToken []byte
 	Nonce                []byte
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
-	Network              string
+	SourceID             uuid.UUID
 }
 
 func (q *Queries) CreateToken(ctx context.Context, arg CreateTokenParams) (Token, error) {
 	row := q.db.QueryRowContext(ctx, createToken,
 		arg.ID,
-		arg.UserID,
 		arg.EncryptedAccessToken,
 		arg.Nonce,
 		arg.CreatedAt,
 		arg.UpdatedAt,
-		arg.Network,
+		arg.SourceID,
 	)
 	var i Token
 	err := row.Scan(
 		&i.ID,
-		&i.UserID,
 		&i.EncryptedAccessToken,
 		&i.Nonce,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.Network,
+		&i.SourceID,
 	)
 	return i, err
 }
 
-const getTokenByNetworkAndUser = `-- name: GetTokenByNetworkAndUser :one
-SELECT id, user_id, encrypted_access_token, nonce, created_at, updated_at, network FROM tokens
-where user_id = $1 and network = $2
+const getTokenBySource = `-- name: GetTokenBySource :one
+SELECT id, encrypted_access_token, nonce, created_at, updated_at, source_id FROM tokens
+where source_id = $1
 `
 
-type GetTokenByNetworkAndUserParams struct {
-	UserID  uuid.UUID
-	Network string
-}
-
-func (q *Queries) GetTokenByNetworkAndUser(ctx context.Context, arg GetTokenByNetworkAndUserParams) (Token, error) {
-	row := q.db.QueryRowContext(ctx, getTokenByNetworkAndUser, arg.UserID, arg.Network)
+func (q *Queries) GetTokenBySource(ctx context.Context, sourceID uuid.UUID) (Token, error) {
+	row := q.db.QueryRowContext(ctx, getTokenBySource, sourceID)
 	var i Token
 	err := row.Scan(
 		&i.ID,
-		&i.UserID,
 		&i.EncryptedAccessToken,
 		&i.Nonce,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.Network,
+		&i.SourceID,
 	)
 	return i, err
 }

@@ -63,7 +63,7 @@ func decrypt(ciphertext, nonce, key []byte) ([]byte, error) {
 
 func InsertToken(
 	dbQueries *database.Queries,
-	uid uuid.UUID,
+	sid uuid.UUID,
 	accessToken string,
 	encryptionKey []byte,
 ) error {
@@ -75,12 +75,11 @@ func InsertToken(
 
 	_, err = dbQueries.CreateToken(context.Background(), database.CreateTokenParams{
 		ID:                   uuid.New(),
-		UserID:               uid,
 		EncryptedAccessToken: ciphertext,
 		Nonce:                nonce,
 		CreatedAt:            time.Now(),
 		UpdatedAt:            time.Now(),
-		Network:              "Instagram",
+		SourceID:             sid,
 	})
 
 	return err
@@ -89,19 +88,15 @@ func InsertToken(
 func GetToken(
 	ctx context.Context,
 	dbQueries *database.Queries,
-	uid uuid.UUID,
 	encryptionKey []byte,
-	network string,
+	sid uuid.UUID,
 ) (string, error) {
 	var (
 		ciphertext []byte
 		nonce      []byte
 	)
 
-	dbToken, err := dbQueries.GetTokenByNetworkAndUser(context.Background(), database.GetTokenByNetworkAndUserParams{
-		Network: network,
-		UserID:  uid,
-	})
+	dbToken, err := dbQueries.GetTokenBySource(context.Background(), sid)
 	if err != nil {
 		return "", err
 	}

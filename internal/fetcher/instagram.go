@@ -39,13 +39,13 @@ type instagramFeed struct {
 
 func getInstagramApiString(
 	dbQueries *database.Queries,
-	uid uuid.UUID,
+	sid uuid.UUID,
 	next string,
 	version string,
 	encryptionKey []byte,
 ) (string, error) {
 
-	token, err := auth.GetToken(context.Background(), dbQueries, uid, encryptionKey, "Instagram")
+	token, err := auth.GetToken(context.Background(), dbQueries, encryptionKey, sid)
 	if err != nil {
 		return "", err
 	}
@@ -62,7 +62,6 @@ func getInstagramApiString(
 func FetchInstagramPosts(
 	dbQueries *database.Queries,
 	c *Client,
-	uid uuid.UUID,
 	sourceId uuid.UUID,
 	version string,
 	encryptionKey []byte,
@@ -76,7 +75,7 @@ func FetchInstagramPosts(
 
 	for page := 0; page < maxPages; page++ {
 
-		url, err := getInstagramApiString(dbQueries, uid, next, version, encryptionKey)
+		url, err := getInstagramApiString(dbQueries, sourceId, next, version, encryptionKey)
 		if err != nil {
 			return err
 		}
