@@ -71,3 +71,27 @@ func CreateUserFromForm(dbQueries *database.Queries, userName, syncMethod string
 
 	return u.Username, u.ID.String(), nil
 }
+
+func CreateSourceFromForm(dbQueries *database.Queries, uid, network, username string) (id, networkName string, e error) {
+
+	uidParse, err := uuid.Parse(uid)
+	if err != nil {
+		return "", "", fmt.Errorf("Failed to parse UUID. Error: %v", err)
+	}
+
+	s, err := dbQueries.CreateSource(context.Background(), database.CreateSourceParams{
+		ID:        uuid.New(),
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		Network:   network,
+		UserName:  username,
+		UserID:    uidParse,
+		IsActive:  true,
+	})
+
+	if err != nil {
+		return "", "", fmt.Errorf("Failed to create source. Error: %v", err)
+	}
+
+	return s.ID.String(), s.Network, nil
+}

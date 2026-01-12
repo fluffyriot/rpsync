@@ -80,7 +80,6 @@ func FetchMurrtubePosts(uid uuid.UUID, dbQueries *database.Queries, c *Client, s
 
 		videoURL := "https://murrtube.net" + href
 		if _, exists := processedLinks[videoURL]; exists {
-			// already processed
 			return
 		}
 

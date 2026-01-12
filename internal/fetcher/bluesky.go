@@ -87,7 +87,7 @@ func FetchBlueskyPosts(
 
 	var cursor string
 
-	const maxPages = 500 // safety guard
+	const maxPages = 500
 
 	for page := 0; page < maxPages; page++ {
 
@@ -117,14 +117,12 @@ func FetchBlueskyPosts(
 			return err
 		}
 
-		// Convert feed → posts
 		for _, item := range feed.Feed {
 
 			uriSplit := strings.Split(item.Post.URI, "/")
 			interNetId := string(uriSplit[len(uriSplit)-1])
 
 			if _, exists := processedLinks[interNetId]; exists {
-				// already processed
 				continue
 			}
 
@@ -177,7 +175,6 @@ func FetchBlueskyPosts(
 			})
 		}
 
-		// Stop if no more pages
 		if feed.Cursor == "" {
 			break
 		}

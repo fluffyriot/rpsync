@@ -72,7 +72,7 @@ func FetchInstagramPosts(
 
 	var next string
 
-	const maxPages = 500 // safety guard
+	const maxPages = 500
 
 	for page := 0; page < maxPages; page++ {
 
@@ -103,14 +103,13 @@ func FetchInstagramPosts(
 		}
 
 		if len(feed.Data) == 0 {
-			return nil // no data
+			return nil
 		}
 
 		for _, item := range feed.Data {
 			var intId uuid.UUID
 
 			if _, exists := processedLinks[item.Shortcode]; exists {
-				// already processed
 				continue
 			}
 
@@ -175,7 +174,6 @@ func FetchInstagramPosts(
 			}
 		}
 
-		// Stop if no more pages
 		if feed.Paging.Next == "" {
 			break
 		}

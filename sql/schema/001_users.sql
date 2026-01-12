@@ -6,7 +6,7 @@ CREATE TABLE users (
     updated_at TIMESTAMP NOT NULL,
     sync_method TEXT NOT NULL,
     CONSTRAINT sync_check
-        CHECK (sync_method IN ('CSV', 'Notion', 'None / Dev')),
+        CHECK (sync_method IN ('csv', 'notion', 'none')),
     access_key TEXT,
     target_database_id TEXT
 );

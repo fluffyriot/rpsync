@@ -2,188 +2,136 @@ package main
 
 import (
 	"context"
-	"database/sql"
-	"encoding/base64"
-	"fmt"
 	"log"
 	"net/http"
-	"os"
-	"time"
 
-	"github.com/fluffyriot/commission-tracker/internal/auth"
 	"github.com/fluffyriot/commission-tracker/internal/config"
 	"github.com/fluffyriot/commission-tracker/internal/database"
-	"github.com/fluffyriot/commission-tracker/internal/fetcher"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
-// For demo purposes: mock service status
-type ServiceStatus struct {
-	Database string
-	Broker   string
-}
+var (
+	dbQueries *database.Queries
+	dbInitErr error
+)
 
 func main() {
-
-	dbStatus := "DOWN"
-	dbQueries, err := config.LoadDatabase()
-	if err != nil {
-		log.Fatalln(err)
-		dbStatus = "DOWN"
-	}
-
-	// dev temp section
-
-	err = dbQueries.EmptyUsers(context.Background())
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	user, err := dbQueries.CreateUser(context.Background(), database.CreateUserParams{
-		ID:               uuid.New(),
-		Username:         "riot.photos",
-		CreatedAt:        time.Now(),
-		UpdatedAt:        time.Now(),
-		SyncMethod:       "CSV",
-		AccessKey:        sql.NullString{},
-		TargetDatabaseID: sql.NullString{},
-	})
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	bskySource, err := dbQueries.CreateSource(context.Background(), database.CreateSourceParams{
-		ID:        uuid.New(),
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-		Network:   "Bluesky",
-		UserName:  "riot.photos",
-		UserID:    user.ID,
-		IsActive:  true,
-	})
-
-	instaSource, err := dbQueries.CreateSource(context.Background(), database.CreateSourceParams{
-		ID:        uuid.New(),
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-		Network:   "Instagram",
-		UserName:  "_riotphotos_",
-		UserID:    user.ID,
-		IsActive:  true,
-	})
-
-	murrSource, err := dbQueries.CreateSource(context.Background(), database.CreateSourceParams{
-		ID:        uuid.New(),
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-		Network:   "Murrtube",
-		UserName:  "riotphotos",
-		UserID:    user.ID,
-		IsActive:  true,
-	})
-
-	badpupsSource, err := dbQueries.CreateSource(context.Background(), database.CreateSourceParams{
-		ID:        uuid.New(),
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-		Network:   "BadPups",
-		UserName:  "fluffyriot",
-		UserID:    user.ID,
-		IsActive:  true,
-	})
-
-	httpClient := fetcher.NewClient(60 * time.Second)
-
-	err = fetcher.FetchBlueskyPosts(dbQueries, httpClient, user.ID, bskySource.ID)
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	keyB64 := os.Getenv("TOKEN_ENCRYPTION_KEY")
-	if keyB64 == "" {
-		log.Fatal("TOKEN_ENCRYPTION_KEY not set")
-	}
-
-	key, err := base64.StdEncoding.DecodeString(keyB64)
-	if err != nil || len(key) != 32 {
-		log.Fatal("TOKEN_ENCRYPTION_KEY must be 32 bytes (base64)")
-	}
-
-	encryptionKey := key
-
-	err = auth.InsertToken(dbQueries, user.ID, os.Getenv("INSTAGRAM_API"), encryptionKey)
-
-	err = fetcher.FetchInstagramPosts(dbQueries, httpClient, user.ID, instaSource.ID, os.Getenv("INSTAGRAM_API_VERSION"), encryptionKey)
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	err = fetcher.FetchMurrtubePosts(user.ID, dbQueries, httpClient, murrSource.ID)
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	err = fetcher.FetchBadpupsPosts(user.ID, dbQueries, httpClient, badpupsSource.ID)
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	// dev temp section
-
 	r := gin.Default()
 
-	r.LoadHTMLGlob("templates/*")
 	r.Static("/static", "./static")
 
-	r.GET("/", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "index.html", nil)
-	})
+	r.LoadHTMLGlob("templates/*.html")
 
-	// Setup page
-	r.GET("/setup", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "setup.html", nil)
-	})
+	dbQueries, dbInitErr = config.LoadDatabase()
+	if dbInitErr != nil {
+		log.Printf("database init failed: %v", dbInitErr)
+	}
 
-	r.POST("/setup", func(c *gin.Context) {
-		username := c.PostForm("username")
-		syncMethod := c.PostForm("sync_method")
-		nameCreated, idCreated, err := config.CreateUserFromForm(dbQueries, username, syncMethod)
+	r.GET("/", rootHandler)
+	r.POST("/user/setup", userSetupHandler)
+	r.POST("/sources/setup", sourcesSetupHandler)
+
+	r.POST("/reset", func(c *gin.Context) {
+		err := dbQueries.EmptyUsers(context.Background())
 		if err != nil {
-			c.HTML(http.StatusInternalServerError, "setup.html", gin.H{
-				"Message1": fmt.Sprintln("User failed to create!"),
-				"Message2": fmt.Sprintf("Error: %v", err),
-			})
-		} else {
-			c.HTML(http.StatusOK, "setup.html", gin.H{
-				"Message1": fmt.Sprintf("User %v created successfully!", nameCreated),
-				"Message2": fmt.Sprintf("Your Id: %v", idCreated),
-			})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
 		}
-
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
-	// Status page
-	r.GET("/status", func(c *gin.Context) {
-		// TODO: replace with real checks
-		brokerStatus := "OK"
+	if err := r.Run(":8080"); err != nil {
+		log.Fatal(err)
+	}
+}
 
-		status := map[string]string{
-			"Database":      dbStatus,
-			"DatabaseClass": "ok",
-			"Broker":        brokerStatus,
-			"BrokerClass":   "ok",
-		}
+func rootHandler(c *gin.Context) {
 
-		if dbStatus != "OK" {
-			status["DatabaseClass"] = "fail"
-		}
-		if brokerStatus != "OK" {
-			status["BrokerClass"] = "fail"
-		}
+	if dbInitErr != nil {
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+			"error": dbInitErr.Error(),
+		})
+		return
+	}
 
-		c.HTML(http.StatusOK, "status.html", status)
+	ctx := c.Request.Context()
+
+	users, err := dbQueries.GetAllUsers(ctx)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	if len(users) == 0 {
+		c.HTML(http.StatusOK, "user-setup.html", nil)
+		return
+	}
+
+	user := users[0]
+
+	sources, err := dbQueries.GetUserActiveSources(ctx, user.ID)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+	c.HTML(http.StatusOK, "index.html", gin.H{
+		"username": user.Username,
+		"user_id":  user.ID,
+		"sources":  sources,
 	})
+}
 
-	r.Run(":8080")
+func userSetupHandler(c *gin.Context) {
+	username := c.PostForm("username")
+	if username == "" {
+		c.HTML(http.StatusBadRequest, "user-setup.html", gin.H{
+			"error": "username is required",
+		})
+		return
+	}
+
+	syncMethod := c.PostForm("sync_method")
+	if syncMethod == "" {
+		c.HTML(http.StatusBadRequest, "user-setup.html", gin.H{
+			"error": "Sync method is required",
+		})
+		return
+	}
+
+	_, _, err := config.CreateUserFromForm(dbQueries, username, syncMethod)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "user-setup.html", gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.Redirect(http.StatusSeeOther, "/")
+}
+
+func sourcesSetupHandler(c *gin.Context) {
+	userID := c.PostForm("user_id")
+	network := c.PostForm("network")
+	username := c.PostForm("username")
+
+	if userID == "" || network == "" || username == "" {
+		c.HTML(http.StatusBadRequest, "sources-setup.html", gin.H{
+			"error": "all fields are required",
+		})
+		return
+	}
+
+	_, _, err := config.CreateSourceFromForm(dbQueries, userID, network, username)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "sources-setup.html", gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.Redirect(http.StatusSeeOther, "/")
 }

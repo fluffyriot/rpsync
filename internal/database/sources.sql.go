@@ -84,3 +84,39 @@ func (q *Queries) GetUserActiveSourceByName(ctx context.Context, arg GetUserActi
 	)
 	return i, err
 }
+
+const getUserActiveSources = `-- name: GetUserActiveSources :many
+SELECT id, created_at, updated_at, network, user_name, user_id, is_active FROM sources
+where user_id = $1 and is_active = TRUE
+`
+
+func (q *Queries) GetUserActiveSources(ctx context.Context, userID uuid.UUID) ([]Source, error) {
+	rows, err := q.db.QueryContext(ctx, getUserActiveSources, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Source
+	for rows.Next() {
+		var i Source
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Network,
+			&i.UserName,
+			&i.UserID,
+			&i.IsActive,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

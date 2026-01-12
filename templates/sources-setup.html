@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Sources Setup</title>
+  <link rel="stylesheet" href="/static/css/index.css">
+</head>
+<body>
+
+<div class="container">
+  <h1>Sources Setup</h1>
+
+  {{if .Message1}}
+    <div class="message">{{.Message1}}</div>
+  {{end}}
+
+  {{if .Message2}}
+    <div class="message">{{.Message2}}</div>
+    <form method="GET" action="/status">
+      <button class="refresh" type="submit">Go To Status</button>
+    </form>
+  {{else}}
+    <form method="POST" action="/sources/setup" class="inline-form">
+      <label for="user_id">User ID</label>
+      <input id="user_id" name="user_id" value="{{.user_id}}" readonly>
+
+      <label for="network">Network</label>
+      <select id="network" name="network" required>
+        <option value="" disabled selected>Select a network to add</option>
+        <option value="Bluesky">Bluesky</option>
+        <option value="Instagram">Instagram</option>
+        <option value="Murrtube">Murrtube.net</option>
+        <option value="BadPups">BadPups.com</option>
+      </select>
+
+      <label for="username">Username</label>
+      <input id="username" name="username" placeholder="Enter username" required>
+
+      <div class="button-group">
+        <button type="submit">Add Source</button>
+      </div>
+    </form>
+  {{end}}
+</div>
+
+</body>
+</html>

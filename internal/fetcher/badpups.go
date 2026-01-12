@@ -79,7 +79,6 @@ func FetchBadpupsPosts(uid uuid.UUID, dbQueries *database.Queries, c *Client, so
 		}
 
 		if _, exists := processedLinks[href]; exists {
-			// already processed
 			return
 		}
 

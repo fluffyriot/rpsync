@@ -68,3 +68,38 @@ func (q *Queries) EmptyUsers(ctx context.Context) error {
 	_, err := q.db.ExecContext(ctx, emptyUsers)
 	return err
 }
+
+const getAllUsers = `-- name: GetAllUsers :many
+SELECT id, username, created_at, updated_at, sync_method, access_key, target_database_id FROM users
+`
+
+func (q *Queries) GetAllUsers(ctx context.Context) ([]User, error) {
+	rows, err := q.db.QueryContext(ctx, getAllUsers)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []User
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.Username,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.SyncMethod,
+			&i.AccessKey,
+			&i.TargetDatabaseID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

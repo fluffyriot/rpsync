@@ -13,3 +13,6 @@ RETURNING *;
 
 -- name: EmptyUsers :exec
 DELETE FROM users;
+
+-- name: GetAllUsers :many
+SELECT * FROM users;

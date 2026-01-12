@@ -15,3 +15,7 @@ RETURNING *;
 SELECT * FROM sources
 where user_id = $1 and network = $2 and is_active = TRUE
 LIMIT 1;
+
+-- name: GetUserActiveSources :many
+SELECT * FROM sources
+where user_id = $1 and is_active = TRUE;

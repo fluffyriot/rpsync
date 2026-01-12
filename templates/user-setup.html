@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>User Setup</title>
+  <link rel="stylesheet" href="/static/css/index.css">
+</head>
+<body>
+
+<div class="container">
+  <h1>Initial Setup</h1>
+
+  {{if .Message1}}
+    <div class="message">{{.Message1}}</div>
+  {{end}}
+  {{if .Message2}}
+    <div class="message">{{.Message2}}</div>
+    <form method="GET" action="/status">
+      <button class="refresh" type="submit">Go To Status</button>
+    </form>
+  {{else}}
+    <form method="POST" action="/user/setup" class="inline-form">
+      <label for="username">Username</label>
+      <input id="username" name="username" placeholder="Enter username" required>
+
+      <label for="sync_method">Sync Method</label>
+      <select id="sync_method" name="sync_method" required>
+        <option value="" disabled selected>Select a sync method</option>
+        <option value="none">None / Dev</option>
+        <option value="csv">CSV</option>
+        <option value="notion">Notion</option>
+      </select>
+
+      <div class="button-group">
+        <button type="submit">Create User</button>
+      </div>
+    </form>
+  {{end}}
+</div>
+
+</body>
+</html>
