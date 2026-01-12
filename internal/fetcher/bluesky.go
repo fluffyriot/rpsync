@@ -83,6 +83,8 @@ func FetchBlueskyPosts(
 	sourceId uuid.UUID,
 ) error {
 
+	processedLinks := make(map[string]struct{})
+
 	var cursor string
 
 	const maxPages = 500 // safety guard
@@ -117,8 +119,17 @@ func FetchBlueskyPosts(
 
 		// Convert feed → posts
 		for _, item := range feed.Feed {
+
 			uriSplit := strings.Split(item.Post.URI, "/")
 			interNetId := string(uriSplit[len(uriSplit)-1])
+
+			if _, exists := processedLinks[interNetId]; exists {
+				// already processed
+				continue
+			}
+
+			processedLinks[interNetId] = struct{}{}
+
 			var intId uuid.UUID
 
 			post, err := dbQueries.GetPostByNetworkAndId(context.Background(), database.GetPostByNetworkAndIdParams{

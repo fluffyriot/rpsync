@@ -68,6 +68,8 @@ func FetchInstagramPosts(
 	encryptionKey []byte,
 ) error {
 
+	processedLinks := make(map[string]struct{})
+
 	var next string
 
 	const maxPages = 500 // safety guard
@@ -106,6 +108,14 @@ func FetchInstagramPosts(
 
 		for _, item := range feed.Data {
 			var intId uuid.UUID
+
+			if _, exists := processedLinks[item.Shortcode]; exists {
+				// already processed
+				continue
+			}
+
+			processedLinks[item.Shortcode] = struct{}{}
+
 			timeParse, _ := time.Parse("2006-01-02T15:04:05-0700", item.Timestamp)
 
 			post, err := dbQueries.GetPostByNetworkAndId(context.Background(), database.GetPostByNetworkAndIdParams{

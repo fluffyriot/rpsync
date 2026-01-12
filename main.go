@@ -73,6 +73,26 @@ func main() {
 		IsActive:  true,
 	})
 
+	murrSource, err := dbQueries.CreateSource(context.Background(), database.CreateSourceParams{
+		ID:        uuid.New(),
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		Network:   "Murrtube",
+		UserName:  "riotphotos",
+		UserID:    user.ID,
+		IsActive:  true,
+	})
+
+	badpupsSource, err := dbQueries.CreateSource(context.Background(), database.CreateSourceParams{
+		ID:        uuid.New(),
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		Network:   "BadPups",
+		UserName:  "fluffyriot",
+		UserID:    user.ID,
+		IsActive:  true,
+	})
+
 	httpClient := fetcher.NewClient(60 * time.Second)
 
 	err = fetcher.FetchBlueskyPosts(dbQueries, httpClient, user.ID, bskySource.ID)
@@ -95,6 +115,16 @@ func main() {
 	err = auth.InsertToken(dbQueries, user.ID, os.Getenv("INSTAGRAM_API"), encryptionKey)
 
 	err = fetcher.FetchInstagramPosts(dbQueries, httpClient, user.ID, instaSource.ID, os.Getenv("INSTAGRAM_API_VERSION"), encryptionKey)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	err = fetcher.FetchMurrtubePosts(user.ID, dbQueries, httpClient, murrSource.ID)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	err = fetcher.FetchBadpupsPosts(user.ID, dbQueries, httpClient, badpupsSource.ID)
 	if err != nil {
 		log.Fatalln(err)
 	}
