@@ -5,26 +5,6 @@
   <title>Service Status</title>
 
   <link rel="stylesheet" href="/static/css/index.css">
-
-  <script>
-    function confirmReset() {
-      if (window.confirm("Are you sure you want to reset the configuration? This action cannot be undone.")) {
-        fetch("/reset", { method: "POST" })
-          .then(response => {
-            if (response.ok) {
-              alert("Configuration has been reset.");
-              window.location.href = "/";
-            } else {
-              alert("Failed to reset configuration.");
-            }
-          })
-          .catch(err => {
-            console.error(err);
-            alert("Error resetting configuration.");
-          });
-      }
-    }
-  </script>
 </head>
 
 <body>
@@ -118,7 +98,6 @@
       </ul>
     </div>
 
-    <!-- Add Source Form -->
     <div class="form-section inline-form">
       <form method="POST" action="/sources/setup" id="source_form">
         <input type="hidden" name="user_id" value="{{.user_id}}">
@@ -140,8 +119,10 @@
         <form method="GET" action="/">
           <button type="submit" class="refresh">Refresh</button>
         </form>
-
-        <button type="button" class="fail" onclick="confirmReset()">Reset Configuration</button>
+        <form method="POST" action="/reset" style="display:inline;"
+          onclick="return submitWithConfirm(this, 'Are you sure you want to reset the configuration? Everything will be deleted and this action cannot be undone.');">
+          <button type="submit" class="fail">Reset Configuration</button>
+        </form>
       </div>
     </div>
   </div>
