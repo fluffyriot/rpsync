@@ -101,6 +101,54 @@ func (q *Queries) CreateExport(ctx context.Context, arg CreateExportParams) (Exp
 	return i, err
 }
 
+const deleteAllExportsByUserId = `-- name: DeleteAllExportsByUserId :exec
+DELETE FROM exports
+WHERE user_id = $1
+`
+
+func (q *Queries) DeleteAllExportsByUserId(ctx context.Context, userID uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, deleteAllExportsByUserId, userID)
+	return err
+}
+
+const getAllExportsByUserId = `-- name: GetAllExportsByUserId :many
+SELECT id, created_at, completed_at, export_status, status_message, user_id, download_url, export_method FROM exports
+where user_id = $1
+ORDER BY created_at DESC
+`
+
+func (q *Queries) GetAllExportsByUserId(ctx context.Context, userID uuid.UUID) ([]Export, error) {
+	rows, err := q.db.QueryContext(ctx, getAllExportsByUserId, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Export
+	for rows.Next() {
+		var i Export
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.CompletedAt,
+			&i.ExportStatus,
+			&i.StatusMessage,
+			&i.UserID,
+			&i.DownloadUrl,
+			&i.ExportMethod,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getLast20ExportsByUserId = `-- name: GetLast20ExportsByUserId :many
 SELECT id, created_at, completed_at, export_status, status_message, user_id, download_url, export_method FROM exports
 where user_id = $1

@@ -23,3 +23,12 @@ SELECT * FROM exports
 where user_id = $1
 ORDER BY created_at DESC
 LIMIT 20;
+
+-- name: GetAllExportsByUserId :many
+SELECT * FROM exports
+where user_id = $1
+ORDER BY created_at DESC;
+
+-- name: DeleteAllExportsByUserId :exec
+DELETE FROM exports
+WHERE user_id = $1;

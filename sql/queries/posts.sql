@@ -24,7 +24,9 @@ SELECT
     p.is_archived,
     p.network_internal_id,
     p.content,
-    s.user_id AS user_id,
+    s.network AS network,
+    u.username AS current_user_name,
+    s.user_name AS source_user_name,
     r.synced_at AS reactions_synced_at,
     r.likes,
     r.reposts,
@@ -32,6 +34,7 @@ SELECT
 FROM posts p
 left join sources s
     ON p.source_id = s.id
+left join users u on s.user_id = u.id
 LEFT JOIN posts_reactions_history r
     ON r.post_id = p.id
    AND r.synced_at = (

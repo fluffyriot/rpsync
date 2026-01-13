@@ -15,6 +15,45 @@
     <p>Username: <span class="ok">{{.username}}</span></p>
     <p>User Id: <span class="ok">{{.user_id}}</span></p>
 
+    <div class="form-section inline-form">
+      <form method="POST" action="/sources/setup" id="source_form">
+        <input type="hidden" name="user_id" value="{{.user_id}}">
+        <select id="network" name="network" required>
+          <option value="" disabled selected>Select Network</option>
+          <option value="Bluesky">Bluesky</option>
+          <option value="Instagram">Instagram</option>
+          <option value="Murrtube">Murrtube</option>
+          <option value="BadPups">BadPups</option>
+        </select>
+        <input type="text" name="username" placeholder="Username" required>
+        <label for="api_token" id="api_token_label" style="display:none;">API Token</label>
+        <input id="api_token" name="api_token" type="password" placeholder="Add your API token" style="display:none;">
+        <button type="submit">Add Source</button>
+      </form>
+
+      <div class="form-section inline-form button-group">
+
+        <form method="GET" action="/">
+          <button type="submit" class="refresh">Refresh</button>
+        </form>
+
+        <form method="POST" action="/sources/syncAll" style="display:inline;"
+          onsubmit="return submitWithConfirm(this);">
+          <input type="hidden" name="user_id" value="{{.user_id}}">
+          <button type="submit" class="refresh">Sync All Sources</button>
+        </form>
+
+        <form method="GET" action="/exports">
+          <button type="submit" class="sync">Exports</button>
+        </form>
+
+        <form method="POST" action="/reset" style="display:inline;"
+          onclick="return submitWithConfirm(this, 'Are you sure you want to reset the configuration? Everything will be deleted and this action cannot be undone.');">
+          <button type="submit" class="fail">Reset Configuration</button>
+        </form>
+      </div>
+    </div>
+
     <div class="card">
       <div class="card-header">Sync Sources</div>
 
@@ -98,44 +137,6 @@
       </ul>
     </div>
 
-    <div class="form-section inline-form">
-      <form method="POST" action="/sources/setup" id="source_form">
-        <input type="hidden" name="user_id" value="{{.user_id}}">
-        <select id="network" name="network" required>
-          <option value="" disabled selected>Select Network</option>
-          <option value="Bluesky">Bluesky</option>
-          <option value="Instagram">Instagram</option>
-          <option value="Murrtube">Murrtube</option>
-          <option value="BadPups">BadPups</option>
-        </select>
-        <input type="text" name="username" placeholder="Username" required>
-        <label for="api_token" id="api_token_label" style="display:none;">API Token</label>
-        <input id="api_token" name="api_token" type="password" placeholder="Add your API token" style="display:none;">
-        <button type="submit">Add Source</button>
-      </form>
-
-      <div class="form-section inline-form button-group">
-
-         <form method="GET" action="/">
-          <button type="submit" class="refresh">Refresh</button>
-        </form>
-
-        <form method="POST" action="/sources/syncAll" style="display:inline;"
-              onsubmit="return submitWithConfirm(this);">
-              <input type="hidden" name="user_id" value="{{.user_id}}">
-              <button type="submit" class="refresh">Sync All Sources</button>
-            </form>
-        
-        <form method="GET" action="/exports">
-        <button type="submit" class="sync">Exports</button>
-      </form>
-
-        <form method="POST" action="/reset" style="display:inline;"
-          onclick="return submitWithConfirm(this, 'Are you sure you want to reset the configuration? Everything will be deleted and this action cannot be undone.');">
-          <button type="submit" class="fail">Reset Configuration</button>
-        </form>
-      </div>
-    </div>
   </div>
 
   <script>

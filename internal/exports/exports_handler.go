@@ -15,6 +15,32 @@ import (
 	"github.com/google/uuid"
 )
 
+func DeleteAllExports(userID uuid.UUID, dbQueries *database.Queries) error {
+
+	exports, err := dbQueries.GetAllExportsByUserId(context.Background(), userID)
+	if err != nil {
+		log.Printf("Error getting all exports records: %v", err)
+		return err
+	}
+	for _, exp := range exports {
+		if exp.DownloadUrl.Valid {
+			err := os.Remove(exp.DownloadUrl.String)
+			if err != nil {
+				log.Printf("Error deleting export file %s: %v", exp.DownloadUrl.String, err)
+			}
+		}
+	}
+
+	err = dbQueries.DeleteAllExportsByUserId(context.Background(), userID)
+	if err != nil {
+		log.Printf("Error deleting all exports records: %v", err)
+		return err
+	}
+
+	return nil
+
+}
+
 func InitiateExport(userID uuid.UUID, syncMethod string, dbQueries *database.Queries) (database.Export, error) {
 
 	export, err := dbQueries.CreateExport(context.Background(), database.CreateExportParams{
@@ -62,7 +88,7 @@ func csvExport(userID uuid.UUID, dbQueries *database.Queries, exp database.Expor
 		return err
 	}
 
-	filename := fmt.Sprintf("outputs/export_%s_posts_%s.csv", userID.String(), time.Now().Format("20060102_150405"))
+	filename := fmt.Sprintf("outputs/export_id_%s_%s.csv", exp.ID.String(), time.Now().Format("20060102_150405"))
 
 	file, err := os.Create(filename)
 	if err != nil {
@@ -79,8 +105,10 @@ func csvExport(userID uuid.UUID, dbQueries *database.Queries, exp database.Expor
 		"source_id",
 		"is_archived",
 		"network_internal_id",
+		"network",
 		"content",
-		"user_id",
+		"current_user_name",
+		"source_user_name",
 		"reactions_synced_at",
 		"likes",
 		"reposts",
@@ -96,9 +124,19 @@ func csvExport(userID uuid.UUID, dbQueries *database.Queries, exp database.Expor
 			content = r.Content.String
 		}
 
-		userID := ""
-		if r.UserID.Valid {
-			userID = r.UserID.UUID.String()
+		network := ""
+		if r.Network.Valid {
+			network = r.Network.String
+		}
+
+		currentUserName := ""
+		if r.CurrentUserName.Valid {
+			currentUserName = r.CurrentUserName.String
+		}
+
+		sourceUserName := ""
+		if r.SourceUserName.Valid {
+			sourceUserName = r.SourceUserName.String
 		}
 
 		reactionsSyncedAt := ""
@@ -127,8 +165,10 @@ func csvExport(userID uuid.UUID, dbQueries *database.Queries, exp database.Expor
 			r.SourceID.String(),
 			strconv.FormatBool(r.IsArchived),
 			r.NetworkInternalID,
+			network,
 			content,
-			userID,
+			currentUserName,
+			sourceUserName,
 			reactionsSyncedAt,
 			likes,
 			reposts,

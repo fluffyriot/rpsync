@@ -66,8 +66,7 @@ func main() {
 	r.GET("/", rootHandler)
 	r.GET("/exports", exportsHandler)
 	r.POST("/export/start", exportStartHandler(dbQueries))
-	pwd, _ := os.Getwd()
-	log.Println("PWD:", pwd)
+	r.POST("/exports/deleteAll", exportDeleteAllHandler(dbQueries))
 
 	r.GET("/outputs/*filepath", func(c *gin.Context) {
 		p := c.Param("filepath")[1:]
@@ -251,6 +250,29 @@ func exportStartHandler(dbQueries *database.Queries) gin.HandlerFunc {
 			}()
 			exports.InitiateExport(uid, method, dbQueries)
 		}(userId, syncMethod)
+
+		c.Redirect(http.StatusSeeOther, "/")
+	}
+}
+
+func exportDeleteAllHandler(dbQueries *database.Queries) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userId, err := uuid.Parse(c.PostForm("user_id"))
+		if err != nil {
+			c.HTML(http.StatusBadRequest, "error.html", gin.H{
+				"error": err.Error(),
+			})
+			return
+		}
+
+		go func(uid uuid.UUID) {
+			defer func() {
+				if r := recover(); r != nil {
+					log.Printf("panic in background sync: %v", r)
+				}
+			}()
+			exports.DeleteAllExports(uid, dbQueries)
+		}(userId)
 
 		c.Redirect(http.StatusSeeOther, "/")
 	}

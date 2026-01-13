@@ -16,6 +16,30 @@
         <p>User Id: <span class="ok">{{.user_id}}</span></p>
         <p>Default sync method: <span class="ok">{{.sync_method}}</span></p>
 
+        <div class="form-section inline-form button-group">
+            <form method="GET" action="/exports">
+                <button type="submit" class="refresh">Refresh</button>
+            </form>
+            <form method="POST" action="/export/start" onsubmit="return submitWithConfirm(this);">
+                <input type="hidden" name="user_id" value="{{.user_id}}">
+                <input type="hidden" name="sync_method" value="{{.sync_method}}">
+                <button type="submit" class="sync">Start Default Export</button>
+            </form>
+            <form method="POST" action="/export/start" onsubmit="return submitWithConfirm(this);">
+                <input type="hidden" name="user_id" value="{{.user_id}}">
+                <input type="hidden" name="sync_method" value="csv">
+                <button type="submit" class="sync">Start CSV Export</button>
+            </form>
+            <form method="POST" action="/exports/deleteAll" onsubmit="return submitWithConfirm(this, 'Do you want to delete all exports? Files will be completely removed.');">
+                <input type="hidden" name="user_id" value="{{.user_id}}">
+                <input type="hidden" name="sync_method" value="csv">
+                <button type="submit" class="fail">Delete All</button>
+            </form>
+            <form method="GET" action="/">
+                <button type="submit" class="sync">Setup</button>
+            </form>
+        </div>
+
         <div class="card">
             <div class="card-header">Generated Exports</div>
 
@@ -72,25 +96,6 @@
                 <p class="fail">No exports available.</p>
                 {{end}}
             </ul>
-        </div>
-
-        <div class="form-section inline-form button-group">
-            <form method="GET" action="/exports">
-                <button type="submit" class="refresh">Refresh</button>
-            </form>
-            <form method="POST" action="/export/start" onsubmit="return submitWithConfirm(this);">
-                <input type="hidden" name="user_id" value="{{.user_id}}">
-                <input type="hidden" name="sync_method" value="{{.sync_method}}">
-                <button type="submit" class="sync">Start Default Export</button>
-            </form>
-            <form method="POST" action="/export/start" onsubmit="return submitWithConfirm(this);">
-                <input type="hidden" name="user_id" value="{{.user_id}}">
-                <input type="hidden" name="sync_method" value="csv">
-                <button type="submit" class="sync">Start CSV Export</button>
-            </form>
-            <form method="GET" action="/">
-                <button type="submit" class="sync">Setup</button>
-            </form>
         </div>
 
     </div>
