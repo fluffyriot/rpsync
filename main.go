@@ -9,10 +9,12 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/fluffyriot/commission-tracker/internal/config"
 	"github.com/fluffyriot/commission-tracker/internal/database"
+	"github.com/fluffyriot/commission-tracker/internal/exports"
 	"github.com/fluffyriot/commission-tracker/internal/fetcher"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -62,6 +64,15 @@ func main() {
 	}
 
 	r.GET("/", rootHandler)
+	r.GET("/exports", exportsHandler)
+	r.POST("/export/start", exportStartHandler(dbQueries))
+	pwd, _ := os.Getwd()
+	log.Println("PWD:", pwd)
+
+	r.GET("/outputs/*filepath", func(c *gin.Context) {
+		p := c.Param("filepath")[1:]
+		c.FileAttachment(filepath.Join("./outputs", p), filepath.Base(p))
+	})
 	r.POST("/user/setup", userSetupHandler)
 	r.POST("/sources/setup", sourcesSetupHandler(encryptKey))
 	r.POST("/sources/deactivate", deactivateSourceHandler)
@@ -145,6 +156,47 @@ func rootHandler(c *gin.Context) {
 	})
 }
 
+func exportsHandler(c *gin.Context) {
+
+	if dbInitErr != nil {
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+			"error": dbInitErr.Error(),
+		})
+		return
+	}
+
+	ctx := c.Request.Context()
+
+	users, err := dbQueries.GetAllUsers(ctx)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	if len(users) == 0 {
+		c.HTML(http.StatusOK, "user-setup.html", nil)
+		return
+	}
+
+	user := users[0]
+
+	exports, err := dbQueries.GetLast20ExportsByUserId(ctx, user.ID)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+	c.HTML(http.StatusOK, "exports.html", gin.H{
+		"username":    user.Username,
+		"user_id":     user.ID,
+		"sync_method": user.SyncMethod,
+		"exports":     exports,
+	})
+}
+
 func userSetupHandler(c *gin.Context) {
 	username := c.PostForm("username")
 	if username == "" {
@@ -171,6 +223,37 @@ func userSetupHandler(c *gin.Context) {
 	}
 
 	c.Redirect(http.StatusSeeOther, "/")
+}
+
+func exportStartHandler(dbQueries *database.Queries) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userId, err := uuid.Parse(c.PostForm("user_id"))
+		if err != nil {
+			c.HTML(http.StatusBadRequest, "error.html", gin.H{
+				"error": err.Error(),
+			})
+			return
+		}
+
+		syncMethod := c.PostForm("sync_method")
+		if syncMethod == "" {
+			c.HTML(http.StatusBadRequest, "error.html", gin.H{
+				"error": "Sync method is required",
+			})
+			return
+		}
+
+		go func(uid uuid.UUID, method string) {
+			defer func() {
+				if r := recover(); r != nil {
+					log.Printf("panic in background sync: %v", r)
+				}
+			}()
+			exports.InitiateExport(uid, method, dbQueries)
+		}(userId, syncMethod)
+
+		c.Redirect(http.StatusSeeOther, "/")
+	}
 }
 
 func sourcesSetupHandler(encryptKey []byte) gin.HandlerFunc {

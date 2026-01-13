@@ -11,6 +11,17 @@ import (
 	"github.com/google/uuid"
 )
 
+type Export struct {
+	ID            uuid.UUID
+	CreatedAt     time.Time
+	CompletedAt   time.Time
+	ExportStatus  string
+	StatusMessage sql.NullString
+	UserID        uuid.UUID
+	DownloadUrl   sql.NullString
+	ExportMethod  string
+}
+
 type Post struct {
 	ID                uuid.UUID
 	CreatedAt         time.Time

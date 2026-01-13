@@ -60,6 +60,81 @@ func (q *Queries) CreatePost(ctx context.Context, arg CreatePostParams) (Post, e
 	return i, err
 }
 
+const getAllPostsWithTheLatestInfoForUser = `-- name: GetAllPostsWithTheLatestInfoForUser :many
+SELECT
+    p.id,
+    p.created_at,
+    p.source_id,
+    p.is_archived,
+    p.network_internal_id,
+    p.content,
+    s.user_id AS user_id,
+    r.synced_at AS reactions_synced_at,
+    r.likes,
+    r.reposts,
+    r.views
+FROM posts p
+left join sources s
+    ON p.source_id = s.id
+LEFT JOIN posts_reactions_history r
+    ON r.post_id = p.id
+   AND r.synced_at = (
+        SELECT MAX(prh.synced_at)
+        FROM posts_reactions_history prh
+        WHERE prh.post_id = p.id
+   )
+WHERE s.user_id = $1
+`
+
+type GetAllPostsWithTheLatestInfoForUserRow struct {
+	ID                uuid.UUID
+	CreatedAt         time.Time
+	SourceID          uuid.UUID
+	IsArchived        bool
+	NetworkInternalID string
+	Content           sql.NullString
+	UserID            uuid.NullUUID
+	ReactionsSyncedAt sql.NullTime
+	Likes             sql.NullInt32
+	Reposts           sql.NullInt32
+	Views             sql.NullInt32
+}
+
+func (q *Queries) GetAllPostsWithTheLatestInfoForUser(ctx context.Context, userID uuid.UUID) ([]GetAllPostsWithTheLatestInfoForUserRow, error) {
+	rows, err := q.db.QueryContext(ctx, getAllPostsWithTheLatestInfoForUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAllPostsWithTheLatestInfoForUserRow
+	for rows.Next() {
+		var i GetAllPostsWithTheLatestInfoForUserRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.SourceID,
+			&i.IsArchived,
+			&i.NetworkInternalID,
+			&i.Content,
+			&i.UserID,
+			&i.ReactionsSyncedAt,
+			&i.Likes,
+			&i.Reposts,
+			&i.Views,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getPostByNetworkAndId = `-- name: GetPostByNetworkAndId :one
 SELECT posts.id, posts.created_at, posts.last_synced_at, posts.source_id, posts.is_archived, posts.network_internal_id, posts.content FROM posts
 join sources on posts.source_id = sources.id

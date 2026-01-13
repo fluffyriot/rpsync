@@ -125,6 +125,10 @@
               <input type="hidden" name="user_id" value="{{.user_id}}">
               <button type="submit" class="refresh">Sync All Sources</button>
             </form>
+        
+        <form method="GET" action="/exports">
+        <button type="submit" class="sync">Exports</button>
+      </form>
 
         <form method="POST" action="/reset" style="display:inline;"
           onclick="return submitWithConfirm(this, 'Are you sure you want to reset the configuration? Everything will be deleted and this action cannot be undone.');">

@@ -24,6 +24,7 @@ profile.cov
 # Go workspace file
 go.work
 go.work.sum
+outputs*
 
 # env file
 .env

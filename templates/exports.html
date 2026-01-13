@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Export Status</title>
+
+    <link rel="stylesheet" href="/static/css/index.css">
+</head>
+
+<body>
+
+    <div class="container">
+        <h1>Exports</h1>
+
+        <p>Username: <span class="ok">{{.username}}</span></p>
+        <p>User Id: <span class="ok">{{.user_id}}</span></p>
+        <p>Default sync method: <span class="ok">{{.sync_method}}</span></p>
+
+        <div class="card">
+            <div class="card-header">Generated Exports</div>
+
+            <ul class="source-list">
+                {{range .exports}}
+                <li class="source-item">
+
+                    <div class="source-main">
+                        <strong>Export {{.ID}}</strong>
+                        <span class="source-network">Export</span>
+                    </div>
+
+                    <div class="source-meta">
+                        <span class="sync-status
+              {{if eq .ExportStatus " Requested"}}status-initialized{{end}} {{if eq .ExportStatus "Processing"
+                            }}status-syncing{{end}} {{if eq .ExportStatus "Completed" }}status-synced{{end}} {{if eq
+                            .ExportStatus "Failed" }}status-failed{{end}}">
+
+                            {{.ExportStatus}}
+
+                            {{if .StatusMessage.Valid}}
+                            <span class="tooltip">
+                                ⓘ
+                                <span class="tooltip-text">
+                                    {{.StatusMessage.String}}
+                                </span>
+                            </span>
+                            {{end}}
+                        </span>
+
+                        <span class="last-sync">
+                            Created: {{.CreatedAt.Format "2006-01-02 15:04"}}
+                            {{if .CompletedAt.IsZero}}
+                            · Completed: —
+                            {{else}}
+                            · Completed: {{.CompletedAt.Format "2006-01-02 15:04"}}
+                            {{end}}
+                        </span>
+                    </div>
+
+                    <div class="source-actions">
+                        {{if .DownloadUrl.Valid}}
+                        <form method="GET" action="{{.DownloadUrl.String}}">
+                            <button type="submit" class="ok">Download</button>
+                        </form>
+                        {{else}}
+                        {{end}}
+                    </div>
+
+                </li>
+                {{end}}
+
+                {{if not .exports}}
+                <p class="fail">No exports available.</p>
+                {{end}}
+            </ul>
+        </div>
+
+        <div class="form-section inline-form button-group">
+            <form method="GET" action="/exports">
+                <button type="submit" class="refresh">Refresh</button>
+            </form>
+            <form method="POST" action="/export/start" onsubmit="return submitWithConfirm(this);">
+                <input type="hidden" name="user_id" value="{{.user_id}}">
+                <input type="hidden" name="sync_method" value="{{.sync_method}}">
+                <button type="submit" class="sync">Start Default Export</button>
+            </form>
+            <form method="POST" action="/export/start" onsubmit="return submitWithConfirm(this);">
+                <input type="hidden" name="user_id" value="{{.user_id}}">
+                <input type="hidden" name="sync_method" value="csv">
+                <button type="submit" class="sync">Start CSV Export</button>
+            </form>
+            <form method="GET" action="/">
+                <button type="submit" class="sync">Setup</button>
+            </form>
+        </div>
+
+    </div>
+
+    <script>
+        function submitWithConfirm(form, message) {
+            if (message && !window.confirm(message)) {
+                return false;
+            }
+
+            fetch(form.action, {
+                method: form.method,
+                body: new FormData(form)
+            })
+                .then(res => {
+                    if (res.ok) {
+                        window.location.reload();
+                    } else {
+                        alert("Operation failed");
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert("Error performing operation");
+                });
+
+            return false;
+        }
+    </script>
+
+</body>
+
+</html>
