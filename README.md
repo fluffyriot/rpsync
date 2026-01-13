@@ -89,6 +89,6 @@ Follow the simple Web UI for the available features.
 
 To enable Instagram fetch, you need to create your own app using Meta Developers portal and obtain API key from there.
 
-## Contribution
+## Contributing
 
 Feel free to suggest features using Github issues or develop them and create pull requests.
