@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"encoding/base64"
+	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -19,30 +21,31 @@ import (
 var (
 	dbQueries  *database.Queries
 	dbInitErr  error
-	keyB64err1 error
-	keyB64err2 error
+	keyB64Err1 error
+	keyB64Err2 error
+	instVerErr error
 )
 
 func main() {
 
-	instVer := os.Getenv("INSTAGRAM_API_VERSION")
-	if instVer == "" {
-		log.Fatal("INSTAGRAM_API_VERSION not set")
+	appPort := ":" + os.Getenv("APP_PORT")
+	if appPort == ":" {
+		log.Fatal("APP_PORT is not set in the .env")
 	}
 
-	appPort := ":" + os.Getenv("APP_PORT")
+	instVer := os.Getenv("INSTAGRAM_API_VERSION")
 	if instVer == "" {
-		log.Fatal("INSTAGRAM_API_VERSION not set")
+		instVerErr = errors.New("INSTAGRAM_API_VERSION not set in .env")
 	}
 
 	keyB64 := os.Getenv("TOKEN_ENCRYPTION_KEY")
 	if keyB64 == "" {
-		log.Fatal("TOKEN_ENCRYPTION_KEY not set")
+		keyB64Err1 = errors.New("TOKEN_ENCRYPTION_KEY not set in .env")
 	}
 
-	encryptKey, err := base64.StdEncoding.DecodeString(keyB64)
-	if err != nil || len(encryptKey) != 32 {
-		log.Fatal("TOKEN_ENCRYPTION_KEY must be 32 bytes (base64)")
+	encryptKey, keyB64Err2 := base64.StdEncoding.DecodeString(keyB64)
+	if keyB64Err2 != nil || len(encryptKey) != 32 {
+		keyB64Err2 = fmt.Errorf("Error encoding encryption key: %v", keyB64Err2)
 	}
 
 	client := fetcher.NewClient(60 * time.Second)
@@ -90,16 +93,23 @@ func rootHandler(c *gin.Context) {
 		return
 	}
 
-	if keyB64err1 != nil {
+	if keyB64Err1 != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"error": keyB64err1.Error(),
+			"error": keyB64Err1.Error(),
 		})
 		return
 	}
 
-	if keyB64err2 != nil {
+	if keyB64Err2 != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"error": keyB64err2.Error(),
+			"error": keyB64Err2.Error(),
+		})
+		return
+	}
+
+	if instVerErr != nil {
+		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
+			"error": instVerErr.Error(),
 		})
 		return
 	}
@@ -208,8 +218,10 @@ func deactivateSourceHandler(c *gin.Context) {
 	_, err = dbQueries.ChangeSourceStatusById(
 		context.Background(),
 		database.ChangeSourceStatusByIdParams{
-			ID:       sourceID,
-			IsActive: false,
+			ID:           sourceID,
+			IsActive:     false,
+			SyncStatus:   "Deactivated",
+			StatusReason: sql.NullString{String: "Sync stopped by the user", Valid: true},
 		},
 	)
 	if err != nil {

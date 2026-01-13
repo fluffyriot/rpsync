@@ -15,7 +15,7 @@ import (
 
 const changeSourceStatusById = `-- name: ChangeSourceStatusById :one
 UPDATE sources
-SET is_active = $2, sync_status = $3, status_reason = $4
+SET is_active = $2, sync_status = $3, status_reason = $4, updated_at = NOW()
 WHERE id = $1
 RETURNING id, created_at, updated_at, network, user_name, user_id, is_active, sync_status, status_reason, last_synced
 `

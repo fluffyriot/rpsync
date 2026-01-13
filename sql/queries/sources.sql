@@ -37,7 +37,7 @@ WHERE id = $1;
 
 -- name: ChangeSourceStatusById :one
 UPDATE sources
-SET is_active = $2, sync_status = $3, status_reason = $4
+SET is_active = $2, sync_status = $3, status_reason = $4, updated_at = NOW()
 WHERE id = $1
 RETURNING *;
 

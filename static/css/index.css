@@ -75,7 +75,8 @@ li:hover {
 
 .fail {
   background-color: #cf6679;
-  color: #fff;
+  color: #fff !important;
+  font-weight: bold !important;
 }
 
 .pending {
