@@ -1,29 +1,56 @@
-# commission-tracker
-Gather your online presence stats in a small local database.
+# Commission Tracker
+
+Collect and track your online presence statistics in a local database that runs entirely on your machine.
+
+This project is designed for digital creators who want insight into their social media performance without relying on expensive or data‑intrusive third‑party tools.
+
+---
+
+## Table of Contents
+
+* [Quick Start](#quick-start)
+* [Environment Configuration](#environment-configuration)
+* [Docker Setup](#docker-setup)
+* [HTTPS and Certificates](#https-and-certificates)
+* [Running the Application](#running-the-application)
+* [Usage](#usage)
+* [Instagram Sync Setup](#setup-for-instagram-sync)
+* [Motivation](#motivation)
+* [Contributing](#contributing)
+
+---
 
 ## Quick Start
 
-1. Ensure you have Docker installed.
+### Prerequisites
 
-Run the following commands in the terminal.
+* Docker
+* Docker Compose
 
-```
+Verify your installation:
+
+```bash
 docker --version
 docker compose version
 ```
 
-2. Create the working directory.
+### 1. Create a Working Directory
 
-```
+```bash
 mkdir commission-tracker
 cd commission-tracker
 ```
 
-3. (Optional) If you plan to syncronize data from your Instagram, go to the [Instagram section](#setup-for-instagram-sync) first.
+> **IMPORTANT**
+> If you plan to sync Instagram data, complete the [Instagram Sync Setup](#setup-for-instagram-sync) section first.
 
-4. Create `.env` file in your app folder. Use the template below.
+---
 
-```
+## Environment Configuration
+
+Create a `.env` file in the project root using the template below:
+
+```env
 BASE_URL=https://${LOCAL_IP}:${HTTPS_PORT}
 
 POSTGRES_DB=commission-tracker-db
@@ -46,19 +73,48 @@ FACEBOOK_APP_ID=xxxxxxxxxxxxxxxx
 FACEBOOK_APP_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
-- `POSTGRES_*` details of the database to be created. Make sure to change the password to have it secured. Other fields can stay as they are.
-- `*_PORT` ports to be used in the communication. Ensure your app port and https ports are unique.
-- `INSTAGRAM_API_VERSION` v.24.0 of Facebook Graph API for Instagram has been tested. Other versions could cause unexpected issues.
-- `TOKEN_ENCRYPTION_KEY` is used to encrypt and decrypt tokens storred in your local database. Use terminal command `openssl rand -base64 32` to generate a key.
-- `OAUTH_ENCRYPTION_KEY` is used to encrypt the OAuth URLs for Facebook login. Use terminal command `openssl rand -base64 32` to generate a key.
-- `POSTGRES_PORT` is the unique port for Database to be used in Docker settings. 
-- `APP_PORT` is the unique port to be used for your App HTTP server.
-- `HTTPS_PORT` is the unique port to be used for you to communicate with your App over HTTPs.
-- `FACEBOOK_APP_*` details you need to obtain from Facebook for Developers to sync your Instagram data. Process explained further in the guide.
+### Environment Variable Reference
 
-5. Create `docker-compose.yml` file using the template below in your app folder. No changes needed.
+* **POSTGRES_***
+  Database configuration. Change `POSTGRES_PASSWORD` to a secure value. Other values can remain unchanged.
 
-```
+* **POSTGRES_PORT**
+  External port used by PostgreSQL in Docker.
+
+* **APP_PORT**
+  Internal HTTP port used by the application container.
+
+* **HTTP_PORT / HTTPS_PORT**
+  Ports exposed by Caddy. Ensure these do not conflict with other services on your machine.
+
+* **INSTAGRAM_API_VERSION**
+  Facebook Graph API version. Version `24.0` is tested; other versions may cause issues.
+
+* **LOCAL_IP**
+  The local IP address used to access the application.
+
+* **TOKEN_ENCRYPTION_KEY**
+  Used to encrypt tokens stored in the database.
+
+* **OAUTH_ENCRYPTION_KEY**
+  Used to encrypt OAuth URLs during Facebook login.
+
+  Generate both encryption keys with:
+
+  ```bash
+  openssl rand -base64 32
+  ```
+
+* **FACEBOOK_APP_ID / FACEBOOK_APP_SECRET**
+  Required for Instagram synchronization. See [Instagram Sync Setup](#setup-for-instagram-sync).
+
+---
+
+## Docker Setup
+
+Create a `docker-compose.yml` file in the project root. No changes are required.
+
+```yaml
 version: "3.9"
 
 services:
@@ -99,13 +155,18 @@ services:
 
 volumes:
   db_data:
-
 ```
 
-6. Create Caddyfile.template and copy the code below:
+---
 
-```
-# HTTP redirect to HTTPS
+## HTTPS and Certificates
+
+### 1. Create a Caddyfile Template
+
+Create `Caddyfile.template`:
+
+```caddyfile
+# Redirect HTTP to HTTPS
 :${HTTP_PORT} {
     redir https://{host}:${HTTPS_PORT}{uri} permanent
 }
@@ -117,59 +178,128 @@ ${LOCAL_IP}:${HTTPS_PORT} {
 }
 ```
 
-7. Using Terminal, go to your app folder and:
+### 2. Generate the Caddyfile
 
-  1. Run this to generate Caddyfile:
-```
+```bash
 export $(grep -v '^#' .env | xargs)
 envsubst < Caddyfile.template > Caddyfile
 ```
-  2. Create `certs` folder and generate your certificates using following command:
-```
+
+### 3. Generate a Self-Signed Certificate
+
+```bash
 IP=${LOCAL_IP:-127.0.0.1}
 mkdir -p certs
-sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout certs/server.key -out certs/server.crt -subj "/CN=${IP}" -addext "subjectAltName=IP:${IP}"
-echo "Self-signed certificate generated for ${IP} in ./certs/"
+sudo openssl req -x509 -nodes -days 365 \
+  -newkey rsa:2048 \
+  -keyout certs/server.key \
+  -out certs/server.crt \
+  -subj "/CN=${IP}" \
+  -addext "subjectAltName=IP:${IP}"
+
+echo "Self-signed certificate generated for ${IP}"
 ```
-  3. Run `docker compose pull` to get all Docker images.
-  
 
-6. Start the application using `docker compose up -d`
+---
 
-7. Open your browser to: `https://LOCAL_IP:HTTPS_PORT` and replace ip and port with the values from .env file.
+## Running the Application
 
+1. Pull the required Docker images:
 
-## Motivation
+   ```bash
+   docker compose pull
+   ```
 
-I have created this app to simplify for myself and other digital creators analysis of their social media presence. Tools available online are usually expensive and data-intrusive while this app is running locally for you.
+2. Start the stack:
 
-In the current alpha release it is fully manual, though more websites and automations are coming soon.
+   ```bash
+   docker compose up -d
+   ```
+
+3. Open your browser and navigate to:
+
+   ```
+   https://LOCAL_IP:HTTPS_PORT
+   ```
+
+   Replace `LOCAL_IP` and `HTTPS_PORT` with the values from your `.env` file.
+
+---
 
 ## Usage
 
-Follow the simple Web UI for the available features.
+All features are available through the web UI.
 
-To enable Instagram fetch, you need to create your own app using Meta Developers portal and obtain API key from there.
+Instagram data synchronization requires additional setup via Meta (Facebook) Developer tools.
 
-## Contributing
-
-Feel free to suggest features using Github issues or develop them and create pull requests.
-
+---
 
 ## Setup for Instagram Sync
 
-> [!IMPORTANT]
-> To be able to use Sync for Instagram, your Instagram page should be a [business or creator account](https://help.instagram.com/1980623166138346/) and [connected to a Facebook page](https://www.facebook.com/help/instagram/790156881117411).
+> **Important**
+> Your Instagram account must:
+>
+> * Be a **Business** or **Creator** account
+> * Be **connected to a Facebook Page**
+>
+> Reference:
+>
+> * [https://help.instagram.com/1980623166138346/](https://help.instagram.com/1980623166138346/)
+> * [https://www.facebook.com/help/instagram/790156881117411](https://www.facebook.com/help/instagram/790156881117411)
 
-1. Head to [Meta for Developers](https://developers.facebook.com/apps/) and sign up.
+### Steps
+
+1. Go to **Meta for Developers** and create an account:
+   [https://developers.facebook.com/apps/](https://developers.facebook.com/apps/)
+
 2. Create a new app.
-  - Use "Manage Messaging and content on Instagram" and "Manage everything on your page"
-3. In the App dashboard, go to Settings -> Basic
-4. Copy App ID and App secret (you will need them in your .env file)
-5. Go to "Facebook Login for Business"
-  - Under "Client OAuth settings" in "Valid OAuth Redirect URIs" and URL: `https://LOCAL_IP:HTTPS_PORT/auth/facebook/callback`. Replace IP and Port with ones you give to your .env file.
-6. Go to "Use cases" and click on Edit button on Instagram use case
-7. Go to "API setup with Facebook Login" and use "Add permissions" button under "Manage content" section.
-8. Under "Permissions and features" find and add "Manage insights" and "Manage comments"
-8. Go to [Graph Explorer](https://developers.facebook.com/tools/explorer/) and click "Generate Token".
-9. Tick your Page and your Instagram profile in the new Facebook window and **COPY** the number under your Instagram page and save it for later.
+
+   * Select:
+
+     * *Manage Messaging and content on Instagram*
+     * *Manage everything on your Page*
+
+3. In the App Dashboard, navigate to **Settings → Basic**.
+
+4. Copy the **App ID** and **App Secret** into your `.env` file.
+
+5. Open **Facebook Login for Business**.
+
+   * Under **Client OAuth Settings**, add the following to **Valid OAuth Redirect URIs**:
+
+     ```
+     https://LOCAL_IP:HTTPS_PORT/auth/facebook/callback
+     ```
+
+6. Go to **Use Cases**, edit the **Instagram** use case.
+
+7. Under **API setup with Facebook Login**, add permissions in the **Manage content** section.
+
+8. In **Permissions and Features**, enable:
+
+   * Manage insights
+   * Manage comments
+
+9. Open **Graph Explorer**:
+   [https://developers.facebook.com/tools/explorer/](https://developers.facebook.com/tools/explorer/)
+
+10. Click **Generate Token**, select your Page and Instagram account.
+
+11. Copy and save the numeric Instagram Page ID displayed.
+
+---
+
+## Motivation
+
+This application was created to provide creators with a simple, privacy‑respecting way to analyze their social media presence.
+
+The current release is **alpha** and focuses on manual workflows. Support for additional platforms and automation is planned.
+
+---
+
+## Contributing
+
+Contributions are welcome.
+
+* Submit feature requests or bugs via GitHub Issues
+* Open pull requests for improvements or new features
