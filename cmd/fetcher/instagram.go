@@ -116,7 +116,7 @@ func FetchInstagramPosts(dbQueries *database.Queries, c *Client, sourceId uuid.U
 		}
 
 		if resp.StatusCode != 200 {
-			return fmt.Errorf("Failed to get a successfull response. %v: %v", resp.StatusCode)
+			return fmt.Errorf("Failed to get a successfull response. Code: %v. Status: %v", resp.StatusCode, resp.Status)
 		}
 
 		data, err := io.ReadAll(resp.Body)
