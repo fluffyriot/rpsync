@@ -65,7 +65,12 @@ func insertToken(
 	params database.CreateTokenParams,
 ) error {
 
-	ciphertext, nonce, err := encrypt([]byte(accessToken), encryptionKey)
+	payload, err := normalizeAccessTokenPayload(accessToken)
+	if err != nil {
+		return err
+	}
+
+	ciphertext, nonce, err := encrypt(payload, encryptionKey)
 	if err != nil {
 		return err
 	}
@@ -171,4 +176,19 @@ func GetTargetToken(
 	}
 
 	return accessToken, dbToken.ProfileID.String, dbToken.ID, nil
+}
+
+func normalizeAccessTokenPayload(input string) ([]byte, error) {
+	if input == "" {
+		return nil, errors.New("access token is empty")
+	}
+
+	var tr TokenResponse
+	if err := json.Unmarshal([]byte(input), &tr); err == nil && tr.AccessToken != "" {
+		return json.Marshal(tr)
+	}
+
+	return json.Marshal(TokenResponse{
+		AccessToken: input,
+	})
 }

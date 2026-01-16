@@ -7,11 +7,10 @@ import (
 	"time"
 
 	"github.com/fluffyriot/commission-tracker/internal/database"
-	"github.com/fluffyriot/commission-tracker/internal/fetcher"
 	"github.com/google/uuid"
 )
 
-func PullByTarget(tid uuid.UUID, dbQueries *database.Queries, c *fetcher.Client, encryptionKey []byte) error {
+func PullByTarget(tid uuid.UUID, dbQueries *database.Queries, c *Client, encryptionKey []byte) error {
 
 	target, err := dbQueries.GetTargetById(context.Background(), tid)
 	if err != nil {
@@ -30,9 +29,9 @@ func PullByTarget(tid uuid.UUID, dbQueries *database.Queries, c *fetcher.Client,
 
 	case "NocoDB", "Notion":
 
-		err = startDbSync(dbQueries, c, target.ID, encryptionKey)
+		err = startDbSync(dbQueries, c, target.ID, encryptionKey, target)
 		if err != nil {
-			_, err = dbQueries.UpdateSourceSyncStatusById(context.Background(), database.UpdateSourceSyncStatusByIdParams{
+			_, err = dbQueries.UpdateTargetSyncStatusById(context.Background(), database.UpdateTargetSyncStatusByIdParams{
 				ID:           target.ID,
 				SyncStatus:   "Failed",
 				StatusReason: sql.NullString{String: err.Error(), Valid: true},
@@ -72,8 +71,14 @@ func PullByTarget(tid uuid.UUID, dbQueries *database.Queries, c *fetcher.Client,
 	return nil
 }
 
-func startDbSync(dbQueries *database.Queries, c *fetcher.Client, targetId uuid.UUID, encryptionKey []byte) error {
-	return fmt.Errorf("not implemented yet")
+func startDbSync(dbQueries *database.Queries, c *Client, targetId uuid.UUID, encryptionKey []byte, target database.Target) error {
+	if target.TargetType == "Notion" {
+		return fmt.Errorf("not implemented yet")
+	}
+
+	err := InitializeNoco(targetId, dbQueries, c, encryptionKey, target)
+	return err
+
 }
 
 func startFileSync(dbQueries *database.Queries, targetId uuid.UUID) error {
