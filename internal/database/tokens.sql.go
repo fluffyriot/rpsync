@@ -24,7 +24,7 @@ VALUES (
     $6,
     $7
 )
-RETURNING id, encrypted_access_token, nonce, created_at, updated_at, source_id, profile_id
+RETURNING id, encrypted_access_token, nonce, created_at, updated_at, profile_id, source_id
 `
 
 type CreateTokenParams struct {
@@ -54,8 +54,8 @@ func (q *Queries) CreateToken(ctx context.Context, arg CreateTokenParams) (Token
 		&i.Nonce,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.SourceID,
 		&i.ProfileID,
+		&i.SourceID,
 	)
 	return i, err
 }
@@ -71,7 +71,7 @@ func (q *Queries) DeleteTokenById(ctx context.Context, id uuid.UUID) error {
 }
 
 const getTokenBySource = `-- name: GetTokenBySource :one
-SELECT id, encrypted_access_token, nonce, created_at, updated_at, source_id, profile_id FROM tokens
+SELECT id, encrypted_access_token, nonce, created_at, updated_at, profile_id, source_id FROM tokens
 where source_id = $1
 `
 
@@ -84,8 +84,8 @@ func (q *Queries) GetTokenBySource(ctx context.Context, sourceID uuid.UUID) (Tok
 		&i.Nonce,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.SourceID,
 		&i.ProfileID,
+		&i.SourceID,
 	)
 	return i, err
 }

@@ -23,17 +23,8 @@
         <div>
             <p><strong>Username:</strong> <span class="badge badge-neutral">{{.username}}</span></p>
             <p><strong>User ID:</strong> <span class="badge badge-neutral">{{.user_id}}</span></p>
-            <p><strong>Default Method:</strong> <span class="badge badge-neutral">{{.sync_method}}</span></p>
         </div>
         <div class="flex flex-col gap-2 items-end">
-
-            <form method="POST" action="/export/start" onsubmit="return submitWithConfirm(this);">
-                <input type="hidden" name="user_id" value="{{.user_id}}">
-                <input type="hidden" name="sync_method" value="{{.sync_method}}">
-                <button type="submit" class="btn btn-primary" style="width: 160px; justify-content: flex-start;">
-                    <i data-lucide="play"></i> Default Export
-                </button>
-            </form>
 
             <form method="POST" action="/export/start" onsubmit="return submitWithConfirm(this);">
                 <input type="hidden" name="user_id" value="{{.user_id}}">

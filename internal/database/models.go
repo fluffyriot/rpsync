@@ -56,22 +56,33 @@ type Source struct {
 	LastSynced   sql.NullTime
 }
 
+type Target struct {
+	ID            uuid.UUID
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	TargetType    string
+	UserID        uuid.UUID
+	DbID          sql.NullString
+	IsActive      bool
+	SyncFrequency string
+	SyncStatus    string
+	StatusReason  sql.NullString
+	LastSynced    sql.NullTime
+}
+
 type Token struct {
 	ID                   uuid.UUID
 	EncryptedAccessToken []byte
 	Nonce                []byte
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
-	SourceID             uuid.UUID
 	ProfileID            sql.NullString
+	SourceID             uuid.UUID
 }
 
 type User struct {
-	ID               uuid.UUID
-	Username         string
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
-	SyncMethod       string
-	AccessKey        sql.NullString
-	TargetDatabaseID sql.NullString
+	ID        uuid.UUID
+	Username  string
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }

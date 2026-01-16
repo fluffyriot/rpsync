@@ -44,10 +44,9 @@ func (h *Handler) ExportsHandler(c *gin.Context) {
 		return
 	}
 	c.HTML(http.StatusOK, "exports.html", gin.H{
-		"username":    user.Username,
-		"user_id":     user.ID,
-		"sync_method": user.SyncMethod,
-		"exports":     exports,
+		"username": user.Username,
+		"user_id":  user.ID,
+		"exports":  exports,
 	})
 }
 

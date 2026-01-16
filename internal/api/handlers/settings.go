@@ -22,15 +22,7 @@ func (h *Handler) UserSetupHandler(c *gin.Context) {
 		return
 	}
 
-	syncMethod := c.PostForm("sync_method")
-	if syncMethod == "" {
-		c.HTML(http.StatusBadRequest, "error.html", gin.H{
-			"error": "Sync method is required",
-		})
-		return
-	}
-
-	_, _, err := config.CreateUserFromForm(h.DB, username, syncMethod)
+	_, _, err := config.CreateUserFromForm(h.DB, username)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
 			"error": err.Error(),
@@ -183,7 +175,7 @@ func (h *Handler) SyncAllHandler(c *gin.Context) {
 
 	sources, err := h.DB.GetUserActiveSources(context.Background(), userID)
 	if err != nil {
-        log.Printf("Error getting user active sources: %v", err) // Added error logging
+		log.Printf("Error getting user active sources: %v", err) // Added error logging
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
 			"error": err.Error(),
 		})

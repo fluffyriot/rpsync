@@ -17,4 +17,3 @@ CREATE TABLE exports (
 
 -- +goose Down
 DROP TABLE exports;
-

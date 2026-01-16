@@ -20,16 +20,14 @@ const (
 	Dev    SyncMethodEnum = "None / Dev"
 	Csv    SyncMethodEnum = "CSV"
 	Notion SyncMethodEnum = "Notion"
+	NocoDb SyncMethodEnum = "NocoDb"
 )
 
 type User struct {
-	Id         uuid.UUID
-	Username   string
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
-	SyncMethod SyncMethodEnum
-	AccessKey  string
-	TargetDbId string
+	Id        uuid.UUID
+	Username  string
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 func LoadDatabase() (*database.Queries, error) {
@@ -65,16 +63,13 @@ func LoadDatabase() (*database.Queries, error) {
 	return dbQueries, nil
 }
 
-func CreateUserFromForm(dbQueries *database.Queries, userName, syncMethod string) (name, id string, e error) {
+func CreateUserFromForm(dbQueries *database.Queries, userName string) (name, id string, e error) {
 
 	u, err := dbQueries.CreateUser(context.Background(), database.CreateUserParams{
-		ID:               uuid.New(),
-		Username:         userName,
-		CreatedAt:        time.Now(),
-		UpdatedAt:        time.Now(),
-		SyncMethod:       syncMethod,
-		AccessKey:        sql.NullString{},
-		TargetDatabaseID: sql.NullString{},
+		ID:        uuid.New(),
+		Username:  userName,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
 	})
 
 	if err != nil {

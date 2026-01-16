@@ -3,14 +3,8 @@ CREATE TABLE users (
     id UUID PRIMARY KEY,
     username TEXT NOT NULL,
     created_at TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP NOT NULL,
-    sync_method TEXT NOT NULL,
-    CONSTRAINT sync_check
-        CHECK (sync_method IN ('csv', 'notion', 'none')),
-    access_key TEXT,
-    target_database_id TEXT
+    updated_at TIMESTAMP NOT NULL
 );
-
 
 -- +goose Down
 DROP TABLE users;

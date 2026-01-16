@@ -7,34 +7,27 @@ package database
 
 import (
 	"context"
-	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
 )
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (id, username, created_at, updated_at, sync_method, access_key, target_database_id)
+INSERT INTO users (id, username, created_at, updated_at)
 VALUES (
     $1,
     $2,
     $3,
-    $4,
-    $5,
-    $6,
-    $7
+    $4
 )
-RETURNING id, username, created_at, updated_at, sync_method, access_key, target_database_id
+RETURNING id, username, created_at, updated_at
 `
 
 type CreateUserParams struct {
-	ID               uuid.UUID
-	Username         string
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
-	SyncMethod       string
-	AccessKey        sql.NullString
-	TargetDatabaseID sql.NullString
+	ID        uuid.UUID
+	Username  string
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
@@ -43,9 +36,6 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		arg.Username,
 		arg.CreatedAt,
 		arg.UpdatedAt,
-		arg.SyncMethod,
-		arg.AccessKey,
-		arg.TargetDatabaseID,
 	)
 	var i User
 	err := row.Scan(
@@ -53,9 +43,6 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.Username,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.SyncMethod,
-		&i.AccessKey,
-		&i.TargetDatabaseID,
 	)
 	return i, err
 }
@@ -70,7 +57,7 @@ func (q *Queries) EmptyUsers(ctx context.Context) error {
 }
 
 const getAllUsers = `-- name: GetAllUsers :many
-SELECT id, username, created_at, updated_at, sync_method, access_key, target_database_id FROM users
+SELECT id, username, created_at, updated_at FROM users
 `
 
 func (q *Queries) GetAllUsers(ctx context.Context) ([]User, error) {
@@ -87,9 +74,6 @@ func (q *Queries) GetAllUsers(ctx context.Context) ([]User, error) {
 			&i.Username,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.SyncMethod,
-			&i.AccessKey,
-			&i.TargetDatabaseID,
 		); err != nil {
 			return nil, err
 		}
