@@ -3,9 +3,11 @@ package puller
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/fluffyriot/commission-tracker/internal/auth"
 	"github.com/fluffyriot/commission-tracker/internal/database"
@@ -17,62 +19,106 @@ type NocoColumnTypeOptions struct {
 }
 
 type NocoColumnTypeSelectOptions struct {
-	Options []NocoColumnTypeOptions `json:"options"`
+	Choices []NocoColumnTypeOptions `json:"choices"`
 }
 
 type NocoColumnTypeRelation struct {
-	Type     string `json:"type,omitempty"`
-	ChildId  string `json:"fk_child_column_id,omitempty"`
-	ParentId string `json:"fk_parent_column_id,omitempty"`
+	RelationType   string `json:"relation_type,omitempty"`
+	RelatedTableId string `json:"related_table_id,omitempty"`
 }
 
 type NocoColumn struct {
 	Title       string      `json:"title"`
-	UIDT        string      `json:"uidt"`
+	Type        string      `json:"type"`
 	Description string      `json:"description,omitempty"`
-	PV          bool        `json:"pv,omitempty"`
-	RQD         bool        `json:"rqd,omitempty"`
-	ColOptions  interface{} `json:"colOptions,omitempty"`
+	Unique      bool        `json:"unique,omitempty"`
+	Options     interface{} `json:"options,omitempty"`
 }
 
 type NocoTable struct {
-	TableName   string       `json:"table_name,omitempty"`
-	Description string       `json:"description,omitempty"`
 	Title       string       `json:"title"`
-	Columns     []NocoColumn `json:"columns"`
+	Description string       `json:"description,omitempty"`
+	Fields      []NocoColumn `json:"fields"`
 }
 
 type NocoCreateTableResponse struct {
-	ID      string           `json:"id"`
-	Title   string           `json:"title"`
-	Name    string           `json:"table_name"`
-	Columns []NocoColumnInfo `json:"columns"`
+	ID     string           `json:"id"`
+	Title  string           `json:"title"`
+	Fields []NocoColumnInfo `json:"columns"`
 }
 
 type NocoColumnInfo struct {
-	ID         string `json:"id"`
-	ColumnName string `json:"column_name"`
-	Title      string `json:"title"`
+	ID    string `json:"id"`
+	Title string `json:"title"`
 }
 
 func InitializeNoco(tid uuid.UUID, dbQueries *database.Queries, c *Client, encryptionKey []byte, target database.Target) error {
 
 	nocoURL := target.HostUrl.String +
-		"/api/v2/meta/bases/" +
+		"/api/v3/meta/bases/" +
 		target.DbID.String +
 		"/tables"
 
+	postsTable := NocoTable{
+		Title:       "Posts",
+		Description: "Posts from your social networks",
+		Fields: []NocoColumn{
+			{Title: "id", Type: "SingleLineText", Unique: true, Description: "Unique Post Id"},
+			{Title: "created_at", Type: "DateTime"},
+			{Title: "last_synced_at", Type: "DateTime"},
+			{Title: "is_archived", Type: "Checkbox"},
+			{Title: "network_internal_id", Type: "SingleLineText"},
+			{Title: "post_type", Type: "SingleLineText"},
+			{Title: "author", Type: "SingleLineText"},
+			{Title: "content", Type: "LongText"},
+			{Title: "likes", Type: "Number"},
+			{Title: "views", Type: "Number"},
+			{Title: "reposts", Type: "Number"},
+			{Title: "URL", Type: "URL"},
+		},
+	}
+
+	postsResp, err := createNocoTable(c, dbQueries, encryptionKey, target.ID, nocoURL, postsTable)
+	if err != nil {
+		return err
+	}
+
+	postsMapping, err := dbQueries.CreateMappingForTable(context.Background(), database.CreateMappingForTableParams{
+		ID:              uuid.New(),
+		CreatedAt:       time.Now(),
+		SourceTableName: "Posts",
+		TargetTableName: postsResp.Title,
+		TargetTableCode: sql.NullString{String: postsResp.ID, Valid: true},
+		TargetID:        target.ID,
+	})
+	if err != nil {
+		return fmt.Errorf("create posts table mapping: %w", err)
+	}
+
+	for _, field := range postsResp.Fields {
+		_, err := dbQueries.CreateMappingForColumn(context.Background(), database.CreateMappingForColumnParams{
+			ID:               uuid.New(),
+			CreatedAt:        time.Now(),
+			TableMappingID:   postsMapping.ID,
+			SourceColumnName: field.Title,
+			TargetColumnName: field.Title,
+			TargetColumnCode: sql.NullString{String: field.ID, Valid: true},
+		})
+		if err != nil {
+			return fmt.Errorf("create posts column mapping %s: %w", field.Title, err)
+		}
+	}
+
 	sourcesTable := NocoTable{
-		TableName:   "Sources",
+		Title:       "Sources",
 		Description: "Social media sources",
-		Title:       "sources",
-		Columns: []NocoColumn{
-			{Title: "id", UIDT: "SingleLineText", PV: true, RQD: true},
+		Fields: []NocoColumn{
+			{Title: "id", Type: "SingleLineText", Unique: true},
 			{
 				Title: "network",
-				UIDT:  "SingleSelect",
-				ColOptions: NocoColumnTypeSelectOptions{
-					[]NocoColumnTypeOptions{
+				Type:  "SingleSelect",
+				Options: NocoColumnTypeSelectOptions{
+					Choices: []NocoColumnTypeOptions{
 						{Title: "Instagram"},
 						{Title: "Bluesky"},
 						{Title: "Murrtube"},
@@ -81,81 +127,52 @@ func InitializeNoco(tid uuid.UUID, dbQueries *database.Queries, c *Client, encry
 						{Title: "Mastodon"},
 					}},
 			},
-			{Title: "username", UIDT: "SingleLineText"},
-			{Title: "URL", UIDT: "URL"},
-			{Title: "last_synced", UIDT: "DateTime"},
-			{Title: "posts", UIDT: "LinkToAnotherRecord"},
+			{Title: "username", Type: "SingleLineText"},
+			{Title: "URL", Type: "URL"},
+			{Title: "last_synced", Type: "DateTime"},
+			{
+				Title: "posts",
+				Type:  "Links",
+				Options: NocoColumnTypeRelation{
+					RelationType:   "hm",
+					RelatedTableId: postsResp.ID,
+				},
+			},
 		},
 	}
 
-	var (
-		sourceIDColID    string
-		sourcePostsColID string
-	)
-
-	sourceResp, err := createNocoTable(c, dbQueries, encryptionKey, target.ID, nocoURL, sourcesTable)
+	sourcesResp, err := createNocoTable(c, dbQueries, encryptionKey, target.ID, nocoURL, sourcesTable)
 	if err != nil {
 		return err
 	}
 
-	for _, col := range sourceResp.Columns {
-		if col.Title == "posts" {
-			sourceIDColID = col.ID
-			break
+	sourcesMapping, err := dbQueries.CreateMappingForTable(context.Background(), database.CreateMappingForTableParams{
+		ID:              uuid.New(),
+		CreatedAt:       time.Now(),
+		SourceTableName: "sources",
+		TargetTableName: sourcesResp.Title,
+		TargetTableCode: sql.NullString{String: sourcesResp.ID, Valid: true},
+		TargetID:        target.ID,
+	})
+	if err != nil {
+		return fmt.Errorf("create sources table mapping: %w", err)
+	}
+
+	for _, field := range sourcesResp.Fields {
+		_, err := dbQueries.CreateMappingForColumn(context.Background(), database.CreateMappingForColumnParams{
+			ID:               uuid.New(),
+			CreatedAt:        time.Now(),
+			TableMappingID:   sourcesMapping.ID,
+			SourceColumnName: field.Title,
+			TargetColumnName: field.Title,
+			TargetColumnCode: sql.NullString{String: field.ID, Valid: true},
+		})
+		if err != nil {
+			return fmt.Errorf("create sources column mapping %s: %w", field.Title, err)
 		}
 	}
 
-	postsTable := NocoTable{
-		TableName:   "Posts",
-		Description: "Posts from your social networks",
-		Title:       "posts",
-		Columns: []NocoColumn{
-			{Title: "id", UIDT: "SingleLineText", PV: true, RQD: true, Description: "Unique Post Id"},
-			{Title: "created_at", UIDT: "DateTime"},
-			{Title: "last_synced_at", UIDT: "DateTime"},
-			{Title: "source_id", UIDT: "LinkToAnotherRecord", Description: "Source network of the post"},
-			{Title: "is_archived", UIDT: "Checkbox"},
-			{Title: "network_internal_id", UIDT: "SingleLineText"},
-			{Title: "post_type", UIDT: "SingleLineText"},
-			{Title: "author", UIDT: "SingleLineText"},
-			{Title: "content", UIDT: "LongText"},
-			{Title: "likes", UIDT: "Number"},
-			{Title: "views", UIDT: "Number"},
-			{Title: "reposts", UIDT: "Number"},
-			{Title: "URL", UIDT: "URL"},
-		},
-	}
-
-	sourceResp, err = createNocoTable(c, dbQueries, encryptionKey, target.ID, nocoURL, postsTable)
-	if err != nil {
-		return err
-	}
-	for _, col := range sourceResp.Columns {
-		if col.Title == "source_id" {
-			sourcePostsColID = col.ID
-			break
-		}
-	}
-
-	err = connectNocoRelation(c, dbQueries, encryptionKey, target, sourcePostsColID, NocoColumnTypeRelation{
-		Type:     "oo",
-		ParentId: sourceIDColID,
-		ChildId:  sourcePostsColID,
-	})
-	if err != nil {
-		return err
-	}
-
-	err = connectNocoRelation(c, dbQueries, encryptionKey, target, sourceIDColID, NocoColumnTypeRelation{
-		Type:     "om",
-		ParentId: sourcePostsColID,
-		ChildId:  sourceIDColID,
-	})
-	if err != nil {
-		return err
-	}
-
-	return err
+	return nil
 }
 
 func createNocoTable(c *Client, dbQueries *database.Queries, encryptionKey []byte, targetID uuid.UUID, url string, table NocoTable) (*NocoCreateTableResponse, error) {
@@ -163,12 +180,6 @@ func createNocoTable(c *Client, dbQueries *database.Queries, encryptionKey []byt
 	body, err := json.Marshal(table)
 	if err != nil {
 		return nil, fmt.Errorf("marshal table schema: %w", err)
-	}
-
-	// DEBUG: preview JSON sent to Noco
-	var pretty bytes.Buffer
-	if err := json.Indent(&pretty, body, "", "  "); err == nil {
-		fmt.Println("Noco payload:\n", pretty.String())
 	}
 
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
@@ -199,50 +210,12 @@ func createNocoTable(c *Client, dbQueries *database.Queries, encryptionKey []byt
 	return &result, nil
 }
 
-func connectNocoRelation(c *Client, dbQueries *database.Queries, encryptionKey []byte, target database.Target, columnID string, relation NocoColumnTypeRelation) error {
-
-	url := fmt.Sprintf(
-		"%s/api/v2/meta/columns/%s",
-		target.HostUrl.String,
-		columnID,
-	)
-
-	payload := map[string]interface{}{
-		"colOptions": relation,
-	}
-
-	body, err := json.Marshal(payload)
-	if err != nil {
-		return err
-	}
-
-	req, err := http.NewRequest("PATCH", url, bytes.NewBuffer(body))
-	if err != nil {
-		return err
-	}
-
-	if err := setNocoHeaders(target.ID, req, dbQueries, encryptionKey); err != nil {
-		return err
-	}
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("relation patch failed: %d", resp.StatusCode)
-	}
-
-	return nil
-}
-
 func setNocoHeaders(tid uuid.UUID, req *http.Request, dbQueries *database.Queries, encryptionKey []byte) error {
 	token, _, _, err := auth.GetTargetToken(context.Background(), dbQueries, encryptionKey, tid)
 	if err != nil {
 		return err
 	}
+	req.Header.Set("xc-auth", token)
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
 
