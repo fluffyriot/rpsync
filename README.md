@@ -24,6 +24,7 @@ This project is designed for digital creators who want insight into their social
 
 ### Prerequisites
 
+* For Windows, [install WSL](https://learn.microsoft.com/en-us/windows/wsl/install) first.
 * Docker
 * Docker Compose
 

@@ -44,6 +44,15 @@ type Post struct {
 	Content           sql.NullString
 }
 
+type PostsOnTarget struct {
+	ID                uuid.UUID
+	FirstSyncedAt     time.Time
+	LastSyncCompleted sql.NullBool
+	PostID            uuid.UUID
+	TargetID          uuid.UUID
+	TargetPostID      string
+}
+
 type PostsReactionsHistory struct {
 	ID       uuid.UUID
 	SyncedAt time.Time

@@ -76,7 +76,7 @@ func startDbSync(dbQueries *database.Queries, c *Client, targetId uuid.UUID, enc
 		return fmt.Errorf("not implemented yet")
 	}
 
-	err := InitializeNoco(targetId, dbQueries, c, encryptionKey, target)
+	err := InitializeNoco(dbQueries, c, encryptionKey, target)
 	return err
 
 }

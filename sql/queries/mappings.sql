@@ -21,3 +21,11 @@ VALUES (
     $6
 )
 RETURNING *;
+
+-- name: GetTableMappingsByTargetAndName :one
+SELECT * FROM table_mappings
+where target_id = $1 and target_table_name = $2;
+
+-- name: GetColumnMappingsByTable :many
+SELECT * FROM column_mappings
+where table_mapping_id = $1;

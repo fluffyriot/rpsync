@@ -76,7 +76,7 @@ func main() {
 	)
 
 	w := worker.NewWorker(dbQueries, clientFetch, clientPull, instVer, encryptKey)
-	w.Start(1 * time.Hour) // Sync every hour
+	w.Start(12 * time.Hour)
 
 	h := handlers.NewHandler(
 		dbQueries,

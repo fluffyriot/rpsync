@@ -98,3 +98,62 @@ func (q *Queries) CreateMappingForTable(ctx context.Context, arg CreateMappingFo
 	)
 	return i, err
 }
+
+const getColumnMappingsByTable = `-- name: GetColumnMappingsByTable :many
+SELECT id, created_at, table_mapping_id, source_column_name, target_column_name, target_column_code FROM column_mappings
+where table_mapping_id = $1
+`
+
+func (q *Queries) GetColumnMappingsByTable(ctx context.Context, tableMappingID uuid.UUID) ([]ColumnMapping, error) {
+	rows, err := q.db.QueryContext(ctx, getColumnMappingsByTable, tableMappingID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ColumnMapping
+	for rows.Next() {
+		var i ColumnMapping
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.TableMappingID,
+			&i.SourceColumnName,
+			&i.TargetColumnName,
+			&i.TargetColumnCode,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getTableMappingsByTargetAndName = `-- name: GetTableMappingsByTargetAndName :one
+SELECT id, created_at, source_table_name, target_table_name, target_table_code, target_id FROM table_mappings
+where target_id = $1 and target_table_name = $2
+`
+
+type GetTableMappingsByTargetAndNameParams struct {
+	TargetID        uuid.UUID
+	TargetTableName string
+}
+
+func (q *Queries) GetTableMappingsByTargetAndName(ctx context.Context, arg GetTableMappingsByTargetAndNameParams) (TableMapping, error) {
+	row := q.db.QueryRowContext(ctx, getTableMappingsByTargetAndName, arg.TargetID, arg.TargetTableName)
+	var i TableMapping
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.SourceTableName,
+		&i.TargetTableName,
+		&i.TargetTableCode,
+		&i.TargetID,
+	)
+	return i, err
+}

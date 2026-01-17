@@ -8,7 +8,7 @@ CREATE TABLE table_mappings (
     target_table_code TEXT,
 
     target_id UUID NOT NULL,
-    FOREIGN KEY (target_id) REFERENCES targets(id) ON DELETE CASCADE
+    CONSTRAINT fk_target FOREIGN KEY (target_id) REFERENCES targets(id) ON DELETE CASCADE
 );
 
 CREATE TABLE column_mappings (
@@ -20,7 +20,7 @@ CREATE TABLE column_mappings (
     target_column_name TEXT NOT NULL,
     target_column_code TEXT,
 
-    FOREIGN KEY (table_mapping_id)
+    CONSTRAINT fk_table FOREIGN KEY (table_mapping_id)
         REFERENCES table_mappings(id)
         ON DELETE CASCADE
 );
