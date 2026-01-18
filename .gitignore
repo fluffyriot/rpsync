@@ -38,3 +38,5 @@ sqlc.yaml
 Caddyfile
 
 certs*
+
+log*
