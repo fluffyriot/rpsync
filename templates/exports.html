@@ -26,13 +26,6 @@
         </div>
         <div class="flex flex-col gap-2 items-end">
 
-            <form method="POST" action="/export/startCsv" onsubmit="return submitWithConfirm(this);">
-                <input type="hidden" name="user_id" value="{{.user_id}}">
-                <button type="submit" class="btn btn-secondary" style="width: 160px; justify-content: flex-start;">
-                    <i data-lucide="file-text"></i> CSV Export
-                </button>
-            </form>
-
             <form method="POST" action="/exports/deleteAll"
                 onsubmit="return submitWithConfirm(this, 'Do you want to delete all exports? Files will be completely removed.');">
                 <input type="hidden" name="user_id" value="{{.user_id}}">

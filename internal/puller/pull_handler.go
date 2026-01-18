@@ -52,6 +52,8 @@ func PullByTarget(tid uuid.UUID, dbQueries *database.Queries, c *Client, encrypt
 		return err
 	}
 
+	var filename string
+
 	switch target.TargetType {
 
 	case "NocoDB", "Notion":
@@ -59,7 +61,7 @@ func PullByTarget(tid uuid.UUID, dbQueries *database.Queries, c *Client, encrypt
 		err = startDbSync(dbQueries, c, encryptionKey, target)
 		if err != nil {
 
-			exports.UpdateLogAutoExport(export, dbQueries, "Failed", err.Error())
+			exports.UpdateLogAutoExport(export, dbQueries, "Failed", err.Error(), filename)
 
 			_, err = dbQueries.UpdateTargetSyncStatusById(context.Background(), database.UpdateTargetSyncStatusByIdParams{
 				ID:           target.ID,
@@ -75,12 +77,12 @@ func PullByTarget(tid uuid.UUID, dbQueries *database.Queries, c *Client, encrypt
 
 	case "CSV":
 
-		err = startFileSync(dbQueries, target.ID)
+		filename, err = startCsvSync(dbQueries, target, export)
 		if err != nil {
 
-			exports.UpdateLogAutoExport(export, dbQueries, "Completed", "")
+			exports.UpdateLogAutoExport(export, dbQueries, "Failed", err.Error(), filename)
 
-			_, err = dbQueries.UpdateSourceSyncStatusById(context.Background(), database.UpdateSourceSyncStatusByIdParams{
+			_, err = dbQueries.UpdateTargetSyncStatusById(context.Background(), database.UpdateTargetSyncStatusByIdParams{
 				ID:           target.ID,
 				SyncStatus:   "Failed",
 				StatusReason: sql.NullString{String: err.Error(), Valid: true},
@@ -101,7 +103,7 @@ func PullByTarget(tid uuid.UUID, dbQueries *database.Queries, c *Client, encrypt
 		LastSynced:   sql.NullTime{Time: time.Now(), Valid: true},
 	})
 
-	exports.UpdateLogAutoExport(export, dbQueries, "Completed", "")
+	exports.UpdateLogAutoExport(export, dbQueries, "Completed", "", filename)
 
 	return nil
 }
@@ -126,10 +128,6 @@ func startDbSync(dbQueries *database.Queries, c *Client, encryptionKey []byte, t
 	err = SyncNoco(dbQueries, c, encryptionKey, target)
 	return err
 
-}
-
-func startFileSync(dbQueries *database.Queries, targetId uuid.UUID) error {
-	return fmt.Errorf("not implemented yet")
 }
 
 func startDbRemoval(dbQueries *database.Queries, c *Client, targetId uuid.UUID, encryptionKey []byte, target database.Target, source database.Source) error {

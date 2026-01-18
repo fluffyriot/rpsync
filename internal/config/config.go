@@ -132,10 +132,14 @@ func CreateTargetFromForm(dbQueries *database.Queries, uid, target, dbId, period
 		return "", "", fmt.Errorf("Failed to create target. Error: %v", err)
 	}
 
-	err = auth.InsertTargetToken(context.Background(), dbQueries, t.ID, token, dbId, encryptionKey)
+	if token != "" {
 
-	if err != nil {
-		return "", "", fmt.Errorf("Failed to store token. Error: %v", err)
+		err = auth.InsertTargetToken(context.Background(), dbQueries, t.ID, token, dbId, encryptionKey)
+
+		if err != nil {
+			return "", "", fmt.Errorf("Failed to store token. Error: %v", err)
+		}
+
 	}
 
 	return t.ID.String(), t.TargetType, nil

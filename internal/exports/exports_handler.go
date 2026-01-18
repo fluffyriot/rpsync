@@ -37,30 +37,6 @@ func DeleteAllExports(userID uuid.UUID, dbQueries *database.Queries) error {
 
 }
 
-func InitiateCsvExport(userID uuid.UUID, dbQueries *database.Queries) (database.Export, error) {
-
-	export, err := dbQueries.CreateExport(context.Background(), database.CreateExportParams{
-		ID:           uuid.New(),
-		CreatedAt:    time.Now(),
-		ExportStatus: "Requested",
-		UserID:       userID,
-		ExportMethod: "csv",
-	})
-
-	if err != nil {
-		log.Printf("Error creating export record: %v", err)
-		return database.Export{}, err
-	}
-
-	err = csvExport(userID, dbQueries, export)
-	if err != nil {
-		return database.Export{}, err
-	}
-
-	return export, nil
-
-}
-
 func CreateLogAutoExport(userID uuid.UUID, dbQueries *database.Queries, method string, targetId uuid.UUID) (database.Export, error) {
 
 	export, err := dbQueries.CreateExport(context.Background(), database.CreateExportParams{
@@ -75,7 +51,7 @@ func CreateLogAutoExport(userID uuid.UUID, dbQueries *database.Queries, method s
 	return export, err
 }
 
-func UpdateLogAutoExport(export database.Export, dbQueries *database.Queries, status, statusReason string) error {
+func UpdateLogAutoExport(export database.Export, dbQueries *database.Queries, status, statusReason, filename string) error {
 	var completedDate time.Time
 	if status == "Completed" {
 		completedDate = time.Now()
@@ -84,8 +60,9 @@ func UpdateLogAutoExport(export database.Export, dbQueries *database.Queries, st
 	_, err := dbQueries.ChangeExportStatusById(context.Background(), database.ChangeExportStatusByIdParams{
 		ID:            export.ID,
 		ExportStatus:  status,
-		StatusMessage: sql.NullString{String: statusReason, Valid: false},
+		StatusMessage: sql.NullString{String: statusReason, Valid: true},
 		CompletedAt:   completedDate,
+		DownloadUrl:   sql.NullString{String: filename, Valid: true},
 	})
 
 	return err

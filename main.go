@@ -98,7 +98,6 @@ func main() {
 	r.GET("/auth/facebook/callback", h.FacebookCallbackHandler)
 
 	r.GET("/exports", h.ExportsHandler)
-	r.POST("/export/startCsv", h.ExportStartCsvHandler)
 	r.POST("/exports/deleteAll", h.ExportDeleteAllHandler)
 
 	r.GET("/outputs/*filepath", h.DownloadExportHandler)
