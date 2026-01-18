@@ -28,10 +28,21 @@ type mastFeed []struct {
 	QuotesCount     int       `json:"quotes_count"`
 	Content         string    `json:"content"`
 	Account         struct {
+		Id  string `json:"id"`
 		Uri string `json:"uri"`
 	} `json:"account"`
 	Reblog *struct {
-		ID string `json:"id"`
+		ID              string    `json:"id"`
+		Uri             string    `json:"uri"`
+		CreatedAt       time.Time `json:"created_at"`
+		FavouritesCount int       `json:"favourites_count"`
+		ReblogsCount    int       `json:"reblogs_count"`
+		QuotesCount     int       `json:"quotes_count"`
+		Content         string    `json:"content"`
+		Account         struct {
+			Id  string `json:"id"`
+			Uri string `json:"uri"`
+		} `json:"account"`
 	} `json:"reblog"`
 }
 
@@ -146,39 +157,95 @@ func FetchMastodonPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, s
 
 			max_id = item.ID
 
-			if _, exists := processedLinks[item.ID]; exists {
-				continue
-			}
+			var postId string
 
 			if item.Reblog != nil {
+				if item.Reblog.Account.Id == item.Account.Id {
+					continue
+				}
+				postId = strings.Split(item.Reblog.Uri, "statuses/")[1]
+			} else {
+				postId = item.ID
+			}
+
+			if _, exists := processedLinks[postId]; exists {
 				continue
 			}
 
-			processedLinks[item.ID] = struct{}{}
+			processedLinks[postId] = struct{}{}
 
 			var intId uuid.UUID
 
 			post, err := dbQueries.GetPostByNetworkAndId(context.Background(), database.GetPostByNetworkAndIdParams{
-				NetworkInternalID: item.ID,
+				NetworkInternalID: postId,
 				Network:           "Mastodon",
 			})
 
-			content := item.Content
+			var postDb database.CreatePostParams
+			var postReactions database.SyncReactionsParams
 
-			if len(item.Content) > 97 {
-				content = content[:97] + "..."
-			}
+			if item.Reblog != nil {
+				content := item.Reblog.Content
 
-			u, err := url.Parse(item.Account.Uri)
-			if err != nil {
-				return err
-			}
+				if len(content) > 97 {
+					content = content[:97] + "..."
+				}
 
-			username := path.Base(u.Path)
-			domain := u.Host
+				u, errU := url.Parse(item.Reblog.Account.Uri)
+				if errU != nil {
+					return errU
+				}
 
-			if err != nil {
-				newPost, errN := dbQueries.CreatePost(context.Background(), database.CreatePostParams{
+				username := path.Base(u.Path)
+				domain := u.Host
+
+				postDb = database.CreatePostParams{
+					ID:                uuid.New(),
+					CreatedAt:         item.Reblog.CreatedAt,
+					LastSyncedAt:      time.Now(),
+					SourceID:          sourceId,
+					IsArchived:        false,
+					Author:            fmt.Sprintf("%s@%s", username, domain),
+					PostType:          "repost",
+					NetworkInternalID: postId,
+					Content: sql.NullString{
+						String: content,
+						Valid:  true,
+					},
+				}
+
+				postReactions = database.SyncReactionsParams{
+					ID:       uuid.New(),
+					SyncedAt: time.Now(),
+					Likes: sql.NullInt32{
+						Int32: int32(item.Reblog.FavouritesCount),
+						Valid: true,
+					},
+					Reposts: sql.NullInt32{
+						Int32: int32(item.Reblog.QuotesCount) + int32(item.Reblog.ReblogsCount),
+						Valid: true,
+					},
+					Views: sql.NullInt32{
+						Int32: 0,
+						Valid: true,
+					},
+				}
+			} else {
+				content := item.Content
+
+				if len(content) > 97 {
+					content = content[:97] + "..."
+				}
+
+				u, errU := url.Parse(item.Account.Uri)
+				if errU != nil {
+					return errU
+				}
+
+				username := path.Base(u.Path)
+				domain := u.Host
+
+				postDb = database.CreatePostParams{
 					ID:                uuid.New(),
 					CreatedAt:         item.CreatedAt,
 					LastSyncedAt:      time.Now(),
@@ -186,12 +253,33 @@ func FetchMastodonPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, s
 					IsArchived:        false,
 					Author:            fmt.Sprintf("%s@%s", username, domain),
 					PostType:          "post",
-					NetworkInternalID: item.ID,
+					NetworkInternalID: postId,
 					Content: sql.NullString{
 						String: content,
 						Valid:  true,
 					},
-				})
+				}
+
+				postReactions = database.SyncReactionsParams{
+					ID:       uuid.New(),
+					SyncedAt: time.Now(),
+					Likes: sql.NullInt32{
+						Int32: int32(item.FavouritesCount),
+						Valid: true,
+					},
+					Reposts: sql.NullInt32{
+						Int32: int32(item.QuotesCount) + int32(item.ReblogsCount),
+						Valid: true,
+					},
+					Views: sql.NullInt32{
+						Int32: 0,
+						Valid: true,
+					},
+				}
+			}
+
+			if err != nil {
+				newPost, errN := dbQueries.CreatePost(context.Background(), postDb)
 				if errN != nil {
 					return errN
 				}
@@ -200,23 +288,8 @@ func FetchMastodonPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, s
 				intId = post.ID
 			}
 
-			_, err = dbQueries.SyncReactions(context.Background(), database.SyncReactionsParams{
-				ID:       uuid.New(),
-				SyncedAt: time.Now(),
-				PostID:   intId,
-				Likes: sql.NullInt32{
-					Int32: int32(item.FavouritesCount),
-					Valid: true,
-				},
-				Reposts: sql.NullInt32{
-					Int32: int32(item.QuotesCount) + int32(item.ReblogsCount),
-					Valid: true,
-				},
-				Views: sql.NullInt32{
-					Int32: 0,
-					Valid: true,
-				},
-			})
+			postReactions.PostID = intId
+			_, err = dbQueries.SyncReactions(context.Background(), postReactions)
 
 		}
 

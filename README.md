@@ -149,7 +149,7 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - ./certs:/certs
     ports:
-      - "${HTTPS_PORT}:443"
+      - "${HTTPS_PORT}:${HTTPS_PORT}"
       - "${HTTP_PORT}:80"
     depends_on:
       - app
@@ -173,7 +173,7 @@ Create `Caddyfile.template`:
 }
 
 # HTTPS site with self-signed certificate
-${LOCAL_IP}:${HTTPS_PORT} {
+:${HTTPS_PORT} {
     tls /certs/server.crt /certs/server.key
     reverse_proxy app:${APP_PORT}
 }
