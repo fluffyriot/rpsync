@@ -213,6 +213,7 @@ func (q *Queries) GetUserActiveSources(ctx context.Context, userID uuid.UUID) ([
 const getUserSources = `-- name: GetUserSources :many
 SELECT id, created_at, updated_at, network, user_name, user_id, is_active, sync_status, status_reason, last_synced FROM sources
 where user_id = $1
+ORDER BY last_synced DESC
 `
 
 func (q *Queries) GetUserSources(ctx context.Context, userID uuid.UUID) ([]Source, error) {

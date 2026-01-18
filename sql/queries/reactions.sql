@@ -32,3 +32,7 @@ SELECT
 
 GROUP BY s.id, s.network, s.user_name, DATE(prh.synced_at), DATE(p.created_at)
 ORDER BY s.id, date ASC;
+
+-- name: DeleteOldStats :exec
+DELETE from posts_reactions_history
+where synced_at < now() - INTERVAL '14 days';

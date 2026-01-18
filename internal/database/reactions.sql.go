@@ -13,6 +13,16 @@ import (
 	"github.com/google/uuid"
 )
 
+const deleteOldStats = `-- name: DeleteOldStats :exec
+DELETE from posts_reactions_history
+where synced_at < now() - INTERVAL '14 days'
+`
+
+func (q *Queries) DeleteOldStats(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, deleteOldStats)
+	return err
+}
+
 const getDailyStats = `-- name: GetDailyStats :many
 SELECT 
         s.id, s.network, s.user_name, DATE(p.created_at) as date,
