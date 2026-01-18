@@ -21,7 +21,7 @@ VALUES (
     $4,
     $5
 )
-RETURNING id, first_synced_at, last_sync_completed, post_id, target_id, target_post_id
+RETURNING id, first_synced_at, post_id, target_id, target_post_id
 `
 
 type AddPostToTargetParams struct {
@@ -44,7 +44,6 @@ func (q *Queries) AddPostToTarget(ctx context.Context, arg AddPostToTargetParams
 	err := row.Scan(
 		&i.ID,
 		&i.FirstSyncedAt,
-		&i.LastSyncCompleted,
 		&i.PostID,
 		&i.TargetID,
 		&i.TargetPostID,
@@ -53,7 +52,7 @@ func (q *Queries) AddPostToTarget(ctx context.Context, arg AddPostToTargetParams
 }
 
 const getPostsPreviouslySynced = `-- name: GetPostsPreviouslySynced :many
-SELECT id, first_synced_at, last_sync_completed, post_id, target_id, target_post_id FROM posts_on_target
+SELECT id, first_synced_at, post_id, target_id, target_post_id FROM posts_on_target
 where target_id = $1
 `
 
@@ -69,7 +68,6 @@ func (q *Queries) GetPostsPreviouslySynced(ctx context.Context, targetID uuid.UU
 		if err := rows.Scan(
 			&i.ID,
 			&i.FirstSyncedAt,
-			&i.LastSyncCompleted,
 			&i.PostID,
 			&i.TargetID,
 			&i.TargetPostID,

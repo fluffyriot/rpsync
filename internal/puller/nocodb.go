@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/fluffyriot/commission-tracker/internal/auth"
@@ -16,6 +17,10 @@ import (
 
 type NocoTableRecord struct {
 	Fields NocoRecordFields `json:"fields,omitempty"`
+}
+
+type NocoDeleteRecord struct {
+	ID int32 `json:"id"`
 }
 
 type NocoRecordFields struct {
@@ -193,11 +198,7 @@ func InitializeNoco(dbQueries *database.Queries, c *Client, encryptionKey []byte
 		}
 	}
 
-	err = createNocoSources(c, dbQueries, encryptionKey, target, sourcesResp.ID)
-	if err != nil {
-		return err
-	}
-	err = SyncNoco(dbQueries, c, encryptionKey, target)
+	err = syncNocoSources(c, dbQueries, encryptionKey, target, sourcesResp.ID)
 	if err != nil {
 		return err
 	}
@@ -275,19 +276,50 @@ func createNocoRecords(c *Client, dbQueries *database.Queries, encryptionKey []b
 	return nil
 }
 
-func createNocoSources(c *Client, dbQueries *database.Queries, encryptionKey []byte, target database.Target, tableId string) error {
+func syncNocoSources(c *Client, dbQueries *database.Queries, encryptionKey []byte, target database.Target, tableId string) error {
 
-	sources, err := dbQueries.GetUserSources(context.Background(), target.UserID)
+	var createSources []database.Source
+	var removeSources []database.SourcesOnTarget
+
+	userSources, err := dbQueries.GetUserSources(context.Background(), target.UserID)
 	if err != nil {
 		return fmt.Errorf("error fetching user sources: %w", err)
 	}
 
+	mappedSources, err := dbQueries.GetTargetSources(context.Background(), target.ID)
+	if err != nil {
+		return fmt.Errorf("error fetching user sources: %w", err)
+	}
+
+	internMap := make(map[string]database.Source, len(userSources))
+	mappedMap := make(map[string]database.SourcesOnTarget, len(mappedSources))
+
+	for _, uSource := range userSources {
+		internMap[uSource.ID.String()] = uSource
+	}
+
+	for _, mSource := range mappedSources {
+		mappedMap[mSource.SourceID.String()] = mSource
+	}
+
+	for id, uSource := range internMap {
+		if _, ok := mappedMap[id]; !ok {
+			createSources = append(createSources, uSource)
+		}
+	}
+
+	for id, mSource := range mappedMap {
+		if _, ok := internMap[id]; !ok {
+			removeSources = append(removeSources, mSource)
+		}
+	}
+
 	const batchSize = 10
 
-	var records []NocoTableRecord
+	var recordsCreate []NocoTableRecord
 
 	flush := func() error {
-		if len(records) == 0 {
+		if len(recordsCreate) == 0 {
 			return nil
 		}
 
@@ -297,16 +329,16 @@ func createNocoSources(c *Client, dbQueries *database.Queries, encryptionKey []b
 			encryptionKey,
 			target,
 			tableId,
-			records,
+			recordsCreate,
 		); err != nil {
 			return err
 		}
 
-		records = records[:0]
+		recordsCreate = recordsCreate[:0]
 		return nil
 	}
 
-	for _, source := range sources {
+	for _, source := range createSources {
 
 		url, err := ConvNetworkToURL(source.Network, source.UserName)
 		if err != nil {
@@ -321,11 +353,11 @@ func createNocoSources(c *Client, dbQueries *database.Queries, encryptionKey []b
 			LastSynced: source.LastSynced.Time,
 		}
 
-		records = append(records, NocoTableRecord{
+		recordsCreate = append(recordsCreate, NocoTableRecord{
 			Fields: fieldMap,
 		})
 
-		if len(records) == batchSize {
+		if len(recordsCreate) == batchSize {
 			if err := flush(); err != nil {
 				return err
 			}
@@ -334,6 +366,84 @@ func createNocoSources(c *Client, dbQueries *database.Queries, encryptionKey []b
 
 	if err := flush(); err != nil {
 		return err
+	}
+
+	var recordRemove []NocoDeleteRecord
+
+	flush = func() error {
+		if len(recordRemove) == 0 {
+			return nil
+		}
+
+		if err := deleteNocoRecords(
+			c,
+			dbQueries,
+			encryptionKey,
+			target,
+			tableId,
+			recordRemove,
+		); err != nil {
+			return err
+		}
+
+		recordRemove = recordRemove[:0]
+		return nil
+	}
+
+	for _, source := range removeSources {
+
+		v, _ := strconv.Atoi(source.TargetSourceID)
+		intId := int32(v)
+
+		recordRemove = append(recordRemove, NocoDeleteRecord{
+			ID: intId,
+		})
+
+		if len(recordRemove) == batchSize {
+			if err := flush(); err != nil {
+				return err
+			}
+		}
+	}
+
+	if err := flush(); err != nil {
+		return err
+	}
+
+	return nil
+
+}
+
+func deleteNocoRecords(c *Client, dbQueries *database.Queries, encryptionKey []byte, target database.Target, tableId string, records []NocoDeleteRecord) error {
+
+	url := target.HostUrl.String +
+		"/api/v3/data/" +
+		target.DbID.String +
+		"/" + tableId + "/records"
+
+	body, err := json.Marshal(records)
+	if err != nil {
+		return fmt.Errorf("marshal records schema: %w", err)
+	}
+
+	req, err := http.NewRequest("DELETE", url, bytes.NewBuffer(body))
+	if err != nil {
+		return fmt.Errorf("create request: %w", err)
+	}
+
+	err = setNocoHeaders(target.ID, req, dbQueries, encryptionKey)
+	if err != nil {
+		return err
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("send request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		return fmt.Errorf("unexpected status code: %d, %v", resp.StatusCode, resp.Status)
 	}
 
 	return nil

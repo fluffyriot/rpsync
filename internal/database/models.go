@@ -45,12 +45,11 @@ type Post struct {
 }
 
 type PostsOnTarget struct {
-	ID                uuid.UUID
-	FirstSyncedAt     time.Time
-	LastSyncCompleted sql.NullBool
-	PostID            uuid.UUID
-	TargetID          uuid.UUID
-	TargetPostID      string
+	ID            uuid.UUID
+	FirstSyncedAt time.Time
+	PostID        uuid.UUID
+	TargetID      uuid.UUID
+	TargetPostID  string
 }
 
 type PostsReactionsHistory struct {
@@ -73,6 +72,13 @@ type Source struct {
 	SyncStatus   string
 	StatusReason sql.NullString
 	LastSynced   sql.NullTime
+}
+
+type SourcesOnTarget struct {
+	ID             uuid.UUID
+	SourceID       uuid.UUID
+	TargetID       uuid.UUID
+	TargetSourceID string
 }
 
 type TableMapping struct {
