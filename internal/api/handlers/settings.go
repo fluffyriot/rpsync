@@ -38,7 +38,11 @@ func (h *Handler) SourcesSetupHandler(c *gin.Context) {
 	userID := c.PostForm("user_id")
 	network := c.PostForm("network")
 	username := c.PostForm("username")
-	profile_id := c.PostForm("instagram_profile_id")
+	instaProfileId := c.PostForm("instagram_profile_id")
+	tgBotToken := c.PostForm("telegram_bot_token")
+	tgChannelId := c.PostForm("telegram_channel_id")
+	tgAppId := c.PostForm("telegram_app_id")
+	tgAppHash := c.PostForm("telegram_app_hash")
 
 	if userID == "" || network == "" || username == "" {
 		c.HTML(http.StatusBadRequest, "error.html", gin.H{
@@ -52,6 +56,11 @@ func (h *Handler) SourcesSetupHandler(c *gin.Context) {
 		userID,
 		network,
 		username,
+		tgBotToken,
+		tgChannelId,
+		tgAppId,
+		tgAppHash,
+		h.EncryptKey,
 	)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
@@ -61,7 +70,7 @@ func (h *Handler) SourcesSetupHandler(c *gin.Context) {
 	}
 
 	if network == "Instagram" {
-		c.Redirect(http.StatusSeeOther, "/auth/facebook/login?sid="+sid+"&pid="+profile_id)
+		c.Redirect(http.StatusSeeOther, "/auth/facebook/login?sid="+sid+"&pid="+instaProfileId)
 		return
 	}
 

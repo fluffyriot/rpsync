@@ -185,11 +185,7 @@ func FetchMastodonPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, s
 			var postReactions database.SyncReactionsParams
 
 			if item.Reblog != nil {
-				content := item.Reblog.Content
-
-				if len(content) > 97 {
-					content = content[:97] + "..."
-				}
+				content := stripHTMLToText(item.Reblog.Content)
 
 				u, errU := url.Parse(item.Reblog.Account.Uri)
 				if errU != nil {
@@ -231,11 +227,7 @@ func FetchMastodonPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, s
 					},
 				}
 			} else {
-				content := item.Content
-
-				if len(content) > 97 {
-					content = content[:97] + "..."
-				}
+				content := stripHTMLToText(item.Content)
 
 				u, errU := url.Parse(item.Account.Uri)
 				if errU != nil {

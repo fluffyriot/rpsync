@@ -1,4 +1,4 @@
-package auth
+package authhelp
 
 import (
 	"encoding/json"

@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/fluffyriot/commission-tracker/internal/auth"
+	"github.com/fluffyriot/commission-tracker/internal/authhelp"
 	"github.com/fluffyriot/commission-tracker/internal/database"
 	"github.com/google/uuid"
 )
@@ -152,6 +152,7 @@ func InitializeNoco(dbQueries *database.Queries, c *Client, encryptionKey []byte
 						{Title: "BadPups"},
 						{Title: "TikTok"},
 						{Title: "Mastodon"},
+						{Title: "Telegram"},
 					}},
 			},
 			{Title: "username", Type: "SingleLineText"},
@@ -927,7 +928,7 @@ func linkPostsToSource(c *Client, dbQueries *database.Queries, encryptionKey []b
 }
 
 func setNocoHeaders(tid uuid.UUID, req *http.Request, dbQueries *database.Queries, encryptionKey []byte) error {
-	token, _, _, err := auth.GetTargetToken(context.Background(), dbQueries, encryptionKey, tid)
+	token, _, _, err := authhelp.GetTargetToken(context.Background(), dbQueries, encryptionKey, tid)
 	if err != nil {
 		return err
 	}

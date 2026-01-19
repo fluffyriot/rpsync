@@ -136,6 +136,22 @@ func SyncBySource(sid uuid.UUID, dbQueries *database.Queries, c *Client, ver str
 			return err
 		}
 
+	case "Telegram":
+
+		err = FetchTelegramPosts(dbQueries, encryptionKey, source.ID, c)
+		if err != nil {
+			_, err = dbQueries.UpdateSourceSyncStatusById(context.Background(), database.UpdateSourceSyncStatusByIdParams{
+				ID:           source.ID,
+				SyncStatus:   "Failed",
+				StatusReason: sql.NullString{String: err.Error(), Valid: true},
+				LastSynced:   sql.NullTime{Time: time.Now(), Valid: true},
+			})
+			if err != nil {
+				return err
+			}
+			return err
+		}
+
 	}
 
 	_, err = dbQueries.UpdateSourceSyncStatusById(context.Background(), database.UpdateSourceSyncStatusByIdParams{

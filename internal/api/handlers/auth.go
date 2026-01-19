@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/fluffyriot/commission-tracker/internal/auth"
+	"github.com/fluffyriot/commission-tracker/internal/authhelp"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
@@ -70,7 +70,7 @@ func (h *Handler) FacebookCallbackHandler(c *gin.Context) {
 		return
 	}
 
-	longLivedToken, err := auth.ExchangeLongLivedToken(token.AccessToken, h.FBConfig)
+	longLivedToken, err := authhelp.ExchangeLongLivedToken(token.AccessToken, h.FBConfig)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "long-lived token exchange failed", "details": err.Error()})
 		return
@@ -85,13 +85,13 @@ func (h *Handler) FacebookCallbackHandler(c *gin.Context) {
 	}
 	defer resp.Body.Close()
 
-	tokenStr, err := auth.OauthTokenToString(token)
+	tokenStr, err := authhelp.OauthTokenToString(token)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to serialize token", "details": err.Error()})
 		return
 	}
 
-	err = auth.InsertSourceToken(context.Background(), h.DB, sid, tokenStr, pid, h.EncryptKey)
+	err = authhelp.InsertSourceToken(context.Background(), h.DB, sid, tokenStr, pid, h.EncryptKey)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to store token", "details": err.Error()})
 		return

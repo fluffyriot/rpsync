@@ -44,6 +44,7 @@
             <option value="Instagram">Instagram</option>
             <option value="TikTok">TikTok</option>
             <option value="Mastodon">Mastodon</option>
+            <option value="Telegram">Telegram</option>
             <option value="Murrtube">Murrtube</option>
             <option value="BadPups">BadPups</option>
           </select>
@@ -59,6 +60,22 @@
           <label class="form-label" for="instagram_profile_id">Instagram Profile ID</label>
           <input id="instagram_profile_id" name="instagram_profile_id" class="form-input" placeholder="123456789">
           <p class="text-muted" style="font-size: 0.8rem; margin-top: 0.25rem;">Found in Meta Business Suite URL</p>
+        </div>
+
+        <div class="form-group" id="telegram_section" style="display:none;">
+
+          <label class="form-label" for="telegram_bot_token">Telegram Bot Token</label>
+          <input id="telegram_bot_token" name="telegram_bot_token" class="form-input" placeholder="your_bot-token">
+
+          <label class="form-label" for="telegram_channel_id">Telegram Channel ID</label>
+          <input id="telegram_channel_id" name="telegram_channel_id" class="form-input" placeholder="your_channel_id">
+
+          <label class="form-label" for="telegram_app_id">Telegram App ID</label>
+          <input id="telegram_app_id" name="telegram_app_id" class="form-input" placeholder="your_app_id">
+
+          <label class="form-label" for="telegram_app_hash">Telegram App Hash</label>
+          <input id="telegram_app_hash" name="telegram_app_hash" class="form-input" placeholder="your_app_hash">
+
         </div>
 
         <button type="submit" class="btn btn-primary" style="width: 100%">
@@ -160,7 +177,13 @@
     const networkSelect = document.getElementById("network");
     const instagramSection = document.getElementById("instagram_section");
     const profileInput = document.getElementById("instagram_profile_id");
+    const telegramSection = document.getElementById("telegram_section");
+    const channelInput = document.getElementById("telegram_channel_id");
+    const tgBotToken = document.getElementById("telegram_bot_token");
+    const tgAppId = document.getElementById("telegram_app_id");
+    const tgAppHash = document.getElementById("telegram_app_hash");
     const usernameInput = document.getElementById("username_input");
+    telegram_app_id
 
     if (!networkSelect) return;
 
@@ -170,10 +193,37 @@
       if (network === "Instagram") {
         instagramSection.style.display = "block";
         profileInput.required = true;
+        telegramSection.style.display = "none";
+        channelInput.required = false;
+        channelInput.value = "";
+        tgBotToken.required = false;
+        tgBotToken.value = "";
+        tgAppId.required = false;
+        tgAppId.value = "";
+        tgAppHash.required = false;
+        tgAppHash.value = "";
+      } else if (network === "Telegram") {
+        telegramSection.style.display = "block";
+        channelInput.required = true;
+        tgBotToken.required = true;
+        tgAppId.required = true;
+        tgAppHash.required = true;
+        instagramSection.style.display = "none";
+        profileInput.required = false;
+        profileInput.value = "";
       } else {
         instagramSection.style.display = "none";
         profileInput.required = false;
         profileInput.value = "";
+        telegramSection.style.display = "none";
+        channelInput.required = false;
+        channelInput.value = "";
+        tgBotToken.required = false;
+        tgBotToken.value = "";
+        tgAppId.required = false;
+        tgAppId.value = "";
+        tgAppHash.required = false;
+        tgAppHash.value = "";
       }
 
       if (network === "Mastodon") {

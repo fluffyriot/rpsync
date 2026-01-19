@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/fluffyriot/commission-tracker/internal/api/handlers"
-	"github.com/fluffyriot/commission-tracker/internal/auth"
+	"github.com/fluffyriot/commission-tracker/internal/authhelp"
 	"github.com/fluffyriot/commission-tracker/internal/config"
 	"github.com/fluffyriot/commission-tracker/internal/fetcher"
 	"github.com/fluffyriot/commission-tracker/internal/puller"
@@ -68,7 +68,7 @@ func main() {
 	}
 
 	oauthStateString := os.Getenv("OAUTH_ENCRYPTION_KEY")
-	fbConfig := auth.GenerateFacebookConfig(
+	fbConfig := authhelp.GenerateFacebookConfig(
 		os.Getenv("FACEBOOK_APP_ID"),
 		os.Getenv("FACEBOOK_APP_SECRET"),
 		clientIP,

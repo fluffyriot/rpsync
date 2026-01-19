@@ -57,7 +57,7 @@ func FetchTikTokPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, sou
 			return err
 		}
 
-		setTikTokHeaders(req, username)
+		setTikTokHeaders(req, username, c)
 
 		resp, err := c.httpClient.Do(req)
 		if err != nil {
@@ -185,19 +185,22 @@ func FetchTikTokPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, sou
 }
 
 func resolveTikTokSecUID(c *Client, username, profileURL string) (string, error) {
-
 	req, err := http.NewRequest("GET", profileURL, nil)
 	if err != nil {
 		return "", err
 	}
 
-	setTikTokHeaders(req, username)
+	setTikTokHeaders(req, username, c)
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return "", err
 	}
 	defer resp.Body.Close()
+
+	if cookies := resp.Header["Set-Cookie"]; len(cookies) > 0 {
+		c.tikTokCookie = strings.Join(cookies, "; ")
+	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -221,8 +224,7 @@ func buildTikTokPostsURL(secUid, cursor string) string {
 	)
 }
 
-func setTikTokHeaders(req *http.Request, username string) {
-
+func setTikTokHeaders(req *http.Request, username string, c *Client) {
 	req.Host = "www.tiktok.com"
 
 	req.Header.Set(
@@ -236,6 +238,10 @@ func setTikTokHeaders(req *http.Request, username string) {
 	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
 	req.Header.Set("Connection", "keep-alive")
 	req.Header.Set("Referer", fmt.Sprintf("https://www.tiktok.com/@%s", username))
+
+	if c.tikTokCookie != "" {
+		req.Header.Set("Cookie", c.tikTokCookie)
+	}
 }
 
 type tiktokPostFeed struct {

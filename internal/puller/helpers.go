@@ -17,6 +17,8 @@ func ConvNetworkToURL(network, username string) (string, error) {
 		return "https://badpups.com/lite/profile/" + username, nil
 	case "Murrtube":
 		return "https://murrtube.net/" + username, nil
+	case "Telegram":
+		return "https://t.me/" + username, nil
 	case "Mastodon":
 		splits := strings.Split(username, "@")
 		return fmt.Sprintf("https://%v/@%v", splits[1], splits[0]), nil
@@ -37,6 +39,8 @@ func ConvPostToURL(network, author, networkId string) (string, error) {
 		return "https://badpups.com/lite/video/" + networkId, nil
 	case "Murrtube":
 		return "https://murrtube.net/v/" + networkId, nil
+	case "Telegram":
+		return "https://t.me/" + author + "/" + networkId, nil
 	case "Mastodon":
 		splits := strings.Split(author, "@")
 		return fmt.Sprintf("https://%v/@%v/%v", splits[1], splits[0], networkId), nil

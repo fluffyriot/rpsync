@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fluffyriot/commission-tracker/internal/auth"
+	"github.com/fluffyriot/commission-tracker/internal/authhelp"
 	"github.com/fluffyriot/commission-tracker/internal/database"
 	"github.com/google/uuid"
 
@@ -58,7 +58,7 @@ type instagramTagsFeed struct {
 
 func getInstagramApiString(dbQueries *database.Queries, sid uuid.UUID, next string, version string, encryptionKey []byte) (string, error) {
 
-	token, pid, _, err := auth.GetSourceToken(context.Background(), dbQueries, encryptionKey, sid)
+	token, pid, _, err := authhelp.GetSourceToken(context.Background(), dbQueries, encryptionKey, sid)
 	if err != nil {
 		return "", err
 	}
@@ -75,7 +75,7 @@ func getInstagramApiString(dbQueries *database.Queries, sid uuid.UUID, next stri
 
 func getInstagramTagstring(dbQueries *database.Queries, sid uuid.UUID, next string, version string, encryptionKey []byte) (string, error) {
 
-	token, pid, _, err := auth.GetSourceToken(context.Background(), dbQueries, encryptionKey, sid)
+	token, pid, _, err := authhelp.GetSourceToken(context.Background(), dbQueries, encryptionKey, sid)
 	if err != nil {
 		return "", err
 	}

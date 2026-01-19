@@ -57,12 +57,36 @@ func UpdateLogAutoExport(export database.Export, dbQueries *database.Queries, st
 		completedDate = time.Now()
 	}
 
+	var downloadURL sql.NullString
+	if filename != "" {
+		downloadURL = sql.NullString{
+			String: filename,
+			Valid:  true,
+		}
+	} else {
+		downloadURL = sql.NullString{
+			Valid: false,
+		}
+	}
+
+	var statusMessage sql.NullString
+	if statusReason != "" {
+		downloadURL = sql.NullString{
+			String: statusReason,
+			Valid:  true,
+		}
+	} else {
+		statusMessage = sql.NullString{
+			Valid: false,
+		}
+	}
+
 	_, err := dbQueries.ChangeExportStatusById(context.Background(), database.ChangeExportStatusByIdParams{
 		ID:            export.ID,
 		ExportStatus:  status,
-		StatusMessage: sql.NullString{String: statusReason, Valid: true},
+		StatusMessage: statusMessage,
 		CompletedAt:   completedDate,
-		DownloadUrl:   sql.NullString{String: filename, Valid: true},
+		DownloadUrl:   downloadURL,
 	})
 
 	return err

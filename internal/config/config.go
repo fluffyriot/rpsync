@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/fluffyriot/commission-tracker/internal/auth"
+	"github.com/fluffyriot/commission-tracker/internal/authhelp"
 	"github.com/fluffyriot/commission-tracker/internal/database"
 	"github.com/google/uuid"
 	"github.com/pressly/goose/v3"
@@ -81,11 +81,15 @@ func CreateUserFromForm(dbQueries *database.Queries, userName string) (name, id 
 
 }
 
-func CreateSourceFromForm(dbQueries *database.Queries, uid, network, username string) (id, networkName string, e error) {
+func CreateSourceFromForm(dbQueries *database.Queries, uid, network, username, tgBotToken, tgChannelId, tgAppId, tgAppHash string, encryptionKey []byte) (id, networkName string, e error) {
 
 	uidParse, err := uuid.Parse(uid)
 	if err != nil {
 		return "", "", fmt.Errorf("Failed to parse UUID. Error: %v", err)
+	}
+
+	if network == "Telegram" && (tgBotToken == "" || tgChannelId == "" || tgAppId == "" || tgAppHash == "") {
+		return "", "", fmt.Errorf("Channel Id, Bot Token, App Id and App Hash are required for Telegram")
 	}
 
 	s, err := dbQueries.CreateSource(context.Background(), database.CreateSourceParams{
@@ -102,6 +106,15 @@ func CreateSourceFromForm(dbQueries *database.Queries, uid, network, username st
 
 	if err != nil {
 		return "", "", fmt.Errorf("Failed to create source. Error: %v", err)
+	}
+
+	if network == "Telegram" {
+		tokenFormatted := tgBotToken + ":::" + tgAppId + ":::" + tgAppHash
+		err = authhelp.InsertSourceToken(context.Background(), dbQueries, s.ID, tokenFormatted, tgChannelId, encryptionKey)
+		if err != nil {
+			dbQueries.DeleteSource(context.Background(), s.ID)
+			return "", "", fmt.Errorf("Failed to create source with auth key. Error: %v", err)
+		}
 	}
 
 	return s.ID.String(), s.Network, nil
@@ -134,7 +147,7 @@ func CreateTargetFromForm(dbQueries *database.Queries, uid, target, dbId, period
 
 	if token != "" {
 
-		err = auth.InsertTargetToken(context.Background(), dbQueries, t.ID, token, dbId, encryptionKey)
+		err = authhelp.InsertTargetToken(context.Background(), dbQueries, t.ID, token, dbId, encryptionKey)
 
 		if err != nil {
 			return "", "", fmt.Errorf("Failed to store token. Error: %v", err)
