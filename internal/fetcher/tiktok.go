@@ -345,7 +345,6 @@ func FetchTikTokPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, sou
 							newCount++
 						}
 					}
-					log.Printf("Scroll %d: Found %d posts in view (%d new). Total unique: %d", i, len(batch), newCount, len(uniquePosts))
 				}
 
 				currentPostCount := len(uniquePosts)

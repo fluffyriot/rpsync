@@ -15,9 +15,9 @@ import (
 
 func (h *Handler) TargetsHandler(c *gin.Context) {
 
-	if h.DBInitErr != nil {
+	if h.Config.DBInitErr != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"error": h.DBInitErr.Error(),
+			"error": h.Config.DBInitErr.Error(),
 		})
 		return
 	}
@@ -76,7 +76,7 @@ func (h *Handler) TargetsSetupHandler(c *gin.Context) {
 		period,
 		token,
 		hostUrl,
-		h.EncryptKey,
+		h.Config.TokenEncryptionKey,
 	)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
@@ -179,7 +179,7 @@ func (h *Handler) SyncTargetHandler(c *gin.Context) {
 				log.Printf("panic in background sync: %v", r)
 			}
 		}()
-		puller.PullByTarget(tid, h.DB, h.Puller, h.EncryptKey)
+		puller.PullByTarget(tid, h.DB, h.Puller, h.Config.TokenEncryptionKey)
 	}(targetID)
 
 	c.Redirect(http.StatusSeeOther, "/targets")

@@ -3,6 +3,8 @@ package config
 import (
 	"context"
 	"database/sql"
+	"encoding/base64"
+	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -11,6 +13,7 @@ import (
 	"github.com/fluffyriot/commission-tracker/internal/database"
 	"github.com/google/uuid"
 	"github.com/pressly/goose/v3"
+	"golang.org/x/oauth2"
 
 	_ "github.com/lib/pq"
 )
@@ -29,6 +32,66 @@ type User struct {
 	Username  string
 	CreatedAt time.Time
 	UpdatedAt time.Time
+}
+
+type AppConfig struct {
+	AppPort             string
+	HttpsPort           string
+	ClientIP            string
+	InstagramAPIVersion string
+	OauthEncryptionKey  string
+	TokenEncryptionKey  []byte
+	FBConfig            *oauth2.Config
+	DBInitErr           error
+	KeyB64Err2          error
+	InstVerErr          error
+	KeyB64Err1          error
+}
+
+func LoadConfig() (*AppConfig, error) {
+	cfg := &AppConfig{}
+
+	cfg.AppPort = os.Getenv("APP_PORT")
+	if cfg.AppPort == "" {
+		return nil, errors.New("APP_PORT is not set in the .env")
+	}
+
+	cfg.HttpsPort = os.Getenv("HTTPS_PORT")
+	if cfg.HttpsPort == "" {
+		return nil, errors.New("HTTPS_PORT is not set in the .env")
+	}
+
+	cfg.ClientIP = os.Getenv("LOCAL_IP")
+	if cfg.ClientIP == "" {
+		return nil, errors.New("LOCAL_IP is not set in the .env")
+	}
+
+	cfg.InstagramAPIVersion = os.Getenv("INSTAGRAM_API_VERSION")
+	if cfg.InstagramAPIVersion == "" {
+		cfg.InstVerErr = errors.New("INSTAGRAM_API_VERSION not set in .env")
+	}
+
+	cfg.OauthEncryptionKey = os.Getenv("OAUTH_ENCRYPTION_KEY")
+
+	keyB64 := os.Getenv("TOKEN_ENCRYPTION_KEY")
+	if keyB64 == "" {
+		cfg.KeyB64Err1 = errors.New("TOKEN_ENCRYPTION_KEY not set in .env")
+	} else {
+		var err error
+		cfg.TokenEncryptionKey, err = base64.StdEncoding.DecodeString(keyB64)
+		if err != nil || len(cfg.TokenEncryptionKey) != 32 {
+			cfg.KeyB64Err2 = fmt.Errorf("Error encoding encryption key: %v", err)
+		}
+	}
+
+	cfg.FBConfig = authhelp.GenerateFacebookConfig(
+		os.Getenv("FACEBOOK_APP_ID"),
+		os.Getenv("FACEBOOK_APP_SECRET"),
+		cfg.ClientIP,
+		cfg.HttpsPort,
+	)
+
+	return cfg, nil
 }
 
 func LoadDatabase() (*database.Queries, error) {

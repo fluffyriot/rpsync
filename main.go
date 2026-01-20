@@ -1,15 +1,10 @@
 package main
 
 import (
-	"encoding/base64"
-	"errors"
-	"fmt"
 	"log"
-	"os"
 	"time"
 
 	"github.com/fluffyriot/commission-tracker/internal/api/handlers"
-	"github.com/fluffyriot/commission-tracker/internal/authhelp"
 	"github.com/fluffyriot/commission-tracker/internal/config"
 	"github.com/fluffyriot/commission-tracker/internal/fetcher"
 	"github.com/fluffyriot/commission-tracker/internal/puller"
@@ -19,36 +14,9 @@ import (
 
 func main() {
 
-	httpsPort := os.Getenv("HTTPS_PORT")
-	if httpsPort == "" {
-		log.Fatal("HTTPS_PORT is not set in the .env")
-	}
-
-	appPort := os.Getenv("APP_PORT")
-	if appPort == "" {
-		log.Fatal("APP_PORT is not set in the .env")
-	}
-
-	clientIP := os.Getenv("LOCAL_IP")
-	if clientIP == "" {
-		log.Fatal("LOCAL_IP is not set in the .env")
-	}
-
-	var instVerErr error
-	instVer := os.Getenv("INSTAGRAM_API_VERSION")
-	if instVer == "" {
-		instVerErr = errors.New("INSTAGRAM_API_VERSION not set in .env")
-	}
-
-	var keyB64Err1 error
-	keyB64 := os.Getenv("TOKEN_ENCRYPTION_KEY")
-	if keyB64 == "" {
-		keyB64Err1 = errors.New("TOKEN_ENCRYPTION_KEY not set in .env")
-	}
-
-	encryptKey, keyB64Err2 := base64.StdEncoding.DecodeString(keyB64)
-	if keyB64Err2 != nil || len(encryptKey) != 32 {
-		keyB64Err2 = fmt.Errorf("Error encoding encryption key: %v", keyB64Err2)
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	clientFetch := fetcher.NewClient(600 * time.Second)
@@ -67,29 +35,16 @@ func main() {
 		log.Printf("database init failed: %v", dbInitErr)
 	}
 
-	oauthStateString := os.Getenv("OAUTH_ENCRYPTION_KEY")
-	fbConfig := authhelp.GenerateFacebookConfig(
-		os.Getenv("FACEBOOK_APP_ID"),
-		os.Getenv("FACEBOOK_APP_SECRET"),
-		clientIP,
-		httpsPort,
-	)
+	cfg.DBInitErr = dbInitErr
 
-	w := worker.NewWorker(dbQueries, clientFetch, clientPull, instVer, encryptKey)
+	w := worker.NewWorker(dbQueries, clientFetch, clientPull, cfg)
 	w.Start(30 * time.Minute)
 
 	h := handlers.NewHandler(
 		dbQueries,
 		clientFetch,
 		clientPull,
-		instVer,
-		encryptKey,
-		oauthStateString,
-		fbConfig,
-		dbInitErr,
-		keyB64Err1,
-		keyB64Err2,
-		instVerErr,
+		cfg,
 	)
 
 	r.GET("/", h.RootHandler)
@@ -125,7 +80,8 @@ func main() {
 	r.GET("/stats", h.StatsHandler)
 	r.GET("/analytics", h.AnalyticsPageHandler)
 
-	if err := r.Run(":" + appPort); err != nil {
+	log.Printf("Server started on http://localhost:%s", cfg.AppPort)
+	if err := r.Run(":" + cfg.AppPort); err != nil {
 		log.Fatal(err)
 	}
 }

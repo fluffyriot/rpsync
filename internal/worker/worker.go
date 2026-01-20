@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fluffyriot/commission-tracker/internal/config"
 	"github.com/fluffyriot/commission-tracker/internal/database"
 	"github.com/fluffyriot/commission-tracker/internal/fetcher"
 	"github.com/fluffyriot/commission-tracker/internal/puller"
@@ -15,13 +16,12 @@ import (
 )
 
 type Worker struct {
-	DB         *database.Queries
-	Fetcher    *fetcher.Client
-	Puller     *puller.Client
-	InstVer    string
-	EncryptKey []byte
-	Ticker     *time.Ticker
-	StopChan   chan bool
+	DB       *database.Queries
+	Fetcher  *fetcher.Client
+	Puller   *puller.Client
+	Config   *config.AppConfig
+	Ticker   *time.Ticker
+	StopChan chan bool
 }
 
 func backoffWithJitter(attempt int) time.Duration {
@@ -42,14 +42,13 @@ func backoffWithJitter(attempt int) time.Duration {
 	return jitter
 }
 
-func NewWorker(db *database.Queries, fetcher *fetcher.Client, puller *puller.Client, instVer string, key []byte) *Worker {
+func NewWorker(db *database.Queries, fetcher *fetcher.Client, puller *puller.Client, cfg *config.AppConfig) *Worker {
 	return &Worker{
-		DB:         db,
-		Fetcher:    fetcher,
-		Puller:     puller,
-		InstVer:    instVer,
-		EncryptKey: key,
-		StopChan:   make(chan bool),
+		DB:       db,
+		Fetcher:  fetcher,
+		Puller:   puller,
+		Config:   cfg,
+		StopChan: make(chan bool),
 	}
 }
 
@@ -121,7 +120,7 @@ func (w *Worker) SyncAll() {
 							}
 						}()
 
-						err := fetcher.SyncBySource(sid, w.DB, w.Fetcher, w.InstVer, w.EncryptKey)
+						err := fetcher.SyncBySource(sid, w.DB, w.Fetcher, w.Config.InstagramAPIVersion, w.Config.TokenEncryptionKey)
 
 						if err == nil {
 							return
@@ -162,7 +161,7 @@ func (w *Worker) SyncAll() {
 					}
 				}()
 
-				puller.PullByTarget(tid, w.DB, w.Puller, w.EncryptKey)
+				puller.PullByTarget(tid, w.DB, w.Puller, w.Config.TokenEncryptionKey)
 			}(target.ID)
 		}
 	}

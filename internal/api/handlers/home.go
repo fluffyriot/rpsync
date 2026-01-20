@@ -8,30 +8,30 @@ import (
 
 func (h *Handler) RootHandler(c *gin.Context) {
 
-	if h.DBInitErr != nil {
+	if h.Config.DBInitErr != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"error": h.DBInitErr.Error(),
+			"error": h.Config.DBInitErr.Error(),
 		})
 		return
 	}
 
-	if h.KeyB64Err1 != nil {
+	if h.Config.KeyB64Err1 != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"error": h.KeyB64Err1.Error(),
+			"error": h.Config.KeyB64Err1.Error(),
 		})
 		return
 	}
 
-	if h.KeyB64Err2 != nil {
+	if h.Config.KeyB64Err2 != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"error": h.KeyB64Err2.Error(),
+			"error": h.Config.KeyB64Err2.Error(),
 		})
 		return
 	}
 
-	if h.InstVerErr != nil {
+	if h.Config.InstVerErr != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"error": h.InstVerErr.Error(),
+			"error": h.Config.InstVerErr.Error(),
 		})
 		return
 	}

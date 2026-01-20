@@ -60,7 +60,7 @@ func (h *Handler) SourcesSetupHandler(c *gin.Context) {
 		tgChannelId,
 		tgAppId,
 		tgAppHash,
-		h.EncryptKey,
+		h.Config.TokenEncryptionKey,
 	)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
@@ -156,7 +156,7 @@ func (h *Handler) DeleteSourceHandler(c *gin.Context) {
 	}
 
 	for _, target := range syncedTargets {
-		err = puller.RemoveByTarget(target.TargetID, sourceID, h.DB, h.Puller, h.EncryptKey)
+		err = puller.RemoveByTarget(target.TargetID, sourceID, h.DB, h.Puller, h.Config.TokenEncryptionKey)
 		if err != nil {
 			c.HTML(http.StatusInternalServerError, "error.html", gin.H{
 				"error": err.Error(),
@@ -191,7 +191,7 @@ func (h *Handler) SyncSourceHandler(c *gin.Context) {
 				log.Printf("panic in background sync: %v", r)
 			}
 		}()
-		fetcher.SyncBySource(sid, h.DB, h.Fetcher, h.InstVer, h.EncryptKey)
+		fetcher.SyncBySource(sid, h.DB, h.Fetcher, h.Config.InstagramAPIVersion, h.Config.TokenEncryptionKey)
 	}(sourceID)
 
 	c.Redirect(http.StatusSeeOther, "/")
@@ -222,7 +222,7 @@ func (h *Handler) SyncAllHandler(c *gin.Context) {
 					log.Printf("panic in background sync: %v", r)
 				}
 			}()
-			fetcher.SyncBySource(sid, h.DB, h.Fetcher, h.InstVer, h.EncryptKey)
+			fetcher.SyncBySource(sid, h.DB, h.Fetcher, h.Config.InstagramAPIVersion, h.Config.TokenEncryptionKey)
 		}(sourceID.ID)
 	}
 

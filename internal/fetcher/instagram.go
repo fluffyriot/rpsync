@@ -218,6 +218,8 @@ func FetchInstagramPosts(dbQueries *database.Queries, c *Client, sourceId uuid.U
 		time.Sleep(300 * time.Millisecond)
 	}
 
+	log.Printf("Instagram: Processed %d posts", len(processedLinks))
+
 	if len(processedLinks) == 0 {
 		return errors.New("No content found")
 	}

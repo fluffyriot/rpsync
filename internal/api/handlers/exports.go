@@ -12,9 +12,9 @@ import (
 
 func (h *Handler) ExportsHandler(c *gin.Context) {
 
-	if h.DBInitErr != nil {
+	if h.Config.DBInitErr != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"error": h.DBInitErr.Error(),
+			"error": h.Config.DBInitErr.Error(),
 		})
 		return
 	}

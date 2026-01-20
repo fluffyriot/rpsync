@@ -27,9 +27,9 @@ func (h *Handler) FacebookLoginHandler(c *gin.Context) {
 
 	payload := base64.URLEncoding.EncodeToString([]byte(sid.String() + ":" + pid))
 
-	state := h.OauthStateString + "|" + payload
+	state := h.Config.OauthEncryptionKey + "|" + payload
 
-	url := h.FBConfig.AuthCodeURL(state)
+	url := h.Config.FBConfig.AuthCodeURL(state)
 	c.Redirect(http.StatusTemporaryRedirect, url)
 
 }
@@ -38,7 +38,7 @@ func (h *Handler) FacebookCallbackHandler(c *gin.Context) {
 	rawState := c.Query("state")
 	parts := strings.SplitN(rawState, "|", 2)
 
-	if len(parts) != 2 || parts[0] != h.OauthStateString {
+	if len(parts) != 2 || parts[0] != h.Config.OauthEncryptionKey {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid oauth state"})
 		return
 	}
@@ -64,20 +64,20 @@ func (h *Handler) FacebookCallbackHandler(c *gin.Context) {
 	pid := values[1]
 
 	code := c.Query("code")
-	token, err := h.FBConfig.Exchange(c, code)
+	token, err := h.Config.FBConfig.Exchange(c, code)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "token exchange failed", "details": err.Error()})
 		return
 	}
 
-	longLivedToken, err := authhelp.ExchangeLongLivedToken(token.AccessToken, h.FBConfig)
+	longLivedToken, err := authhelp.ExchangeLongLivedToken(token.AccessToken, h.Config.FBConfig)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "long-lived token exchange failed", "details": err.Error()})
 		return
 	}
 	token.AccessToken = longLivedToken
 
-	client := h.FBConfig.Client(c, token)
+	client := h.Config.FBConfig.Client(c, token)
 	resp, err := client.Get("https://graph.facebook.com/me?fields=id,email")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch user info"})
@@ -91,7 +91,7 @@ func (h *Handler) FacebookCallbackHandler(c *gin.Context) {
 		return
 	}
 
-	err = authhelp.InsertSourceToken(context.Background(), h.DB, sid, tokenStr, pid, h.EncryptKey)
+	err = authhelp.InsertSourceToken(context.Background(), h.DB, sid, tokenStr, pid, h.Config.TokenEncryptionKey)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to store token", "details": err.Error()})
 		return

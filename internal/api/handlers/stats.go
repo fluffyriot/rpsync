@@ -10,8 +10,8 @@ import (
 
 func (h *Handler) StatsHandler(c *gin.Context) {
 
-	if h.DBInitErr != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": h.DBInitErr.Error()})
+	if h.Config.DBInitErr != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": h.Config.DBInitErr.Error()})
 		return
 	}
 
@@ -41,9 +41,9 @@ func (h *Handler) StatsHandler(c *gin.Context) {
 }
 
 func (h *Handler) AnalyticsPageHandler(c *gin.Context) {
-	if h.DBInitErr != nil {
+	if h.Config.DBInitErr != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"error": h.DBInitErr.Error(),
+			"error": h.Config.DBInitErr.Error(),
 		})
 		return
 	}

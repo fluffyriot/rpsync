@@ -9,6 +9,40 @@ import (
 	"github.com/google/uuid"
 )
 
+func executeSync(
+	ctx context.Context,
+	dbQueries *database.Queries,
+	sourceID uuid.UUID,
+	syncFunc func() error,
+) error {
+	_, err := dbQueries.UpdateSourceSyncStatusById(ctx, database.UpdateSourceSyncStatusByIdParams{
+		ID:         sourceID,
+		SyncStatus: "Syncing",
+	})
+	if err != nil {
+		return err
+	}
+
+	err = syncFunc()
+	if err != nil {
+		_, _ = dbQueries.UpdateSourceSyncStatusById(ctx, database.UpdateSourceSyncStatusByIdParams{
+			ID:           sourceID,
+			SyncStatus:   "Failed",
+			StatusReason: sql.NullString{String: err.Error(), Valid: true},
+			LastSynced:   sql.NullTime{Time: time.Now(), Valid: true},
+		})
+		return err
+	}
+	_, err = dbQueries.UpdateSourceSyncStatusById(ctx, database.UpdateSourceSyncStatusByIdParams{
+		ID:           sourceID,
+		SyncStatus:   "Synced",
+		StatusReason: sql.NullString{},
+		LastSynced:   sql.NullTime{Time: time.Now(), Valid: true},
+	})
+
+	return err
+}
+
 func SyncBySource(sid uuid.UUID, dbQueries *database.Queries, c *Client, ver string, encryptionKey []byte) error {
 
 	source, err := dbQueries.GetSourceById(context.Background(), sid)
@@ -16,150 +50,34 @@ func SyncBySource(sid uuid.UUID, dbQueries *database.Queries, c *Client, ver str
 		return err
 	}
 
-	_, err = dbQueries.UpdateSourceSyncStatusById(context.Background(), database.UpdateSourceSyncStatusByIdParams{
-		ID:         source.ID,
-		SyncStatus: "Syncing",
+	return executeSync(context.Background(), dbQueries, source.ID, func() error {
+		switch source.Network {
+		case "Bluesky":
+			return FetchBlueskyPosts(dbQueries, c, source.UserID, source.ID)
+
+		case "Instagram":
+			if err := FetchInstagramPosts(dbQueries, c, source.ID, ver, encryptionKey); err != nil {
+				return err
+			}
+			return FetchInstagramTags(dbQueries, c, source.ID, ver, encryptionKey)
+
+		case "Murrtube":
+			return FetchMurrtubePosts(source.UserID, dbQueries, c, source.ID)
+
+		case "BadPups":
+			return FetchBadpupsPosts(source.UserID, dbQueries, c, source.ID)
+
+		case "TikTok":
+			return FetchTikTokPosts(dbQueries, c, source.UserID, source.ID)
+
+		case "Mastodon":
+			return FetchMastodonPosts(dbQueries, c, source.UserID, source.ID)
+
+		case "Telegram":
+			return FetchTelegramPosts(dbQueries, encryptionKey, source.ID, c)
+
+		default:
+			return nil
+		}
 	})
-	if err != nil {
-		return err
-	}
-
-	switch source.Network {
-
-	case "Bluesky":
-
-		err = FetchBlueskyPosts(dbQueries, c, source.UserID, source.ID)
-		if err != nil {
-			_, err = dbQueries.UpdateSourceSyncStatusById(context.Background(), database.UpdateSourceSyncStatusByIdParams{
-				ID:           source.ID,
-				SyncStatus:   "Failed",
-				StatusReason: sql.NullString{String: err.Error(), Valid: true},
-				LastSynced:   sql.NullTime{Time: time.Now(), Valid: true},
-			})
-			if err != nil {
-				return err
-			}
-			return err
-		}
-
-	case "Instagram":
-
-		err = FetchInstagramPosts(dbQueries, c, source.ID, ver, encryptionKey)
-		if err != nil {
-			_, err = dbQueries.UpdateSourceSyncStatusById(context.Background(), database.UpdateSourceSyncStatusByIdParams{
-				ID:           source.ID,
-				SyncStatus:   "Failed",
-				StatusReason: sql.NullString{String: err.Error(), Valid: true},
-				LastSynced:   sql.NullTime{Time: time.Now(), Valid: true},
-			})
-			if err != nil {
-				return err
-			}
-			return err
-		}
-
-		err = FetchInstagramTags(dbQueries, c, source.ID, ver, encryptionKey)
-		if err != nil {
-			_, err = dbQueries.UpdateSourceSyncStatusById(context.Background(), database.UpdateSourceSyncStatusByIdParams{
-				ID:           source.ID,
-				SyncStatus:   "Failed",
-				StatusReason: sql.NullString{String: err.Error(), Valid: true},
-				LastSynced:   sql.NullTime{Time: time.Now(), Valid: true},
-			})
-			if err != nil {
-				return err
-			}
-			return err
-		}
-
-	case "Murrtube":
-
-		err = FetchMurrtubePosts(source.UserID, dbQueries, c, source.ID)
-		if err != nil {
-			_, err = dbQueries.UpdateSourceSyncStatusById(context.Background(), database.UpdateSourceSyncStatusByIdParams{
-				ID:           source.ID,
-				SyncStatus:   "Failed",
-				StatusReason: sql.NullString{String: err.Error(), Valid: true},
-				LastSynced:   sql.NullTime{Time: time.Now(), Valid: true},
-			})
-			if err != nil {
-				return err
-			}
-			return err
-		}
-
-	case "BadPups":
-
-		err = FetchBadpupsPosts(source.UserID, dbQueries, c, source.ID)
-		if err != nil {
-			_, err = dbQueries.UpdateSourceSyncStatusById(context.Background(), database.UpdateSourceSyncStatusByIdParams{
-				ID:           source.ID,
-				SyncStatus:   "Failed",
-				StatusReason: sql.NullString{String: err.Error(), Valid: true},
-				LastSynced:   sql.NullTime{Time: time.Now(), Valid: true},
-			})
-			if err != nil {
-				return err
-			}
-			return err
-		}
-
-	case "TikTok":
-
-		err = FetchTikTokPosts(dbQueries, c, source.UserID, source.ID)
-		if err != nil {
-			_, err = dbQueries.UpdateSourceSyncStatusById(context.Background(), database.UpdateSourceSyncStatusByIdParams{
-				ID:           source.ID,
-				SyncStatus:   "Failed",
-				StatusReason: sql.NullString{String: err.Error(), Valid: true},
-				LastSynced:   sql.NullTime{Time: time.Now(), Valid: true},
-			})
-			if err != nil {
-				return err
-			}
-			return err
-		}
-
-	case "Mastodon":
-
-		err = FetchMastodonPosts(dbQueries, c, source.UserID, source.ID)
-		if err != nil {
-			_, err = dbQueries.UpdateSourceSyncStatusById(context.Background(), database.UpdateSourceSyncStatusByIdParams{
-				ID:           source.ID,
-				SyncStatus:   "Failed",
-				StatusReason: sql.NullString{String: err.Error(), Valid: true},
-				LastSynced:   sql.NullTime{Time: time.Now(), Valid: true},
-			})
-			if err != nil {
-				return err
-			}
-			return err
-		}
-
-	case "Telegram":
-
-		err = FetchTelegramPosts(dbQueries, encryptionKey, source.ID, c)
-		if err != nil {
-			_, err = dbQueries.UpdateSourceSyncStatusById(context.Background(), database.UpdateSourceSyncStatusByIdParams{
-				ID:           source.ID,
-				SyncStatus:   "Failed",
-				StatusReason: sql.NullString{String: err.Error(), Valid: true},
-				LastSynced:   sql.NullTime{Time: time.Now(), Valid: true},
-			})
-			if err != nil {
-				return err
-			}
-			return err
-		}
-
-	}
-
-	_, err = dbQueries.UpdateSourceSyncStatusById(context.Background(), database.UpdateSourceSyncStatusByIdParams{
-		ID:           source.ID,
-		SyncStatus:   "Synced",
-		StatusReason: sql.NullString{},
-		LastSynced:   sql.NullTime{Time: time.Now(), Valid: true},
-	})
-
-	return nil
 }
