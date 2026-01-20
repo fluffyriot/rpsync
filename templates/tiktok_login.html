@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TikTok Login</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #121212;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            text-align: center;
+            background: #1e1e1e;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+        h1 {
+            color: #fe2c55; /* TikTok Red */
+            margin-bottom: 1rem;
+        }
+        img.qr {
+            max-width: 300px;
+            border: 4px solid #ffffff;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+        .status {
+            margin-top: 1rem;
+            font-size: 1.2rem;
+            color: #aaa;
+        }
+        .success {
+            color: #25f4ee; /* TikTok Cyan-ish */
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Scan to Login</h1>
+        <p>Open TikTok on your mobile device, go to Profile > Menu > QR Code > Scan, and scan this code.</p>
+        
+        {{ if .QRCode }}
+        <img src="data:image/png;base64,{{ .QRCode }}" class="qr" alt="TikTok Login QR Code">
+        {{ else }}
+        <p>Error loading QR code.</p>
+        {{ end }}
+
+        <div id="status" class="status">Waiting for scan...</div>
+    </div>
+
+    <script>
+        const username = "{{ .Username }}";
+        const statusDiv = document.getElementById('status');
+        
+        const checkStatus = () => {
+            fetch(`/auth/tiktok/check?username=${username}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        statusDiv.innerHTML = '<span class="success">Login Successful! Redirecting...</span>';
+                        setTimeout(() => {
+                            window.location.href = '/';
+                        }, 2000);
+                    } else if (data.status === 'failed') {
+                        statusDiv.innerText = 'Login Failed: ' + (data.message || 'Unknown error');
+                    } else {
+                        // Keep polling
+                        setTimeout(checkStatus, 2000);
+                    }
+                })
+                .catch(err => {
+                    console.error('Error checking status:', err);
+                    setTimeout(checkStatus, 3000);
+                });
+        };
+
+        // Start polling
+        setTimeout(checkStatus, 2000);
+    </script>
+</body>
+</html>

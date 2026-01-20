@@ -21,7 +21,7 @@ FROM --platform=$TARGETPLATFORM debian:bookworm
 WORKDIR /app
 
 RUN apt-get update \
- && apt-get install -y bash netcat-openbsd ca-certificates \
+ && apt-get install -y bash netcat-openbsd ca-certificates chromium fonts-liberation \
  && rm -rf /var/lib/apt/lists/* \
  && mkdir -p /app/outputs \
  && mkdir -p /app/certs

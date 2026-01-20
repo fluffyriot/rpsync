@@ -35,3 +35,10 @@ func stripHTMLToText(input string) string {
 
 	return strings.Join(strings.Fields(html.UnescapeString(b.String())), " ")
 }
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}

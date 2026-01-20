@@ -74,6 +74,11 @@ func (h *Handler) SourcesSetupHandler(c *gin.Context) {
 		return
 	}
 
+	if network == "TikTok" {
+		c.Redirect(http.StatusSeeOther, "/auth/tiktok/login?username="+username)
+		return
+	}
+
 	c.Redirect(http.StatusSeeOther, "/")
 }
 

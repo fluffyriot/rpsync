@@ -97,6 +97,9 @@ func main() {
 	r.GET("/auth/facebook/login", h.FacebookLoginHandler)
 	r.GET("/auth/facebook/callback", h.FacebookCallbackHandler)
 
+	r.GET("/auth/tiktok/login", h.TikTokLoginHandler)
+	r.GET("/auth/tiktok/check", h.TikTokCheckHandler)
+
 	r.GET("/exports", h.ExportsHandler)
 	r.POST("/exports/deleteAll", h.ExportDeleteAllHandler)
 
