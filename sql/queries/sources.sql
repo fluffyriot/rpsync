@@ -26,7 +26,14 @@ where user_id = $1 and is_active = TRUE;
 -- name: GetUserSources :many
 SELECT * FROM sources
 where user_id = $1
-ORDER BY last_synced DESC;
+ORDER BY
+  CASE sync_status
+    WHEN 'Initialized' THEN 1
+    WHEN 'Deactivated' THEN 2
+    WHEN 'Syncing' THEN 3
+    ELSE 4
+  END,
+  last_synced DESC;
 
 -- name: GetSourceById :one
 SELECT * FROM sources

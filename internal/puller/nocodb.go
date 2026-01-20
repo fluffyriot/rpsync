@@ -17,6 +17,7 @@ import (
 )
 
 type NocoTableRecord struct {
+	Id     int32            `json:"id,omitempty"`
 	Fields NocoRecordFields `json:"fields,omitempty"`
 }
 
@@ -254,9 +255,13 @@ func SyncNoco(dbQueries *database.Queries, c *Client, encryptionKey []byte, targ
 		mappedMap[m.PostID.String()] = m
 	}
 
+	var updatePosts []database.GetAllPostsWithTheLatestInfoForUserRow
+
 	for id, p := range localMap {
 		if _, ok := mappedMap[id]; !ok {
 			createPosts = append(createPosts, p)
+		} else {
+			updatePosts = append(updatePosts, p)
 		}
 	}
 	for id, m := range mappedMap {
@@ -444,6 +449,78 @@ func SyncNoco(dbQueries *database.Queries, c *Client, encryptionKey []byte, targ
 	}
 
 	if err := flushRemove(); err != nil {
+		return err
+	}
+
+	var recordsUpdate []NocoTableRecord
+	var currentUpdateBatch []database.GetAllPostsWithTheLatestInfoForUserRow
+
+	flushUpdate := func() error {
+		if len(recordsUpdate) == 0 {
+			return nil
+		}
+
+		if err := updateNocoRecords(
+			c,
+			dbQueries,
+			encryptionKey,
+			target,
+			targetTable.TargetTableCode.String,
+			recordsUpdate,
+		); err != nil {
+			return err
+		}
+
+		recordsUpdate = recordsUpdate[:0]
+		return nil
+	}
+
+	for _, post := range updatePosts {
+		mappedPost, ok := mappedMap[post.ID.String()]
+		if !ok {
+			continue
+		}
+
+		url, err := ConvPostToURL(post.Network.String, post.Author, post.NetworkInternalID)
+		if err != nil {
+			return err
+		}
+
+		targetPostIDVal, err := strconv.Atoi(mappedPost.TargetPostID)
+		if err != nil {
+			return fmt.Errorf("invalid target post id %s: %w", mappedPost.TargetPostID, err)
+		}
+
+		fieldMap := NocoRecordFields{
+			ID:                post.ID.String(),
+			CreatedAt:         post.CreatedAt,
+			LastSynced:        time.Now(),
+			IsArchived:        post.IsArchived,
+			NetworkInternalID: post.NetworkInternalID,
+			PostType:          post.PostType,
+			Author:            post.Author,
+			Content:           post.Content.String,
+			Likes:             post.Likes.Int32,
+			Views:             post.Views.Int32,
+			Reposts:           post.Reposts.Int32,
+			URL:               url,
+		}
+
+		recordsUpdate = append(recordsUpdate, NocoTableRecord{
+			Id:     int32(targetPostIDVal),
+			Fields: fieldMap,
+		})
+		currentUpdateBatch = append(currentUpdateBatch, post)
+
+		if len(recordsUpdate) == batchSize {
+			if err := flushUpdate(); err != nil {
+				return err
+			}
+			currentUpdateBatch = currentUpdateBatch[:0]
+		}
+	}
+
+	if err := flushUpdate(); err != nil {
 		return err
 	}
 
@@ -653,6 +730,42 @@ func createNocoRecords(c *Client, dbQueries *database.Queries, encryptionKey []b
 	}
 
 	return nil, fmt.Errorf("decode response failed. Body: %s", string(bodyBytes))
+}
+
+func updateNocoRecords(c *Client, dbQueries *database.Queries, encryptionKey []byte, target database.Target, tableId string, records []NocoTableRecord) error {
+
+	url := target.HostUrl.String +
+		"/api/v3/data/" +
+		target.DbID.String +
+		"/" + tableId + "/records"
+
+	body, err := json.Marshal(records)
+	if err != nil {
+		return fmt.Errorf("marshal records schema: %w", err)
+	}
+
+	req, err := http.NewRequest("PATCH", url, bytes.NewBuffer(body))
+	if err != nil {
+		return fmt.Errorf("create request: %w", err)
+	}
+
+	err = setNocoHeaders(target.ID, req, dbQueries, encryptionKey)
+	if err != nil {
+		return err
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("send request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("unexpected status code: %d, body: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	return nil
 }
 
 func syncNocoSources(c *Client, dbQueries *database.Queries, encryptionKey []byte, target database.Target, tableId string) error {

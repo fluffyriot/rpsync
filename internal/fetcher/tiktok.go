@@ -223,9 +223,9 @@ type ScrapedPost struct {
 	Desc      string `json:"desc"`
 	CoverURL  string `json:"cover_url"`
 	DateText  string `json:"date_text"`
+	Type      string `json:"type"`
 	Views     string `json:"views"`
 	Likes     string `json:"likes"`
-	Comments  string `json:"comments"`
 	IsScraped bool   `json:"is_scraped"`
 }
 
@@ -304,15 +304,19 @@ func FetchTikTokPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, sou
 					const statElements = row.querySelectorAll('div[data-tt="components_ItemRow_FlexCenter"] span.TUXText');
 					let views = "0";
 					let likes = "0";
-					let comments = "0";
 					
 					if (statElements.length >= 3) {
 						views = statElements[0].innerText;
 						likes = statElements[1].innerText;
-						comments = statElements[2].innerText;
+					}
+
+					let type = "video";
+					const imageIcon = row.querySelector('span[data-icon="ImageFill"]');
+					if (imageIcon) {
+						type = "photo";
 					}
 					
-					posts.push({ id, desc, cover_url: coverUrl, date_text: dateText, views, likes, comments, is_scraped: true });
+					posts.push({ id, desc, cover_url: coverUrl, date_text: dateText, views, likes, is_scraped: true, type });
 				} catch (e) {
 					// ignore
 				}
@@ -406,7 +410,7 @@ func FetchTikTokPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, sou
 		}
 
 		content := item.Desc
-		postType := "video"
+		postType := item.Type
 
 		postId := uuid.New()
 		existing, err := dbQueries.GetPostByNetworkAndId(context.Background(), database.GetPostByNetworkAndIdParams{
@@ -437,7 +441,6 @@ func FetchTikTokPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, sou
 
 		viewsCount := parseCount(item.Views)
 		likesCount := parseCount(item.Likes)
-		commentsCount := parseCount(item.Comments)
 
 		_, err = dbQueries.SyncReactions(context.Background(), database.SyncReactionsParams{
 			ID:       uuid.New(),
@@ -445,7 +448,7 @@ func FetchTikTokPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, sou
 			PostID:   postId,
 			Views:    sql.NullInt32{Int32: int32(viewsCount), Valid: viewsCount > 0},
 			Likes:    sql.NullInt32{Int32: int32(likesCount), Valid: likesCount >= 0},
-			Reposts:  sql.NullInt32{Int32: int32(commentsCount), Valid: commentsCount >= 0},
+			Reposts:  sql.NullInt32{Int32: int32(0), Valid: false},
 		})
 		if err != nil {
 			log.Printf("Failed to sync stats for %s: %v", item.ID, err)

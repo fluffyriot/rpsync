@@ -40,6 +40,12 @@ func getTgDetails(ctx context.Context, dbQueries *database.Queries, encryptionKe
 }
 
 func botAuth(ctx context.Context, client *telegram.Client, botToken string, maxRetries int) error {
+
+	status, err := client.Auth().Status(ctx)
+	if err == nil && status.Authorized {
+		return nil
+	}
+
 	for attempt := 1; attempt <= maxRetries; attempt++ {
 		_, err := client.Auth().Bot(ctx, botToken)
 		if err == nil {
@@ -47,6 +53,9 @@ func botAuth(ctx context.Context, client *telegram.Client, botToken string, maxR
 		}
 
 		if wait, isFlood := telegram.AsFloodWait(err); isFlood {
+			if wait > 60*time.Second {
+				return fmt.Errorf("flood wait too long: %v", wait)
+			}
 			time.Sleep(wait)
 			continue
 		}
@@ -229,7 +238,7 @@ func FetchTelegramPosts(dbQueries *database.Queries, encryptionKey []byte, sid u
 
 func FetchTelegramWebStats(channel string, messageID int, c *Client) (int, error) {
 	url := fmt.Sprintf("https://t.me/%s/%d?embed=1&mode=tme", channel, messageID)
-	log.Println(url)
+
 	likes := 0
 
 	req, err := http.NewRequest("GET", url, nil)
