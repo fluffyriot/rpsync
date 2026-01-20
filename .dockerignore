@@ -38,4 +38,4 @@ sqlc.yaml
 Caddyfile
 Caddyfile.template
 
-log*
+logs/

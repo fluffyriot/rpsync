@@ -12,29 +12,14 @@
             </button>
         </form>
 
-        <a href="/" class="btn btn-secondary">Back to Home</a>
+        <form method="POST" action="/exports/deleteAll"
+            onsubmit="return submitWithConfirm(this, 'Do you want to delete all exports? Files will be completely removed.');">
+            <input type="hidden" name="user_id" value="{{.user_id}}">
+            <button type="submit" class="btn btn-danger">
+                <i data-lucide="trash-2"></i> Delete All
+            </button>
+        </form>
 
-    </div>
-</div>
-
-<div class="card mb-4">
-    <div class="card-header">Export Configuration</div>
-    <div class="flex justify-between items-center flex-responsive">
-        <div>
-            <p><strong>Username:</strong> <span class="badge badge-neutral">{{.username}}</span></p>
-            <p><strong>User ID:</strong> <span class="badge badge-neutral">{{.user_id}}</span></p>
-        </div>
-        <div class="flex flex-col gap-2 items-end">
-
-            <form method="POST" action="/exports/deleteAll"
-                onsubmit="return submitWithConfirm(this, 'Do you want to delete all exports? Files will be completely removed.');">
-                <input type="hidden" name="user_id" value="{{.user_id}}">
-                <button type="submit" class="btn btn-danger" style="width: 160px; justify-content: flex-start;">
-                    <i data-lucide="trash-2"></i> Delete All
-                </button>
-            </form>
-
-        </div>
     </div>
 </div>
 

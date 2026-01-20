@@ -40,4 +40,4 @@ Caddyfile
 
 certs*
 
-log*
+logs/*
