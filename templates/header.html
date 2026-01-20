@@ -12,20 +12,46 @@
 
 <body>
 
-    <nav style="background: var(--color-bg-surface); border-bottom: 1px solid var(--color-border); padding: 1rem 0;">
+    <nav
+        style="background: var(--color-bg-surface); border-bottom: 1px solid var(--color-border); padding: 1rem 0; position: relative; z-index: 50;">
         <div class="container"
             style="padding-top: 0; padding-bottom: 0; display: flex; align-items: center; justify-content: space-between;">
             <a href="/"
                 style="font-weight: bold; font-size: 1.25rem; color: var(--color-primary-fg); text-decoration: none;">
                 Commission Tracker
             </a>
-            <div style="display: flex; gap: 1.5rem;">
-                <a href="/" class="text-muted" style="text-decoration:none; font-weight: 500;">Dashboard</a>
-                <a href="/analytics" class="text-muted" style="text-decoration:none; font-weight: 500;">Analytics</a>
-                <a href="/exports" class="text-muted" style="text-decoration:none; font-weight: 500;">Exports</a>
-                <a href="/targets" class="text-muted" style="text-decoration:none; font-weight: 500;">Targets</a>
+
+            <button class="btn btn-ghost btn-icon menu-toggle" id="menu-toggle" style="display: none;">
+                <i data-lucide="menu"></i>
+            </button>
+
+            <div class="nav-links" id="nav-links" style="display: flex; gap: 1.5rem;">
+                <a href="/" class="text-muted nav-link" style="text-decoration:none; font-weight: 500;">Dashboard</a>
+                <a href="/sources" class="text-muted nav-link"
+                    style="text-decoration:none; font-weight: 500;">Sources</a>
+                <a href="/targets" class="text-muted nav-link"
+                    style="text-decoration:none; font-weight: 500;">Targets</a>
+                <a href="/exports" class="text-muted nav-link"
+                    style="text-decoration:none; font-weight: 500;">Exports</a>
             </div>
         </div>
     </nav>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const toggle = document.getElementById('menu-toggle');
+            const links = document.getElementById('nav-links');
+
+            if (toggle && links) {
+                toggle.addEventListener('click', function () {
+                    if (links.classList.contains('active')) {
+                        links.classList.remove('active');
+                    } else {
+                        links.classList.add('active');
+                    }
+                });
+            }
+        });
+    </script>
 
     <main class="container">

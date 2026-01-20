@@ -3,7 +3,7 @@
 <div class="flex justify-between items-center mb-4">
   <div>
     <h1>Dashboard</h1>
-    <p class="text-muted">Welcome back, {{.username}} <span class="badge badge-neutral">{{.user_id}}</span></p>
+    <p class="text-muted">Welcome back, <b style="text-transform: capitalize">{{.username}}</b>!</p>
   </div>
 
   <div class="flex gap-2">
@@ -12,254 +12,238 @@
         <i data-lucide="refresh-cw"></i>
       </button>
     </form>
-
-    <form method="POST" action="/sources/syncAll" onsubmit="return submitWithConfirm(this);">
-      <input type="hidden" name="user_id" value="{{.user_id}}">
-      <button type="submit" class="btn btn-primary" title="Sync All Sources">
-        <i data-lucide="cloud-sync"></i> Sync All
-      </button>
-    </form>
-
-    <form method="POST" action="/reset"
-      onclick="return submitWithConfirm(this, 'Are you sure you want to reset the configuration? Everything will be deleted and this action cannot be undone.');">
-      <button type="submit" class="btn btn-danger btn-icon" title="Reset Configuration">
-        <i data-lucide="octagon-alert"></i>
-      </button>
-    </form>
   </div>
 </div>
 
-<div class="grid-responsive">
-  <div>
-    <div class="card">
-      <div class="card-header">Add New Source</div>
-      <form method="POST" action="/sources/setup" id="source_form">
-        <input type="hidden" name="user_id" value="{{.user_id}}">
+<div class="grid-dashboard">
 
-        <div class="form-group">
-          <label class="form-label" for="network">Network</label>
-          <select id="network" name="network" class="form-select" required>
-            <option value="" disabled selected>Select Network</option>
-            <option value="Bluesky">Bluesky</option>
-            <option value="Instagram">Instagram</option>
-            <option value="TikTok">TikTok</option>
-            <option value="Mastodon">Mastodon</option>
-            <option value="Telegram">Telegram</option>
-            <option value="Murrtube">Murrtube</option>
-            <option value="BadPups">BadPups</option>
-            <option value="Google Analytics">Google Analytics</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label" for="username_input">Username</label>
-          <input type="text" id="username_input" name="username" class="form-input" placeholder="username (no @)"
-            required>
-        </div>
-
-        <div class="form-group" id="instagram_section" style="display:none;">
-          <label class="form-label" for="instagram_profile_id">Instagram Profile ID</label>
-          <input id="instagram_profile_id" name="instagram_profile_id" class="form-input" placeholder="123456789">
-          <p class="text-muted" style="font-size: 0.8rem; margin-top: 0.25rem;">Found in Meta Business Suite URL</p>
-        </div>
-
-        <div class="form-group" id="google_analytics_section" style="display:none;">
-          <label class="form-label" for="google_analytics_property_id">Property ID</label>
-          <input id="google_analytics_property_id" name="google_analytics_property_id" class="form-input"
-            placeholder="e.g. 34221144">
-          <p class="text-muted" style="font-size: 0.8rem; margin-top: 0.25rem;">Found in Admin > Property Settings</p>
-
-          <label class="form-label" for="google_service_account_key">Service Account JSON Key</label>
-          <textarea id="google_service_account_key" name="google_service_account_key" class="form-input" rows="5"
-            placeholder='{"type": "service_account", ...}'></textarea>
-          <p class="text-muted" style="font-size: 0.8rem; margin-top: 0.25rem;">Create a Service Account in Google Cloud
-            Console, download the JSON key, and paste it here.</p>
-        </div>
-
-        <div class="form-group" id="telegram_section" style="display:none;">
-
-          <label class="form-label" for="telegram_bot_token">Telegram Bot Token</label>
-          <input id="telegram_bot_token" name="telegram_bot_token" class="form-input" placeholder="your_bot-token">
-
-          <label class="form-label" for="telegram_channel_id">Telegram Channel ID</label>
-          <input id="telegram_channel_id" name="telegram_channel_id" class="form-input" placeholder="your_channel_id">
-
-          <label class="form-label" for="telegram_app_id">Telegram App ID</label>
-          <input id="telegram_app_id" name="telegram_app_id" class="form-input" placeholder="your_app_id">
-
-          <label class="form-label" for="telegram_app_hash">Telegram App Hash</label>
-          <input id="telegram_app_hash" name="telegram_app_hash" class="form-input" placeholder="your_app_hash">
-
-        </div>
-
-        <button type="submit" class="btn btn-primary" style="width: 100%">
-          <i data-lucide="plus"></i> Add Source
-        </button>
-      </form>
-    </div>
+  <div class="stat-card">
+    <div class="stat-icon"><i data-lucide="server" style="width: 24px; height: 24px;"></i></div>
+    <div class="stat-value">{{.active_sources}}</div>
+    <div class="stat-label">Active Sources</div>
+    <a href="/sources" class="stat-link">Manage Sources &rarr;</a>
   </div>
 
-  <div>
-    <div class="card">
-      <div class="card-header">User Sources</div>
 
-      {{if not .sources}}
-      <div class="text-center" style="padding: 2rem; color: var(--color-text-muted);">
-        <i data-lucide="ghost" style="width: 48px; height: 48px; opacity: 0.5;"></i>
-        <p>No sources connected yet.</p>
-      </div>
-      {{else}}
-      <div class="flex flex-col gap-2">
-        {{range .sources}}
-        <div class="source-item">
-          <div class="source-info">
+  <div class="stat-card">
+    <div class="stat-icon"><i data-lucide="database" style="width: 24px; height: 24px;"></i></div>
+    <div class="stat-value">{{.active_targets}}</div>
+    <div class="stat-label">Active Targets</div>
+    <a href="/targets" class="stat-link">Manage Targets &rarr;</a>
+  </div>
+
+  <div class="stat-card {{if gt .sync_errors_30d 0}}has-errors{{end}}">
+    <div class="stat-icon"><i data-lucide="alert-circle" style="width: 24px; height: 24px;"></i></div>
+    <div class="stat-value">{{.sync_errors_30d}}</div>
+    <div class="stat-label">Sync Errors (30d)</div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-icon"><i data-lucide="file-text" style="width: 24px; height: 24px;"></i></div>
+    <div class="stat-value formatted-metric">{{.total_posts}}</div>
+    <div class="stat-label">Total Posts Tracked</div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-icon"><i data-lucide="heart" style="width: 24px; height: 24px;"></i></div>
+    <div class="stat-value formatted-metric">{{.total_likes}}</div>
+    <div class="stat-label">Total Likes</div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-icon"><i data-lucide="share-2" style="width: 24px; height: 24px;"></i></div>
+    <div class="stat-value formatted-metric">{{.total_shares}}</div>
+    <div class="stat-label">Total Shares/Reposts</div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-icon"><i data-lucide="eye" style="width: 24px; height: 24px;"></i></div>
+    <div class="stat-value formatted-metric">{{.total_views}}</div>
+    <div class="stat-label">Total Post Views</div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-icon"><i data-lucide="users" style="width: 24px; height: 24px;"></i></div>
+    <div class="stat-value formatted-metric">{{.total_visitors}}</div>
+    <div class="stat-label">Website Visitors</div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-icon"><i data-lucide="mouse-pointer" style="width: 24px; height: 24px;"></i></div>
+    <div class="stat-value formatted-metric">{{.total_page_views}}</div>
+    <div class="stat-label">Website Page Views</div>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom: 2rem;">
+  <div class="card-header">Engagement Over Time</div>
+  <div style="position: relative; height: 400px; width: 100%;">
+    <canvas id="engagementChart"></canvas>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">Recent Sync Errors</div>
+  {{if not .recent_logs}}
+  <div class="text-center" style="padding: 2rem; color: var(--color-text-muted);">
+    <i data-lucide="check-circle" style="width: 48px; height: 48px; opacity: 0.5; color: var(--color-success);"></i>
+    <p>No recent errors found.</p>
+  </div>
+  {{else}}
+  <div style="overflow-x: auto;">
+    <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+      <thead>
+        <tr style="text-align: left; border-bottom: 1px solid var(--color-border);">
+          <th style="padding: 0.75rem;">Time</th>
+          <th style="padding: 0.75rem;">Source/Target</th>
+          <th style="padding: 0.75rem;">Message</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .recent_logs}}
+        <tr style="border-bottom: 1px solid var(--color-border);">
+          <td style="padding: 0.75rem; white-space: nowrap; color: var(--color-text-muted);">
+            {{.CreatedAt.Format "Jan 02 15:04"}}
+          </td>
+          <td style="padding: 0.75rem;">
+            {{if .SourceNetwork.Valid}}
             <div class="flex items-center gap-2">
-              <span style="font-weight: bold; font-size: 1.05rem;">{{.UserName}}</span>
-              <span class="badge badge-neutral">{{.Network}}</span>
+              <span class="badge badge-neutral">{{.SourceNetwork.String}}</span>
+              <span>{{.SourceUsername.String}}</span>
             </div>
-
-            <div class="source-meta flex items-center gap-2">
-              {{if .IsActive}}
-              {{if eq .SyncStatus "Synced"}}
-              <span class="badge badge-success">Synced</span>
-              {{else if eq .SyncStatus "Syncing"}}
-              <span class="badge badge-warning">Syncing</span>
-              {{else if eq .SyncStatus "Failed"}}
-              <span class="badge badge-danger">Failed</span>
-              {{else}}
-              <span class="badge badge-neutral">{{.SyncStatus}}</span>
-              {{end}}
-              {{else}}
-              <span class="badge badge-neutral">Disabled</span>
-              {{end}}
-
-              {{if .LastSynced.Valid}}
-              <span>updated {{.LastSynced.Time.Format "Jan 02 15:04"}}</span>
-              {{end}}
-
-              {{if .StatusReason.Valid}}
-              <span title="{{.StatusReason.String}}"><i data-lucide="info"
-                  style="width: 14px; height: 14px;"></i></span>
-              {{end}}
+            {{else if .TargetType.Valid}}
+            <div class="flex items-center gap-2">
+              <span class="badge badge-neutral">Target</span>
+              <span>{{.TargetType.String}}</span>
             </div>
-          </div>
-
-          <div class="source-actions">
-
-            <form method="POST" action="/sources/sync" onsubmit="return submitWithConfirm(this);">
-              <input type="hidden" name="source_id" value="{{.ID}}">
-              <button type="submit" class="btn btn-secondary btn-icon" {{if not .IsActive}}disabled{{end}}
-                title="Sync Now">
-                <i data-lucide="cloud-sync"></i>
-              </button>
-            </form>
-
-            {{if .IsActive}}
-            <form method="POST" action="/sources/deactivate"
-              onsubmit="return submitWithConfirm(this, 'Deactivate this source?');">
-              <input type="hidden" name="source_id" value="{{.ID}}">
-              <button type="submit" class="btn btn-secondary btn-icon" title="Disable">
-                <i data-lucide="power"></i>
-              </button>
-            </form>
             {{else}}
-            <form method="POST" action="/sources/activate" onsubmit="return submitWithConfirm(this);">
-              <input type="hidden" name="source_id" value="{{.ID}}">
-              <button type="submit" class="btn btn-secondary btn-icon" title="Enable">
-                <i data-lucide="power"></i>
-              </button>
-            </form>
+            <span class="text-muted">System</span>
             {{end}}
-
-            {{if eq .Network "Instagram"}}
-            <form method="POST" action="/auth/facebook/refresh"
-              onsubmit="return submitWithConfirm(this, 'Refresh access token for this source?');">
-              <input type="hidden" name="source_id" value="{{.ID}}">
-              <button type="submit" class="btn btn-danger btn-icon" {{if not .IsActive}}disabled{{end}}
-                title="Refresh Token">
-                <i data-lucide="key-round"></i>
-              </button>
-            </form>
-            {{end}}
-
-            <form method="POST" action="/sources/delete"
-              onsubmit="return submitWithConfirm(this, 'Delete this source?');">
-              <input type="hidden" name="source_id" value="{{.ID}}">
-              <button type="submit" class="btn btn-danger btn-icon" title="Delete">
-                <i data-lucide="trash-2"></i>
-              </button>
-            </form>
-          </div>
-        </div>
+          </td>
+          <td style="padding: 0.75rem; color: var(--color-danger);">
+            {{.Message}}
+          </td>
+        </tr>
         {{end}}
-      </div>
-      {{end}}
-    </div>
+      </tbody>
+    </table>
   </div>
+  {{end}}
 </div>
+
+{{ template "footer.html" . }}
 
 <script>
   document.addEventListener("DOMContentLoaded", function () {
-    const networkSelect = document.getElementById("network");
-    const instagramSection = document.getElementById("instagram_section");
-    const profileInput = document.getElementById("instagram_profile_id");
+    const metrics = document.querySelectorAll('.formatted-metric');
+    metrics.forEach(el => {
+      let val = parseInt(el.textContent.trim());
+      if (isNaN(val)) return;
 
-    const googleSection = document.getElementById("google_analytics_section");
-    const googlePropertyId = document.getElementById("google_analytics_property_id");
-    const googleKey = document.getElementById("google_service_account_key");
-
-    const telegramSection = document.getElementById("telegram_section");
-    const channelInput = document.getElementById("telegram_channel_id");
-    const tgBotToken = document.getElementById("telegram_bot_token");
-    const tgAppId = document.getElementById("telegram_app_id");
-    const tgAppHash = document.getElementById("telegram_app_hash");
-    const usernameInput = document.getElementById("username_input");
-
-    if (!networkSelect) return;
-
-    function updateVisibility() {
-      const network = networkSelect.value;
-
-      instagramSection.style.display = "none";
-      profileInput.required = false;
-
-      googleSection.style.display = "none";
-      googlePropertyId.required = false;
-      googleKey.required = false;
-
-      telegramSection.style.display = "none";
-      channelInput.required = false;
-      tgBotToken.required = false;
-      tgAppId.required = false;
-      tgAppHash.required = false;
-
-
-      if (network === "Instagram") {
-        instagramSection.style.display = "block";
-        profileInput.required = true;
-      } else if (network === "Google Analytics") {
-        googleSection.style.display = "block";
-        googlePropertyId.required = true;
-        googleKey.required = true;
-      } else if (network === "Telegram") {
-        telegramSection.style.display = "block";
-        channelInput.required = true;
-        tgBotToken.required = true;
-        tgAppId.required = true;
-        tgAppHash.required = true;
+      if (val >= 100000) {
+        let shortened = (val / 1000).toFixed(1);
+        if (shortened.endsWith('.0')) {
+          shortened = shortened.slice(0, -2);
+        }
+        el.textContent = shortened + 'k';
+      } else if (val >= 1000) {
+        el.textContent = val.toLocaleString();
       }
-
-      if (network === "Mastodon") {
-        usernameInput.placeholder = "username@instance.social";
-      } else if (network === "Google Analytics") {
-        usernameInput.placeholder = "Your website URL (e.g. https://example.com)";
-      } else {
-        usernameInput.placeholder = "username (no @)";
-      }
-    }
-
-    networkSelect.addEventListener("change", updateVisibility);
+    });
   });
 </script>
 
-{{ template "footer.html" . }}
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    fetch('/stats')
+      .then(response => response.json())
+      .then(data => {
+        if (!data || data.length === 0) {
+          return;
+        }
+
+        const ctx = document.getElementById('engagementChart').getContext('2d');
+
+        const datasets = [];
+        const allDates = new Set();
+
+        Chart.defaults.color = '#a0a0a0';
+        Chart.defaults.borderColor = '#333';
+
+        data.forEach(source => {
+          const points = source.points || [];
+          const dataPoints = points.map(p => {
+            const dateStr = p.date;
+            allDates.add(dateStr);
+            return {
+              x: dateStr,
+              y: p.likes + p.reposts
+            };
+          });
+
+          let hash = 0;
+          const str = source.network + source.username;
+          for (let i = 0; i < str.length; i++) {
+            hash = str.charCodeAt(i) + ((hash << 5) - hash);
+          }
+          const c = (hash & 0x00FFFFFF).toString(16).toUpperCase();
+          const color = '#' + "00000".substring(0, 6 - c.length) + c;
+
+          datasets.push({
+            label: `${source.network} (${source.username})`,
+            data: dataPoints,
+            borderColor: color,
+            backgroundColor: color + '20',
+            fill: false,
+            tension: 0.3,
+            borderWidth: 2,
+            pointRadius: 3
+          });
+        });
+
+        const sortedDates = Array.from(allDates).sort();
+
+        new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: sortedDates,
+            datasets: datasets
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+              mode: 'index',
+              intersect: false,
+            },
+            scales: {
+              x: {
+                type: 'category',
+                grid: { color: 'rgba(255, 255, 255, 0.05)' }
+              },
+              y: {
+                beginAtZero: true,
+                title: { display: true, text: 'Total Engagement' },
+                grid: { color: 'rgba(255, 255, 255, 0.05)' }
+              }
+            },
+            plugins: {
+              legend: {
+                position: 'bottom',
+                labels: { padding: 20, usePointStyle: true }
+              },
+              tooltip: {
+                backgroundColor: 'rgba(20, 20, 30, 0.9)',
+                titleColor: '#fff',
+                bodyColor: '#ccc',
+                padding: 10,
+                cornerRadius: 8,
+                displayColors: true
+              }
+            }
+          }
+        });
+      })
+      .catch(err => console.error("Error fetching stats:", err));
+  });
+</script>

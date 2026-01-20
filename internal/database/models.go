@@ -64,6 +64,14 @@ type Export struct {
 	TargetID      uuid.NullUUID
 }
 
+type Log struct {
+	ID        uuid.UUID
+	CreatedAt time.Time
+	SourceID  uuid.NullUUID
+	TargetID  uuid.NullUUID
+	Message   string
+}
+
 type Post struct {
 	ID                uuid.UUID
 	CreatedAt         time.Time

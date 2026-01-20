@@ -4,7 +4,6 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/fluffyriot/commission-tracker/internal/config"
 	"github.com/fluffyriot/commission-tracker/internal/stats"
 	"github.com/gin-gonic/gin"
 )
@@ -39,36 +38,4 @@ func (h *Handler) StatsHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, statsData)
-}
-
-func (h *Handler) AnalyticsPageHandler(c *gin.Context) {
-	if h.Config.DBInitErr != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"error":       h.Config.DBInitErr.Error(),
-			"app_version": config.AppVersion,
-		})
-		return
-	}
-
-	ctx := c.Request.Context()
-	users, err := h.DB.GetAllUsers(ctx)
-	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"error":       err.Error(),
-			"app_version": config.AppVersion,
-		})
-		return
-	}
-
-	if len(users) == 0 {
-		c.Redirect(http.StatusSeeOther, "/")
-		return
-	}
-
-	user := users[0]
-
-	c.HTML(http.StatusOK, "analytics.html", gin.H{
-		"username":    user.Username,
-		"app_version": config.AppVersion,
-	})
 }
