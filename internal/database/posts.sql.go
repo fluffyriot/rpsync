@@ -13,6 +13,19 @@ import (
 	"github.com/google/uuid"
 )
 
+const checkCountOfPostsForUser = `-- name: CheckCountOfPostsForUser :one
+SELECT COUNT(*) FROM posts p
+join sources s on p.source_id = s.id
+where s.user_id = $1
+`
+
+func (q *Queries) CheckCountOfPostsForUser(ctx context.Context, userID uuid.UUID) (int64, error) {
+	row := q.db.QueryRowContext(ctx, checkCountOfPostsForUser, userID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createPost = `-- name: CreatePost :one
 INSERT INTO posts (id, created_at, last_synced_at, source_id, is_archived, network_internal_id, content, post_type, author)
 VALUES (

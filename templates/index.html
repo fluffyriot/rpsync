@@ -47,6 +47,7 @@
             <option value="Telegram">Telegram</option>
             <option value="Murrtube">Murrtube</option>
             <option value="BadPups">BadPups</option>
+            <option value="Google Analytics">Google Analytics</option>
           </select>
         </div>
 
@@ -60,6 +61,19 @@
           <label class="form-label" for="instagram_profile_id">Instagram Profile ID</label>
           <input id="instagram_profile_id" name="instagram_profile_id" class="form-input" placeholder="123456789">
           <p class="text-muted" style="font-size: 0.8rem; margin-top: 0.25rem;">Found in Meta Business Suite URL</p>
+        </div>
+
+        <div class="form-group" id="google_analytics_section" style="display:none;">
+          <label class="form-label" for="google_analytics_property_id">Property ID</label>
+          <input id="google_analytics_property_id" name="google_analytics_property_id" class="form-input"
+            placeholder="e.g. 34221144">
+          <p class="text-muted" style="font-size: 0.8rem; margin-top: 0.25rem;">Found in Admin > Property Settings</p>
+
+          <label class="form-label" for="google_service_account_key">Service Account JSON Key</label>
+          <textarea id="google_service_account_key" name="google_service_account_key" class="form-input" rows="5"
+            placeholder='{"type": "service_account", ...}'></textarea>
+          <p class="text-muted" style="font-size: 0.8rem; margin-top: 0.25rem;">Create a Service Account in Google Cloud
+            Console, download the JSON key, and paste it here.</p>
         </div>
 
         <div class="form-group" id="telegram_section" style="display:none;">
@@ -177,6 +191,11 @@
     const networkSelect = document.getElementById("network");
     const instagramSection = document.getElementById("instagram_section");
     const profileInput = document.getElementById("instagram_profile_id");
+
+    const googleSection = document.getElementById("google_analytics_section");
+    const googlePropertyId = document.getElementById("google_analytics_property_id");
+    const googleKey = document.getElementById("google_service_account_key");
+
     const telegramSection = document.getElementById("telegram_section");
     const channelInput = document.getElementById("telegram_channel_id");
     const tgBotToken = document.getElementById("telegram_bot_token");
@@ -189,44 +208,39 @@
     function updateVisibility() {
       const network = networkSelect.value;
 
+      instagramSection.style.display = "none";
+      profileInput.required = false;
+
+      googleSection.style.display = "none";
+      googlePropertyId.required = false;
+      googleKey.required = false;
+
+      telegramSection.style.display = "none";
+      channelInput.required = false;
+      tgBotToken.required = false;
+      tgAppId.required = false;
+      tgAppHash.required = false;
+
+
       if (network === "Instagram") {
         instagramSection.style.display = "block";
         profileInput.required = true;
-        telegramSection.style.display = "none";
-        channelInput.required = false;
-        channelInput.value = "";
-        tgBotToken.required = false;
-        tgBotToken.value = "";
-        tgAppId.required = false;
-        tgAppId.value = "";
-        tgAppHash.required = false;
-        tgAppHash.value = "";
+      } else if (network === "Google Analytics") {
+        googleSection.style.display = "block";
+        googlePropertyId.required = true;
+        googleKey.required = true;
       } else if (network === "Telegram") {
         telegramSection.style.display = "block";
         channelInput.required = true;
         tgBotToken.required = true;
         tgAppId.required = true;
         tgAppHash.required = true;
-        instagramSection.style.display = "none";
-        profileInput.required = false;
-        profileInput.value = "";
-      } else {
-        instagramSection.style.display = "none";
-        profileInput.required = false;
-        profileInput.value = "";
-        telegramSection.style.display = "none";
-        channelInput.required = false;
-        channelInput.value = "";
-        tgBotToken.required = false;
-        tgBotToken.value = "";
-        tgAppId.required = false;
-        tgAppId.value = "";
-        tgAppHash.required = false;
-        tgAppHash.value = "";
       }
 
       if (network === "Mastodon") {
         usernameInput.placeholder = "username@instance.social";
+      } else if (network === "Google Analytics") {
+        usernameInput.placeholder = "Your website URL (e.g. https://example.com)";
       } else {
         usernameInput.placeholder = "username (no @)";
       }

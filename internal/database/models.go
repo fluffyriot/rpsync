@@ -11,6 +11,38 @@ import (
 	"github.com/google/uuid"
 )
 
+type AnalyticsPageStat struct {
+	ID       uuid.UUID
+	Date     time.Time
+	UrlPath  string
+	Views    int32
+	SourceID uuid.UUID
+}
+
+type AnalyticsPageStatsOnTarget struct {
+	ID             uuid.UUID
+	SyncedAt       time.Time
+	StatID         uuid.UUID
+	TargetID       uuid.UUID
+	TargetRecordID string
+}
+
+type AnalyticsSiteStat struct {
+	ID                 uuid.UUID
+	Date               time.Time
+	Visitors           int32
+	AvgSessionDuration float64
+	SourceID           uuid.UUID
+}
+
+type AnalyticsSiteStatsOnTarget struct {
+	ID             uuid.UUID
+	SyncedAt       time.Time
+	StatID         uuid.UUID
+	TargetID       uuid.UUID
+	TargetRecordID string
+}
+
 type ColumnMapping struct {
 	ID               uuid.UUID
 	CreatedAt        time.Time

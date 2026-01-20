@@ -18,7 +18,8 @@ func (h *Handler) UserSetupHandler(c *gin.Context) {
 	username := c.PostForm("username")
 	if username == "" {
 		c.HTML(http.StatusBadRequest, "error.html", gin.H{
-			"error": "username is required",
+			"error":       "username is required",
+			"app_version": config.AppVersion,
 		})
 		return
 	}
@@ -26,7 +27,8 @@ func (h *Handler) UserSetupHandler(c *gin.Context) {
 	_, _, err := config.CreateUserFromForm(h.DB, username)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"error": err.Error(),
+			"error":       err.Error(),
+			"app_version": config.AppVersion,
 		})
 		return
 	}
@@ -43,10 +45,13 @@ func (h *Handler) SourcesSetupHandler(c *gin.Context) {
 	tgChannelId := c.PostForm("telegram_channel_id")
 	tgAppId := c.PostForm("telegram_app_id")
 	tgAppHash := c.PostForm("telegram_app_hash")
+	googlePropertyId := c.PostForm("google_analytics_property_id")
+	googleKey := c.PostForm("google_service_account_key")
 
 	if userID == "" || network == "" || username == "" {
 		c.HTML(http.StatusBadRequest, "error.html", gin.H{
-			"error": "all fields are required",
+			"error":       "all fields are required",
+			"app_version": config.AppVersion,
 		})
 		return
 	}
@@ -60,11 +65,14 @@ func (h *Handler) SourcesSetupHandler(c *gin.Context) {
 		tgChannelId,
 		tgAppId,
 		tgAppHash,
+		googleKey,
+		googlePropertyId,
 		h.Config.TokenEncryptionKey,
 	)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"error": err.Error(),
+			"error":       err.Error(),
+			"app_version": config.AppVersion,
 		})
 		return
 	}
@@ -86,7 +94,8 @@ func (h *Handler) DeactivateSourceHandler(c *gin.Context) {
 	sourceID, err := uuid.Parse(c.PostForm("source_id"))
 	if err != nil {
 		c.HTML(http.StatusBadRequest, "error.html", gin.H{
-			"error": err.Error(),
+			"error":       err.Error(),
+			"app_version": config.AppVersion,
 		})
 		return
 	}
@@ -102,7 +111,8 @@ func (h *Handler) DeactivateSourceHandler(c *gin.Context) {
 	)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"error": err.Error(),
+			"error":       err.Error(),
+			"app_version": config.AppVersion,
 		})
 		return
 	}
@@ -114,7 +124,8 @@ func (h *Handler) ActivateSourceHandler(c *gin.Context) {
 	sourceID, err := uuid.Parse(c.PostForm("source_id"))
 	if err != nil {
 		c.HTML(http.StatusBadRequest, "error.html", gin.H{
-			"error": err.Error(),
+			"error":       err.Error(),
+			"app_version": config.AppVersion,
 		})
 		return
 	}
@@ -130,7 +141,8 @@ func (h *Handler) ActivateSourceHandler(c *gin.Context) {
 	)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"error": err.Error(),
+			"error":       err.Error(),
+			"app_version": config.AppVersion,
 		})
 		return
 	}
@@ -142,7 +154,8 @@ func (h *Handler) DeleteSourceHandler(c *gin.Context) {
 	sourceID, err := uuid.Parse(c.PostForm("source_id"))
 	if err != nil {
 		c.HTML(http.StatusBadRequest, "error.html", gin.H{
-			"error": err.Error(),
+			"error":       err.Error(),
+			"app_version": config.AppVersion,
 		})
 		return
 	}
@@ -150,7 +163,8 @@ func (h *Handler) DeleteSourceHandler(c *gin.Context) {
 	syncedTargets, err := h.DB.GetSourcesOfTarget(context.Background(), sourceID)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"error": err.Error(),
+			"error":       err.Error(),
+			"app_version": config.AppVersion,
 		})
 		return
 	}
@@ -168,7 +182,8 @@ func (h *Handler) DeleteSourceHandler(c *gin.Context) {
 	err = h.DB.DeleteSource(context.Background(), sourceID)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"error": err.Error(),
+			"error":       err.Error(),
+			"app_version": config.AppVersion,
 		})
 		return
 	}
@@ -180,7 +195,8 @@ func (h *Handler) SyncSourceHandler(c *gin.Context) {
 	sourceID, err := uuid.Parse(c.PostForm("source_id"))
 	if err != nil {
 		c.HTML(http.StatusBadRequest, "error.html", gin.H{
-			"error": err.Error(),
+			"error":       err.Error(),
+			"app_version": config.AppVersion,
 		})
 		return
 	}
@@ -201,7 +217,8 @@ func (h *Handler) SyncAllHandler(c *gin.Context) {
 	userID, err := uuid.Parse(c.PostForm("user_id"))
 	if err != nil {
 		c.HTML(http.StatusBadRequest, "error.html", gin.H{
-			"error": err.Error(),
+			"error":       err.Error(),
+			"app_version": config.AppVersion,
 		})
 		return
 	}
@@ -210,7 +227,8 @@ func (h *Handler) SyncAllHandler(c *gin.Context) {
 	if err != nil {
 		log.Printf("Error getting user active sources: %v", err)
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"error": err.Error(),
+			"error":       err.Error(),
+			"app_version": config.AppVersion,
 		})
 		return
 	}

@@ -27,6 +27,8 @@ const (
 	NocoDb SyncMethodEnum = "NocoDb"
 )
 
+const AppVersion = "0.9"
+
 type User struct {
 	Id        uuid.UUID
 	Username  string
@@ -144,7 +146,7 @@ func CreateUserFromForm(dbQueries *database.Queries, userName string) (name, id 
 
 }
 
-func CreateSourceFromForm(dbQueries *database.Queries, uid, network, username, tgBotToken, tgChannelId, tgAppId, tgAppHash string, encryptionKey []byte) (id, networkName string, e error) {
+func CreateSourceFromForm(dbQueries *database.Queries, uid, network, username, tgBotToken, tgChannelId, tgAppId, tgAppHash, googleKey, googlePropertyId string, encryptionKey []byte) (id, networkName string, e error) {
 
 	uidParse, err := uuid.Parse(uid)
 	if err != nil {
@@ -153,6 +155,10 @@ func CreateSourceFromForm(dbQueries *database.Queries, uid, network, username, t
 
 	if network == "Telegram" && (tgBotToken == "" || tgChannelId == "" || tgAppId == "" || tgAppHash == "") {
 		return "", "", fmt.Errorf("Channel Id, Bot Token, App Id and App Hash are required for Telegram")
+	}
+
+	if network == "Google Analytics" && (googleKey == "" || googlePropertyId == "") {
+		return "", "", fmt.Errorf("Property ID and Service Account Key are required for Google Analytics")
 	}
 
 	s, err := dbQueries.CreateSource(context.Background(), database.CreateSourceParams{
@@ -174,6 +180,14 @@ func CreateSourceFromForm(dbQueries *database.Queries, uid, network, username, t
 	if network == "Telegram" {
 		tokenFormatted := tgBotToken + ":::" + tgAppId + ":::" + tgAppHash
 		err = authhelp.InsertSourceToken(context.Background(), dbQueries, s.ID, tokenFormatted, tgChannelId, encryptionKey)
+		if err != nil {
+			dbQueries.DeleteSource(context.Background(), s.ID)
+			return "", "", fmt.Errorf("Failed to create source with auth key. Error: %v", err)
+		}
+	}
+
+	if network == "Google Analytics" {
+		err = authhelp.InsertSourceToken(context.Background(), dbQueries, s.ID, googleKey, googlePropertyId, encryptionKey)
 		if err != nil {
 			dbQueries.DeleteSource(context.Background(), s.ID)
 			return "", "", fmt.Errorf("Failed to create source with auth key. Error: %v", err)

@@ -22,6 +22,8 @@ func ConvNetworkToURL(network, username string) (string, error) {
 	case "Mastodon":
 		splits := strings.Split(username, "@")
 		return fmt.Sprintf("https://%v/@%v", splits[1], splits[0]), nil
+	case "Google Analytics":
+		return "analytics.google.com/analytics/web/", nil
 	default:
 		return "", fmt.Errorf("network %v not recognized", network)
 	}

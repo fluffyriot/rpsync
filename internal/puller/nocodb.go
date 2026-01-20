@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -26,20 +27,24 @@ type NocoDeleteRecord struct {
 }
 
 type NocoRecordFields struct {
-	ID                string    `json:"ct_id"`
-	CreatedAt         time.Time `json:"created_at,omitempty"`
-	LastSynced        time.Time `json:"last_synced,omitempty"`
-	IsArchived        bool      `json:"is_archived,omitempty"`
-	NetworkInternalID string    `json:"network_internal_id,omitempty"`
-	Network           string    `json:"network,omitempty"`
-	Username          string    `json:"username,omitempty"`
-	PostType          string    `json:"post_type,omitempty"`
-	Author            string    `json:"author,omitempty"`
-	Content           string    `json:"content,omitempty"`
-	Likes             int32     `json:"likes,omitempty"`
-	Views             int32     `json:"views,omitempty"`
-	Reposts           int32     `json:"reposts,omitempty"`
-	URL               string    `json:"URL,omitempty"`
+	ID                 string    `json:"ct_id"`
+	CreatedAt          time.Time `json:"created_at,omitempty"`
+	LastSynced         time.Time `json:"last_synced,omitempty"`
+	IsArchived         bool      `json:"is_archived,omitempty"`
+	NetworkInternalID  string    `json:"network_internal_id,omitempty"`
+	Network            string    `json:"network,omitempty"`
+	Username           string    `json:"username,omitempty"`
+	PostType           string    `json:"post_type,omitempty"`
+	Author             string    `json:"author,omitempty"`
+	Content            string    `json:"content,omitempty"`
+	Likes              int32     `json:"likes,omitempty"`
+	Views              int32     `json:"views,omitempty"`
+	Reposts            int32     `json:"reposts,omitempty"`
+	URL                string    `json:"URL,omitempty"`
+	Date               time.Time `json:"date,omitempty"`
+	Visitors           int32     `json:"visitors,omitempty"`
+	AvgSessionDuration float64   `json:"avg_session_duration,omitempty"`
+	PagePath           string    `json:"page_path,omitempty"`
 }
 
 type NocoColumnTypeOptions struct {
@@ -81,129 +86,281 @@ type NocoColumnInfo struct {
 }
 
 func InitializeNoco(dbQueries *database.Queries, c *Client, encryptionKey []byte, target database.Target) error {
+	log.Println("InitializeNoco started for target", target.ID)
 
 	nocoURL := target.HostUrl.String +
 		"/api/v3/meta/bases/" +
 		target.DbID.String +
 		"/tables"
 
-	postsTable := NocoTable{
-		Title:       "Posts",
-		Description: "Posts from your social networks",
-		Fields: []NocoColumn{
-			{Title: "ct_id", Type: "SingleLineText", Unique: true},
-			{Title: "created_at", Type: "DateTime"},
-			{Title: "last_synced", Type: "DateTime"},
-			{Title: "is_archived", Type: "Checkbox"},
-			{Title: "network_internal_id", Type: "SingleLineText"},
-			{Title: "post_type", Type: "SingleLineText"},
-			{Title: "author", Type: "SingleLineText"},
-			{Title: "content", Type: "LongText"},
-			{Title: "likes", Type: "Number"},
-			{Title: "views", Type: "Number"},
-			{Title: "reposts", Type: "Number"},
-			{Title: "URL", Type: "URL"},
-		},
-	}
-
-	postsResp, err := createNocoTable(c, dbQueries, encryptionKey, target.ID, nocoURL, postsTable)
-	if err != nil {
-		return err
-	}
-
-	postsMapping, err := dbQueries.CreateMappingForTable(context.Background(), database.CreateMappingForTableParams{
-		ID:              uuid.New(),
-		CreatedAt:       time.Now(),
-		SourceTableName: "posts",
-		TargetTableName: postsResp.Title,
-		TargetTableCode: sql.NullString{String: postsResp.ID, Valid: true},
+	_, err := dbQueries.GetTableMappingsByTargetAndName(context.Background(), database.GetTableMappingsByTargetAndNameParams{
 		TargetID:        target.ID,
+		TargetTableName: "posts",
 	})
+	var postsRespID string
 	if err != nil {
-		return fmt.Errorf("create posts table mapping: %w", err)
-	}
+		postsTable := NocoTable{
+			Title:       "posts",
+			Description: "Posts from your social networks",
+			Fields: []NocoColumn{
+				{Title: "ct_id", Type: "SingleLineText", Unique: true},
+				{Title: "created_at", Type: "DateTime"},
+				{Title: "last_synced", Type: "DateTime"},
+				{Title: "is_archived", Type: "Checkbox"},
+				{Title: "network_internal_id", Type: "SingleLineText"},
+				{Title: "post_type", Type: "SingleLineText"},
+				{Title: "author", Type: "SingleLineText"},
+				{Title: "content", Type: "LongText"},
+				{Title: "likes", Type: "Number"},
+				{Title: "views", Type: "Number"},
+				{Title: "reposts", Type: "Number"},
+				{Title: "URL", Type: "URL"},
+			},
+		}
 
-	for _, field := range postsResp.Fields {
-		_, err := dbQueries.CreateMappingForColumn(context.Background(), database.CreateMappingForColumnParams{
-			ID:               uuid.New(),
-			CreatedAt:        time.Now(),
-			TableMappingID:   postsMapping.ID,
-			SourceColumnName: field.Title,
-			TargetColumnName: field.Title,
-			TargetColumnCode: sql.NullString{String: field.ID, Valid: true},
+		postsResp, err := createNocoTable(c, dbQueries, encryptionKey, target.ID, nocoURL, postsTable)
+		if err != nil {
+			return err
+		}
+		postsRespID = postsResp.ID
+
+		postsMapping, err := dbQueries.CreateMappingForTable(context.Background(), database.CreateMappingForTableParams{
+			ID:              uuid.New(),
+			CreatedAt:       time.Now(),
+			SourceTableName: "posts",
+			TargetTableName: postsResp.Title,
+			TargetTableCode: sql.NullString{String: postsResp.ID, Valid: true},
+			TargetID:        target.ID,
 		})
 		if err != nil {
-			return fmt.Errorf("create posts column mapping %s: %w", field.Title, err)
+			return fmt.Errorf("create posts table mapping: %w", err)
+		}
+
+		for _, field := range postsResp.Fields {
+			_, err := dbQueries.CreateMappingForColumn(context.Background(), database.CreateMappingForColumnParams{
+				ID:               uuid.New(),
+				CreatedAt:        time.Now(),
+				TableMappingID:   postsMapping.ID,
+				SourceColumnName: field.Title,
+				TargetColumnName: field.Title,
+				TargetColumnCode: sql.NullString{String: field.ID, Valid: true},
+			})
+			if err != nil {
+				return fmt.Errorf("create posts column mapping %s: %w", field.Title, err)
+			}
+		}
+	} else {
+		tm, err := dbQueries.GetTableMappingsByTargetAndName(context.Background(), database.GetTableMappingsByTargetAndNameParams{
+			TargetID:        target.ID,
+			TargetTableName: "posts",
+		})
+		if err == nil {
+			postsRespID = tm.TargetTableCode.String
 		}
 	}
 
-	sourcesTable := NocoTable{
-		Title:       "Sources",
-		Description: "Social media sources",
-		Fields: []NocoColumn{
-			{Title: "ct_id", Type: "SingleLineText", Unique: true},
-			{
-				Title: "network",
-				Type:  "SingleSelect",
-				Options: NocoColumnTypeSelectOptions{
-					Choices: []NocoColumnTypeOptions{
-						{Title: "Instagram"},
-						{Title: "Bluesky"},
-						{Title: "Murrtube"},
-						{Title: "BadPups"},
-						{Title: "TikTok"},
-						{Title: "Mastodon"},
-						{Title: "Telegram"},
-					}},
+	_, err = dbQueries.GetTableMappingsByTargetAndName(context.Background(), database.GetTableMappingsByTargetAndNameParams{
+		TargetID:        target.ID,
+		TargetTableName: "analytics_site_stats",
+	})
+	var siteStatsRespID string
+	if err != nil {
+		analyticsSiteStatsTable := NocoTable{
+			Title:       "analytics_site_stats",
+			Description: "Daily website analytics (visitors, session duration)",
+			Fields: []NocoColumn{
+				{Title: "ct_id", Type: "SingleLineText", Unique: true},
+				{Title: "date", Type: "Date"},
+				{Title: "visitors", Type: "Number"},
+				{Title: "avg_session_duration", Type: "Decimal"},
 			},
-			{Title: "username", Type: "SingleLineText"},
-			{Title: "URL", Type: "URL"},
-			{Title: "last_synced", Type: "DateTime"},
-			{
-				Title: "posts",
-				Type:  "Links",
-				Options: NocoColumnTypeRelation{
-					RelationType:   "hm",
-					RelatedTableId: postsResp.ID,
+		}
+
+		siteStatsResp, err := createNocoTable(c, dbQueries, encryptionKey, target.ID, nocoURL, analyticsSiteStatsTable)
+		if err != nil {
+			return fmt.Errorf("create analytics site stats table: %w", err)
+		}
+		siteStatsRespID = siteStatsResp.ID
+
+		siteStatsMapping, err := dbQueries.CreateMappingForTable(context.Background(), database.CreateMappingForTableParams{
+			ID:              uuid.New(),
+			CreatedAt:       time.Now(),
+			SourceTableName: "analytics_site_stats",
+			TargetTableName: siteStatsResp.Title,
+			TargetTableCode: sql.NullString{String: siteStatsResp.ID, Valid: true},
+			TargetID:        target.ID,
+		})
+		if err != nil {
+			return fmt.Errorf("create analytics site stats table mapping: %w", err)
+		}
+
+		for _, field := range siteStatsResp.Fields {
+			_, err := dbQueries.CreateMappingForColumn(context.Background(), database.CreateMappingForColumnParams{
+				ID:               uuid.New(),
+				CreatedAt:        time.Now(),
+				TableMappingID:   siteStatsMapping.ID,
+				SourceColumnName: field.Title,
+				TargetColumnName: field.Title,
+				TargetColumnCode: sql.NullString{String: field.ID, Valid: true},
+			})
+			if err != nil {
+				return fmt.Errorf("create analytics site stats column mapping %s: %w", field.Title, err)
+			}
+		}
+	} else {
+		tm, err := dbQueries.GetTableMappingsByTargetAndName(context.Background(), database.GetTableMappingsByTargetAndNameParams{
+			TargetID:        target.ID,
+			TargetTableName: "analytics_site_stats",
+		})
+		if err == nil {
+			siteStatsRespID = tm.TargetTableCode.String
+		}
+	}
+
+	_, err = dbQueries.GetTableMappingsByTargetAndName(context.Background(), database.GetTableMappingsByTargetAndNameParams{
+		TargetID:        target.ID,
+		TargetTableName: "analytics_page_stats",
+	})
+	var pageStatsRespID string
+	if err != nil {
+		analyticsPageStatsTable := NocoTable{
+			Title:       "analytics_page_stats",
+			Description: "Daily page view analytics",
+			Fields: []NocoColumn{
+				{Title: "ct_id", Type: "SingleLineText", Unique: true},
+				{Title: "date", Type: "Date"},
+				{Title: "page_path", Type: "SingleLineText"},
+				{Title: "views", Type: "Number"},
+			},
+		}
+
+		pageStatsResp, err := createNocoTable(c, dbQueries, encryptionKey, target.ID, nocoURL, analyticsPageStatsTable)
+		if err != nil {
+			return fmt.Errorf("create analytics page stats table: %w", err)
+		}
+		pageStatsRespID = pageStatsResp.ID
+
+		pageStatsMapping, err := dbQueries.CreateMappingForTable(context.Background(), database.CreateMappingForTableParams{
+			ID:              uuid.New(),
+			CreatedAt:       time.Now(),
+			SourceTableName: "analytics_page_stats",
+			TargetTableName: pageStatsResp.Title,
+			TargetTableCode: sql.NullString{String: pageStatsResp.ID, Valid: true},
+			TargetID:        target.ID,
+		})
+		if err != nil {
+			return fmt.Errorf("create analytics page stats table mapping: %w", err)
+		}
+
+		for _, field := range pageStatsResp.Fields {
+			_, err := dbQueries.CreateMappingForColumn(context.Background(), database.CreateMappingForColumnParams{
+				ID:               uuid.New(),
+				CreatedAt:        time.Now(),
+				TableMappingID:   pageStatsMapping.ID,
+				SourceColumnName: field.Title,
+				TargetColumnName: field.Title,
+				TargetColumnCode: sql.NullString{String: field.ID, Valid: true},
+			})
+			if err != nil {
+				return fmt.Errorf("create analytics page stats column mapping %s: %w", field.Title, err)
+			}
+		}
+	} else {
+		tm, err := dbQueries.GetTableMappingsByTargetAndName(context.Background(), database.GetTableMappingsByTargetAndNameParams{
+			TargetID:        target.ID,
+			TargetTableName: "analytics_page_stats",
+		})
+		if err == nil {
+			pageStatsRespID = tm.TargetTableCode.String
+		}
+	}
+
+	_, err = dbQueries.GetTableMappingsByTargetAndName(context.Background(), database.GetTableMappingsByTargetAndNameParams{
+		TargetID:        target.ID,
+		TargetTableName: "sources",
+	})
+
+	if err != nil {
+		sourcesTable := NocoTable{
+			Title:       "sources",
+			Description: "Social media sources",
+			Fields: []NocoColumn{
+				{Title: "ct_id", Type: "SingleLineText", Unique: true},
+				{
+					Title: "network",
+					Type:  "SingleSelect",
+					Options: NocoColumnTypeSelectOptions{
+						Choices: []NocoColumnTypeOptions{
+							{Title: "Instagram"},
+							{Title: "Bluesky"},
+							{Title: "Murrtube"},
+							{Title: "BadPups"},
+							{Title: "TikTok"},
+							{Title: "Mastodon"},
+							{Title: "Telegram"},
+							{Title: "Google Analytics"},
+						}},
+				},
+				{Title: "username", Type: "SingleLineText"},
+				{Title: "URL", Type: "URL"},
+				{Title: "last_synced", Type: "DateTime"},
+				{
+					Title: "posts",
+					Type:  "Links",
+					Options: NocoColumnTypeRelation{
+						RelationType:   "hm",
+						RelatedTableId: postsRespID,
+					},
+				},
+				{
+					Title: "site_stats",
+					Type:  "Links",
+					Options: NocoColumnTypeRelation{
+						RelationType:   "hm",
+						RelatedTableId: siteStatsRespID,
+					},
+				},
+				{
+					Title: "page_stats",
+					Type:  "Links",
+					Options: NocoColumnTypeRelation{
+						RelationType:   "hm",
+						RelatedTableId: pageStatsRespID,
+					},
 				},
 			},
-		},
-	}
+		}
 
-	sourcesResp, err := createNocoTable(c, dbQueries, encryptionKey, target.ID, nocoURL, sourcesTable)
-	if err != nil {
-		return err
-	}
+		sourcesResp, err := createNocoTable(c, dbQueries, encryptionKey, target.ID, nocoURL, sourcesTable)
+		if err != nil {
+			return err
+		}
 
-	sourcesMapping, err := dbQueries.CreateMappingForTable(context.Background(), database.CreateMappingForTableParams{
-		ID:              uuid.New(),
-		CreatedAt:       time.Now(),
-		SourceTableName: "sources",
-		TargetTableName: sourcesResp.Title,
-		TargetTableCode: sql.NullString{String: sourcesResp.ID, Valid: true},
-		TargetID:        target.ID,
-	})
-	if err != nil {
-		return fmt.Errorf("create sources table mapping: %w", err)
-	}
-
-	for _, field := range sourcesResp.Fields {
-		_, err := dbQueries.CreateMappingForColumn(context.Background(), database.CreateMappingForColumnParams{
-			ID:               uuid.New(),
-			CreatedAt:        time.Now(),
-			TableMappingID:   sourcesMapping.ID,
-			SourceColumnName: field.Title,
-			TargetColumnName: field.Title,
-			TargetColumnCode: sql.NullString{String: field.ID, Valid: true},
+		sourcesMapping, err := dbQueries.CreateMappingForTable(context.Background(), database.CreateMappingForTableParams{
+			ID:              uuid.New(),
+			CreatedAt:       time.Now(),
+			SourceTableName: "sources",
+			TargetTableName: sourcesResp.Title,
+			TargetTableCode: sql.NullString{String: sourcesResp.ID, Valid: true},
+			TargetID:        target.ID,
 		})
 		if err != nil {
-			return fmt.Errorf("create sources column mapping %s: %w", field.Title, err)
+			return fmt.Errorf("create sources table mapping: %w", err)
 		}
-	}
 
-	err = syncNocoSources(c, dbQueries, encryptionKey, target, sourcesResp.ID)
-	if err != nil {
-		return err
+		for _, field := range sourcesResp.Fields {
+			_, err := dbQueries.CreateMappingForColumn(context.Background(), database.CreateMappingForColumnParams{
+				ID:               uuid.New(),
+				CreatedAt:        time.Now(),
+				TableMappingID:   sourcesMapping.ID,
+				SourceColumnName: field.Title,
+				TargetColumnName: field.Title,
+				TargetColumnCode: sql.NullString{String: field.ID, Valid: true},
+			})
+			if err != nil {
+				return fmt.Errorf("create sources column mapping %s: %w", field.Title, err)
+			}
+		}
 	}
 
 	return nil
@@ -213,7 +370,7 @@ func SyncNoco(dbQueries *database.Queries, c *Client, encryptionKey []byte, targ
 
 	sourcesTable, err := dbQueries.GetTableMappingsByTargetAndName(context.Background(), database.GetTableMappingsByTargetAndNameParams{
 		TargetID:        target.ID,
-		TargetTableName: "Sources",
+		TargetTableName: "sources",
 	})
 	if err != nil {
 		return fmt.Errorf("failed to get target source table: %w", err)
@@ -224,6 +381,14 @@ func SyncNoco(dbQueries *database.Queries, c *Client, encryptionKey []byte, targ
 		return fmt.Errorf("failed to sync sources: %w", err)
 	}
 
+	if err := syncNocoAnalyticsSiteStats(dbQueries, c, encryptionKey, target); err != nil {
+		return fmt.Errorf("failed to sync site stats: %w", err)
+	}
+
+	if err := syncNocoAnalyticsPageStats(dbQueries, c, encryptionKey, target); err != nil {
+		return fmt.Errorf("failed to sync page stats: %w", err)
+	}
+
 	posts, err := dbQueries.GetAllPostsWithTheLatestInfoForUser(context.Background(), target.UserID)
 	if err != nil {
 		return err
@@ -231,7 +396,7 @@ func SyncNoco(dbQueries *database.Queries, c *Client, encryptionKey []byte, targ
 
 	targetTable, err := dbQueries.GetTableMappingsByTargetAndName(context.Background(), database.GetTableMappingsByTargetAndNameParams{
 		TargetID:        target.ID,
-		TargetTableName: "Posts",
+		TargetTableName: "posts",
 	})
 	if err != nil {
 		return fmt.Errorf("failed to get target table: %w", err)
@@ -351,13 +516,15 @@ func SyncNoco(dbQueries *database.Queries, c *Client, encryptionKey []byte, targ
 				continue
 			}
 
-			err = linkPostsToSource(
+			sourceNocoId, _ := strconv.Atoi(sourceMapping.TargetSourceID)
+			err = linkChildrenToParent(
 				c,
 				dbQueries,
 				encryptionKey,
 				target,
-				sourceMapping.TargetSourceID,
 				sourcesTable,
+				"posts",
+				int32(sourceNocoId),
 				postIds,
 			)
 			if err != nil {
@@ -544,7 +711,7 @@ func DeletePostsAndSourceNoco(dbQueries *database.Queries, c *Client, encryption
 
 	sourcesTable, err := dbQueries.GetTableMappingsByTargetAndName(context.Background(), database.GetTableMappingsByTargetAndNameParams{
 		TargetID:        target.ID,
-		TargetTableName: "Sources",
+		TargetTableName: "sources",
 	})
 	if err != nil {
 		return err
@@ -563,7 +730,7 @@ func DeletePostsAndSourceNoco(dbQueries *database.Queries, c *Client, encryption
 
 	postsTable, err := dbQueries.GetTableMappingsByTargetAndName(context.Background(), database.GetTableMappingsByTargetAndNameParams{
 		TargetID:        target.ID,
-		TargetTableName: "Posts",
+		TargetTableName: "posts",
 	})
 	if err != nil {
 		return err
@@ -665,7 +832,9 @@ func createNocoTable(c *Client, dbQueries *database.Queries, encryptionKey []byt
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		return nil, fmt.Errorf("unexpected status code: %d, %v", resp.StatusCode, resp.Status)
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		log.Printf("NocoDB Error: Status: %d, Body: %s", resp.StatusCode, string(bodyBytes))
+		return nil, fmt.Errorf("unexpected status code: %d, %v. Body: %s", resp.StatusCode, resp.Status, string(bodyBytes))
 	}
 
 	var result NocoCreateTableResponse
@@ -705,6 +874,8 @@ func createNocoRecords(c *Client, dbQueries *database.Queries, encryptionKey []b
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		log.Printf("NocoDB Create Record Error: Status: %d, Body: %s", resp.StatusCode, string(bodyBytes))
 		return nil, fmt.Errorf("unexpected status code: %d, %v", resp.StatusCode, resp.Status)
 	}
 
@@ -981,35 +1152,35 @@ func deleteNocoRecords(c *Client, dbQueries *database.Queries, encryptionKey []b
 
 }
 
-func linkPostsToSource(c *Client, dbQueries *database.Queries, encryptionKey []byte, target database.Target, sourceId string, sourceTableNocoId database.TableMapping, postIds []int32) error {
+func linkChildrenToParent(c *Client, dbQueries *database.Queries, encryptionKey []byte, target database.Target, parentTableMapping database.TableMapping, columnName string, parentRecordID int32, childRecordIDs []int32) error {
 
-	postsColumn, err := dbQueries.GetColumnMappingsByTableAndName(context.Background(), database.GetColumnMappingsByTableAndNameParams{
-		TableMappingID:   sourceTableNocoId.ID,
-		TargetColumnName: "posts",
+	colMapping, err := dbQueries.GetColumnMappingsByTableAndName(context.Background(), database.GetColumnMappingsByTableAndNameParams{
+		TableMappingID:   parentTableMapping.ID,
+		TargetColumnName: columnName,
 	})
 	if err != nil {
 		return err
 	}
 
-	if len(postIds) > 10 {
-		return fmt.Errorf("cannot link more than 10 posts per request, got %d", len(postIds))
+	if len(childRecordIDs) > 10 {
+		return fmt.Errorf("cannot link more than 10 records per request, got %d", len(childRecordIDs))
 	}
 
 	type linkRecord struct {
 		ID int32 `json:"id"`
 	}
 
-	linkRecords := make([]linkRecord, len(postIds))
-	for i, postId := range postIds {
-		linkRecords[i] = linkRecord{ID: postId}
+	linkRecords := make([]linkRecord, len(childRecordIDs))
+	for i, childID := range childRecordIDs {
+		linkRecords[i] = linkRecord{ID: childID}
 	}
 
 	url := target.HostUrl.String +
 		"/api/v3/data/" +
 		target.DbID.String +
-		"/" + sourceTableNocoId.TargetTableCode.String +
-		"/links/" + postsColumn.TargetColumnCode.String +
-		"/" + sourceId
+		"/" + parentTableMapping.TargetTableCode.String +
+		"/links/" + colMapping.TargetColumnCode.String +
+		"/" + fmt.Sprintf("%d", parentRecordID)
 
 	body, err := json.Marshal(linkRecords)
 	if err != nil {
@@ -1034,6 +1205,7 @@ func linkPostsToSource(c *Client, dbQueries *database.Queries, encryptionKey []b
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		bodyBytes, _ := io.ReadAll(resp.Body)
+		log.Printf("NocoDB Link Error: Status: %d, Body: %s", resp.StatusCode, string(bodyBytes))
 		return fmt.Errorf("unexpected status code: %d, body: %s", resp.StatusCode, string(bodyBytes))
 	}
 
@@ -1049,5 +1221,254 @@ func setNocoHeaders(tid uuid.UUID, req *http.Request, dbQueries *database.Querie
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
 
+	return nil
+}
+
+func syncNocoAnalyticsSiteStats(dbQueries *database.Queries, c *Client, encryptionKey []byte, target database.Target) error {
+	const batchSize = 10
+
+	tableMapping, err := dbQueries.GetTableMappingsByTargetAndName(context.Background(), database.GetTableMappingsByTargetAndNameParams{
+		TargetID:        target.ID,
+		TargetTableName: "analytics_site_stats",
+	})
+	if err != nil {
+		return nil
+	}
+
+	sourcesTableMapping, err := dbQueries.GetTableMappingsByTargetAndName(context.Background(), database.GetTableMappingsByTargetAndNameParams{
+		TargetID:        target.ID,
+		TargetTableName: "sources",
+	})
+	if err != nil {
+		return fmt.Errorf("failed to get sources table mapping: %w", err)
+	}
+
+	sources, err := dbQueries.GetUserSources(context.Background(), target.UserID)
+	if err != nil {
+		return err
+	}
+
+	for _, source := range sources {
+		unsyncedStats, err := dbQueries.GetUnsyncedSiteStatsForTarget(context.Background(), database.GetUnsyncedSiteStatsForTargetParams{
+			TargetID: target.ID,
+			SourceID: source.ID,
+		})
+
+		if err != nil {
+			return err
+		}
+
+		sourceMapping, err := dbQueries.GetTargetSourceBySource(context.Background(), database.GetTargetSourceBySourceParams{
+			TargetID: target.ID,
+			SourceID: source.ID,
+		})
+		if err != nil {
+			continue
+		}
+
+		var records []NocoTableRecord
+		var currentBatch []database.AnalyticsSiteStat
+
+		flush := func() error {
+			if len(records) == 0 {
+				return nil
+			}
+			createdRecords, err := createNocoRecords(c, dbQueries, encryptionKey, target, tableMapping.TargetTableCode.String, records)
+			if err != nil {
+				return err
+			}
+
+			var createdIds []int32
+
+			for i, rec := range createdRecords {
+				var id float64
+				if val, ok := rec["Id"].(float64); ok {
+					id = val
+				} else if val, ok := rec["id"].(float64); ok {
+					id = val
+				} else {
+					continue
+				}
+
+				originalStat := currentBatch[i]
+
+				_, err = dbQueries.AddAnalyticsSiteStatToTarget(context.Background(), database.AddAnalyticsSiteStatToTargetParams{
+					ID:             uuid.New(),
+					SyncedAt:       time.Now(),
+					StatID:         originalStat.ID,
+					TargetID:       target.ID,
+					TargetRecordID: fmt.Sprintf("%.0f", id),
+				})
+				if err != nil {
+					return fmt.Errorf("failed to map site stat: %w", err)
+				}
+
+				createdIds = append(createdIds, int32(id))
+			}
+
+			sourceNocoId, _ := strconv.Atoi(sourceMapping.TargetSourceID)
+
+			if err := linkChildrenToParent(c, dbQueries, encryptionKey, target, sourcesTableMapping, "site_stats", int32(sourceNocoId), createdIds); err != nil {
+				log.Printf("Failed to link site stats to source: %v", err)
+			}
+
+			records = records[:0]
+			currentBatch = currentBatch[:0]
+			return nil
+		}
+
+		for _, stat := range unsyncedStats {
+			fieldMap := NocoRecordFields{
+				ID:                 stat.ID.String(),
+				Date:               stat.Date,
+				Visitors:           stat.Visitors,
+				AvgSessionDuration: stat.AvgSessionDuration,
+			}
+
+			records = append(records, NocoTableRecord{
+				Fields: fieldMap,
+			})
+			currentBatch = append(currentBatch, database.AnalyticsSiteStat{
+				ID:                 stat.ID,
+				Date:               stat.Date,
+				Visitors:           stat.Visitors,
+				AvgSessionDuration: stat.AvgSessionDuration,
+				SourceID:           stat.SourceID,
+			})
+
+			if len(records) == batchSize {
+				if err := flush(); err != nil {
+					return err
+				}
+			}
+		}
+		if err := flush(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func syncNocoAnalyticsPageStats(dbQueries *database.Queries, c *Client, encryptionKey []byte, target database.Target) error {
+	const batchSize = 10
+
+	tableMapping, err := dbQueries.GetTableMappingsByTargetAndName(context.Background(), database.GetTableMappingsByTargetAndNameParams{
+		TargetID:        target.ID,
+		TargetTableName: "analytics_page_stats",
+	})
+	if err != nil {
+		return nil
+	}
+
+	sourcesTableMapping, err := dbQueries.GetTableMappingsByTargetAndName(context.Background(), database.GetTableMappingsByTargetAndNameParams{
+		TargetID:        target.ID,
+		TargetTableName: "sources",
+	})
+	if err != nil {
+		return fmt.Errorf("failed to get sources table mapping: %w", err)
+	}
+
+	sources, err := dbQueries.GetUserSources(context.Background(), target.UserID)
+	if err != nil {
+		return err
+	}
+
+	for _, source := range sources {
+		unsyncedStats, err := dbQueries.GetUnsyncedPageStatsForTarget(context.Background(), database.GetUnsyncedPageStatsForTargetParams{
+			TargetID: target.ID,
+			SourceID: source.ID,
+		})
+		if err != nil {
+			return err
+		}
+
+		sourceMapping, err := dbQueries.GetTargetSourceBySource(context.Background(), database.GetTargetSourceBySourceParams{
+			TargetID: target.ID,
+			SourceID: source.ID,
+		})
+		if err != nil {
+			continue
+		}
+
+		var records []NocoTableRecord
+		var currentBatch []database.AnalyticsPageStat
+
+		flush := func() error {
+			if len(records) == 0 {
+				return nil
+			}
+			createdRecords, err := createNocoRecords(c, dbQueries, encryptionKey, target, tableMapping.TargetTableCode.String, records)
+			if err != nil {
+				return err
+			}
+
+			var createdIds []int32
+
+			for i, rec := range createdRecords {
+				var id float64
+				if val, ok := rec["Id"].(float64); ok {
+					id = val
+				} else if val, ok := rec["id"].(float64); ok {
+					id = val
+				} else {
+					continue
+				}
+
+				originalStat := currentBatch[i]
+
+				_, err = dbQueries.AddAnalyticsPageStatToTarget(context.Background(), database.AddAnalyticsPageStatToTargetParams{
+					ID:             uuid.New(),
+					SyncedAt:       time.Now(),
+					StatID:         originalStat.ID,
+					TargetID:       target.ID,
+					TargetRecordID: fmt.Sprintf("%.0f", id),
+				})
+				if err != nil {
+					return fmt.Errorf("failed to map page stat: %w", err)
+				}
+
+				createdIds = append(createdIds, int32(id))
+			}
+
+			sourceNocoId, _ := strconv.Atoi(sourceMapping.TargetSourceID)
+
+			if err := linkChildrenToParent(c, dbQueries, encryptionKey, target, sourcesTableMapping, "page_stats", int32(sourceNocoId), createdIds); err != nil {
+				log.Printf("Failed to link page stats to source: %v", err)
+			}
+
+			records = records[:0]
+			currentBatch = currentBatch[:0]
+			return nil
+		}
+
+		for _, stat := range unsyncedStats {
+			fieldMap := NocoRecordFields{
+				ID:       stat.ID.String(),
+				Date:     stat.Date,
+				PagePath: stat.UrlPath,
+				Views:    stat.Views,
+			}
+
+			records = append(records, NocoTableRecord{
+				Fields: fieldMap,
+			})
+			currentBatch = append(currentBatch, database.AnalyticsPageStat{
+				ID:       stat.ID,
+				Date:     stat.Date,
+				UrlPath:  stat.UrlPath,
+				Views:    stat.Views,
+				SourceID: stat.SourceID,
+			})
+
+			if len(records) == batchSize {
+				if err := flush(); err != nil {
+					return err
+				}
+			}
+		}
+		if err := flush(); err != nil {
+			return err
+		}
+	}
 	return nil
 }

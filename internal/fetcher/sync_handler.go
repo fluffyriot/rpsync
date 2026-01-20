@@ -76,6 +76,9 @@ func SyncBySource(sid uuid.UUID, dbQueries *database.Queries, c *Client, ver str
 		case "Telegram":
 			return FetchTelegramPosts(dbQueries, encryptionKey, source.ID, c)
 
+		case "Google Analytics":
+			return FetchGoogleAnalyticsStats(dbQueries, source.ID, encryptionKey)
+
 		default:
 			return nil
 		}

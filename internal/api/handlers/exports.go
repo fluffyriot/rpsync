@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"path/filepath"
 
+	"github.com/fluffyriot/commission-tracker/internal/config"
 	"github.com/fluffyriot/commission-tracker/internal/exports"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -14,7 +15,8 @@ func (h *Handler) ExportsHandler(c *gin.Context) {
 
 	if h.Config.DBInitErr != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"error": h.Config.DBInitErr.Error(),
+			"error":       h.Config.DBInitErr.Error(),
+			"app_version": config.AppVersion,
 		})
 		return
 	}
@@ -24,13 +26,16 @@ func (h *Handler) ExportsHandler(c *gin.Context) {
 	users, err := h.DB.GetAllUsers(ctx)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"error": err.Error(),
+			"error":       err.Error(),
+			"app_version": config.AppVersion,
 		})
 		return
 	}
 
 	if len(users) == 0 {
-		c.HTML(http.StatusOK, "user-setup.html", nil)
+		c.HTML(http.StatusOK, "user-setup.html", gin.H{
+			"app_version": config.AppVersion,
+		})
 		return
 	}
 
@@ -39,14 +44,16 @@ func (h *Handler) ExportsHandler(c *gin.Context) {
 	exports, err := h.DB.GetLast20ExportsByUserId(ctx, user.ID)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"error": err.Error(),
+			"error":       err.Error(),
+			"app_version": config.AppVersion,
 		})
 		return
 	}
 	c.HTML(http.StatusOK, "exports.html", gin.H{
-		"username": user.Username,
-		"user_id":  user.ID,
-		"exports":  exports,
+		"username":    user.Username,
+		"user_id":     user.ID,
+		"exports":     exports,
+		"app_version": config.AppVersion,
 	})
 }
 
@@ -54,7 +61,8 @@ func (h *Handler) ExportDeleteAllHandler(c *gin.Context) {
 	userId, err := uuid.Parse(c.PostForm("user_id"))
 	if err != nil {
 		c.HTML(http.StatusBadRequest, "error.html", gin.H{
-			"error": err.Error(),
+			"error":       err.Error(),
+			"app_version": config.AppVersion,
 		})
 		return
 	}

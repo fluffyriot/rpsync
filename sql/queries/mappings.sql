@@ -34,3 +34,7 @@ where table_mapping_id = $1;
 SELECT cm.* FROM column_mappings cm
 left join table_mappings tm on cm.table_mapping_id = tm.id
 where cm.table_mapping_id = $1 and cm.target_column_name = $2;
+
+-- name: GetTableMappingsByTargetAndCode :one
+SELECT * FROM table_mappings
+WHERE target_id = $1 AND target_table_code = $2;

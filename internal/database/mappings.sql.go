@@ -159,6 +159,30 @@ func (q *Queries) GetColumnMappingsByTableAndName(ctx context.Context, arg GetCo
 	return i, err
 }
 
+const getTableMappingsByTargetAndCode = `-- name: GetTableMappingsByTargetAndCode :one
+SELECT id, created_at, source_table_name, target_table_name, target_table_code, target_id FROM table_mappings
+WHERE target_id = $1 AND target_table_code = $2
+`
+
+type GetTableMappingsByTargetAndCodeParams struct {
+	TargetID        uuid.UUID
+	TargetTableCode sql.NullString
+}
+
+func (q *Queries) GetTableMappingsByTargetAndCode(ctx context.Context, arg GetTableMappingsByTargetAndCodeParams) (TableMapping, error) {
+	row := q.db.QueryRowContext(ctx, getTableMappingsByTargetAndCode, arg.TargetID, arg.TargetTableCode)
+	var i TableMapping
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.SourceTableName,
+		&i.TargetTableName,
+		&i.TargetTableCode,
+		&i.TargetID,
+	)
+	return i, err
+}
+
 const getTableMappingsByTargetAndName = `-- name: GetTableMappingsByTargetAndName :one
 SELECT id, created_at, source_table_name, target_table_name, target_table_code, target_id FROM table_mappings
 where target_id = $1 and target_table_name = $2

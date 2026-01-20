@@ -18,6 +18,11 @@ SELECT posts.* FROM posts
 join sources on posts.source_id = sources.id
 where network_internal_id = $1 and sources.network = $2;
 
+-- name: CheckCountOfPostsForUser :one
+SELECT COUNT(*) FROM posts p
+join sources s on p.source_id = s.id
+where s.user_id = $1;
+
 -- name: GetAllPostsWithTheLatestInfoForUser :many
 SELECT
     p.id,

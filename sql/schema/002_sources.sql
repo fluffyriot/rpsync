@@ -5,14 +5,17 @@ CREATE TABLE sources (
     updated_at TIMESTAMP NOT NULL,
     network TEXT NOT NULL,
     CONSTRAINT network_check
-        CHECK (network IN (        'Instagram',
-        'Bluesky',
-        'Murrtube',
-        'BadPups',
-        'TikTok',
-        'Mastodon',
-        'Reddit',
-        'Telegram')),
+        CHECK (network IN (
+            'Instagram',
+            'Bluesky',
+            'Murrtube',
+            'BadPups',
+            'TikTok',
+            'Mastodon',
+            'Reddit',
+            'Telegram'
+        )
+    ),
     user_name TEXT NOT NULL,
     user_id UUID NOT NULL,
     CONSTRAINT fk_user

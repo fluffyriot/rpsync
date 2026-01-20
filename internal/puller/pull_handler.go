@@ -39,11 +39,6 @@ func PullByTarget(tid uuid.UUID, dbQueries *database.Queries, c *Client, encrypt
 		return err
 	}
 
-	export, err := exports.CreateLogAutoExport(target.UserID, dbQueries, target.TargetType, target.ID)
-	if err != nil {
-		log.Println(err)
-	}
-
 	_, err = dbQueries.UpdateTargetSyncStatusById(context.Background(), database.UpdateTargetSyncStatusByIdParams{
 		ID:         target.ID,
 		SyncStatus: "Syncing",
@@ -52,60 +47,86 @@ func PullByTarget(tid uuid.UUID, dbQueries *database.Queries, c *Client, encrypt
 		return err
 	}
 
-	var filename string
+	var finalErr error
 
 	switch target.TargetType {
 
 	case "NocoDB", "Notion":
 
+		export, err := exports.CreateLogAutoExport(target.UserID, dbQueries, target.TargetType, target.ID)
+		if err != nil {
+			log.Println("Error creating export log:", err)
+		}
+
 		err = startDbSync(dbQueries, c, encryptionKey, target)
 		if err != nil {
-
-			exports.UpdateLogAutoExport(export, dbQueries, "Failed", err.Error(), filename)
-
-			_, err = dbQueries.UpdateTargetSyncStatusById(context.Background(), database.UpdateTargetSyncStatusByIdParams{
-				ID:           target.ID,
-				SyncStatus:   "Failed",
-				StatusReason: sql.NullString{String: err.Error(), Valid: true},
-				LastSynced:   sql.NullTime{Time: time.Now(), Valid: true},
-			})
-			if err != nil {
-				return err
-			}
-			return err
+			exports.UpdateLogAutoExport(export, dbQueries, "Failed", err.Error(), "")
+			finalErr = err
+		} else {
+			exports.UpdateLogAutoExport(export, dbQueries, "Completed", "", "")
 		}
 
 	case "CSV":
 
-		filename, err = startCsvSync(dbQueries, target, export)
+		hasPosts, err := HasPosts(dbQueries, target.UserID)
 		if err != nil {
-
-			exports.UpdateLogAutoExport(export, dbQueries, "Failed", err.Error(), filename)
-
-			_, err = dbQueries.UpdateTargetSyncStatusById(context.Background(), database.UpdateTargetSyncStatusByIdParams{
-				ID:           target.ID,
-				SyncStatus:   "Failed",
-				StatusReason: sql.NullString{String: err.Error(), Valid: true},
-				LastSynced:   sql.NullTime{Time: time.Now(), Valid: true},
-			})
+			finalErr = err
+		} else if hasPosts {
+			exportPosts, err := exports.CreateLogAutoExport(target.UserID, dbQueries, "CSV - Posts", target.ID)
 			if err != nil {
-				return err
+				log.Println("Error creating posts export log:", err)
+			} else {
+				filename, err := GeneratePostsCsv(dbQueries, target, exportPosts)
+				if err != nil {
+					exports.UpdateLogAutoExport(exportPosts, dbQueries, "Failed", err.Error(), filename)
+					finalErr = err // Track error but continue to next export?
+				} else {
+					exports.UpdateLogAutoExport(exportPosts, dbQueries, "Completed", "", filename)
+				}
 			}
-			return err
 		}
 
+		hasAnalytics, err := HasAnalytics(dbQueries, target.UserID)
+		if err != nil {
+			if finalErr == nil {
+				finalErr = err
+			}
+		} else if hasAnalytics {
+			exportWeb, err := exports.CreateLogAutoExport(target.UserID, dbQueries, "CSV - Website", target.ID)
+			if err != nil {
+				log.Println("Error creating website export log:", err)
+			} else {
+				filename, err := GenerateWebsiteCsv(dbQueries, target, exportWeb)
+				if err != nil {
+					exports.UpdateLogAutoExport(exportWeb, dbQueries, "Failed", err.Error(), filename)
+					if finalErr == nil {
+						finalErr = err
+					}
+				} else {
+					exports.UpdateLogAutoExport(exportWeb, dbQueries, "Completed", "", filename)
+				}
+			}
+		}
+	}
+
+	status := "Synced"
+	var reason sql.NullString
+	if finalErr != nil {
+		status = "Failed"
+		reason = sql.NullString{String: finalErr.Error(), Valid: true}
 	}
 
 	_, err = dbQueries.UpdateTargetSyncStatusById(context.Background(), database.UpdateTargetSyncStatusByIdParams{
 		ID:           target.ID,
-		SyncStatus:   "Synced",
-		StatusReason: sql.NullString{},
+		SyncStatus:   status,
+		StatusReason: reason,
 		LastSynced:   sql.NullTime{Time: time.Now(), Valid: true},
 	})
+	if err != nil {
+		return err
+	}
 
-	exports.UpdateLogAutoExport(export, dbQueries, "Completed", "", filename)
-
-	return nil
+	return finalErr
 }
 
 func startDbSync(dbQueries *database.Queries, c *Client, encryptionKey []byte, target database.Target) error {
@@ -116,7 +137,7 @@ func startDbSync(dbQueries *database.Queries, c *Client, encryptionKey []byte, t
 
 	_, err := dbQueries.GetTableMappingsByTargetAndName(context.Background(), database.GetTableMappingsByTargetAndNameParams{
 		TargetID:        target.ID,
-		TargetTableName: "Sources",
+		TargetTableName: "Analytics_Page_Stats",
 	})
 	if err != nil {
 		err := InitializeNoco(dbQueries, c, encryptionKey, target)
