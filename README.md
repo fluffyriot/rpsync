@@ -19,7 +19,7 @@ This app is intended to run in Docker and has both x64 and arm builds. It is int
 *   **Instagram**: Syncs public creator/business pages (requires Facebook Page connection).
 *   **TikTok**: Advanced scraping via TikTok Creator Studio.
 *   **Telegram**: Tracks your public channels
-*   **Other Platforms**: Bluesky, Mastodon, Murrtube.net, BadPups.com.
+*   **Other Platforms**: Bluesky, Mastodon, Murrtube.net, BadPups.com, Google Analytics
 
 ### Data Management (Targets)
 *   **NocoDB Integration**: Automatically syncs your posts and sources to NocoDB for Airtable-like management.
