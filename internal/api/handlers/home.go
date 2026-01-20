@@ -61,18 +61,28 @@ func (h *Handler) RootHandler(c *gin.Context) {
 
 	user := users[0]
 
-	sources, err := h.DB.GetUserSources(ctx, user.ID)
-	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", gin.H{
-			"error":       err.Error(),
-			"app_version": config.AppVersion,
-		})
-		return
-	}
+	activeSources, _ := h.DB.GetActiveSourcesCount(ctx)
+	activeTargets, _ := h.DB.GetActiveTargetsCount(ctx)
+	totalPosts, _ := h.DB.GetTotalPostsCount(ctx)
+	reactions, _ := h.DB.GetTotalReactions(ctx)
+	siteStats, _ := h.DB.GetTotalSiteStats(ctx)
+	pageViews, _ := h.DB.GetTotalPageViews(ctx)
+	syncErrors30d, _ := h.DB.GetSyncErrorsCountLast30Days(ctx)
+	recentLogs, _ := h.DB.GetRecentLogs(ctx)
+
 	c.HTML(http.StatusOK, "index.html", gin.H{
-		"username":    user.Username,
-		"user_id":     user.ID,
-		"sources":     sources,
-		"app_version": config.AppVersion,
+		"username":         user.Username,
+		"user_id":          user.ID,
+		"app_version":      config.AppVersion,
+		"active_sources":   activeSources,
+		"active_targets":   activeTargets,
+		"total_posts":      totalPosts,
+		"total_likes":      reactions.TotalLikes,
+		"total_shares":     reactions.TotalShares,
+		"total_views":      reactions.TotalViews,
+		"total_visitors":   siteStats,
+		"total_page_views": pageViews,
+		"sync_errors_30d":  syncErrors30d,
+		"recent_logs":      recentLogs,
 	})
 }

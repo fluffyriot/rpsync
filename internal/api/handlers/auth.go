@@ -98,7 +98,7 @@ func (h *Handler) FacebookCallbackHandler(c *gin.Context) {
 		return
 	}
 
-	c.Redirect(http.StatusSeeOther, "/")
+	c.Redirect(http.StatusSeeOther, "/sources")
 }
 
 func (h *Handler) FacebookRefreshTokenHandler(c *gin.Context) {
@@ -148,5 +148,5 @@ func (h *Handler) FacebookRefreshTokenHandler(c *gin.Context) {
 		return
 	}
 
-	c.Redirect(http.StatusSeeOther, "/")
+	c.Redirect(http.StatusSeeOther, "/sources")
 }

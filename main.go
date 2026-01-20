@@ -62,6 +62,7 @@ func main() {
 	r.GET("/outputs/*filepath", h.DownloadExportHandler)
 
 	r.POST("/user/setup", h.UserSetupHandler)
+	r.GET("/sources", h.SourcesHandler)
 	r.POST("/sources/setup", h.SourcesSetupHandler)
 	r.POST("/sources/deactivate", h.DeactivateSourceHandler)
 	r.POST("/sources/activate", h.ActivateSourceHandler)
@@ -76,10 +77,7 @@ func main() {
 	r.POST("/targets/delete", h.DeleteTargetHandler)
 	r.POST("/targets/sync", h.SyncTargetHandler)
 
-	r.POST("/reset", h.ResetHandler)
-
 	r.GET("/stats", h.StatsHandler)
-	r.GET("/analytics", h.AnalyticsPageHandler)
 
 	log.Printf("Server started on http://localhost:%s", cfg.AppPort)
 	if err := r.Run(":" + cfg.AppPort); err != nil {
