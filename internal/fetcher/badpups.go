@@ -83,6 +83,11 @@ func extractVideoObjectLD(doc *goquery.Document) (*VideoObjectLD, error) {
 
 func FetchBadpupsPosts(uid uuid.UUID, dbQueries *database.Queries, c *Client, sourceId uuid.UUID) error {
 
+	exclusionMap, err := loadExclusionMap(dbQueries, sourceId)
+	if err != nil {
+		return err
+	}
+
 	processedLinks := make(map[string]struct{})
 
 	profileURL, username, err := getBadpupsString(dbQueries, uid)
@@ -149,6 +154,10 @@ func FetchBadpupsPosts(uid uuid.UUID, dbQueries *database.Queries, c *Client, so
 		}
 
 		id := strings.TrimPrefix(href, "https://badpups.com/lite/video/")
+
+		if exclusionMap[id] {
+			return
+		}
 
 		videoLD, err := extractVideoObjectLD(videoDoc)
 		if err != nil {

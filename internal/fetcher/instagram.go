@@ -92,6 +92,11 @@ func getInstagramTagstring(dbQueries *database.Queries, sid uuid.UUID, next stri
 
 func FetchInstagramPosts(dbQueries *database.Queries, c *Client, sourceId uuid.UUID, version string, encryptionKey []byte) error {
 
+	exclusionMap, err := loadExclusionMap(dbQueries, sourceId)
+	if err != nil {
+		return err
+	}
+
 	processedLinks := make(map[string]struct{})
 
 	var next string
@@ -142,6 +147,10 @@ func FetchInstagramPosts(dbQueries *database.Queries, c *Client, sourceId uuid.U
 			}
 
 			processedLinks[item.Shortcode] = struct{}{}
+
+			if exclusionMap[item.Shortcode] {
+				continue
+			}
 
 			timeParse, _ := time.Parse("2006-01-02T15:04:05-0700", item.Timestamp)
 			post_type := strings.ToLower(item.MediaType)
@@ -230,6 +239,11 @@ func FetchInstagramPosts(dbQueries *database.Queries, c *Client, sourceId uuid.U
 
 func FetchInstagramTags(dbQueries *database.Queries, c *Client, sourceId uuid.UUID, version string, encryptionKey []byte) error {
 
+	exclusionMap, err := loadExclusionMap(dbQueries, sourceId)
+	if err != nil {
+		return err
+	}
+
 	processedLinks := make(map[string]struct{})
 
 	var next string
@@ -283,6 +297,10 @@ func FetchInstagramTags(dbQueries *database.Queries, c *Client, sourceId uuid.UU
 			}
 
 			processedLinks[shortcode] = struct{}{}
+
+			if exclusionMap[shortcode] {
+				continue
+			}
 
 			timeParse, _ := time.Parse("2006-01-02T15:04:05-0700", item.Timestamp)
 

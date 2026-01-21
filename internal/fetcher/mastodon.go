@@ -111,6 +111,11 @@ func getMastodonApiString(dbQueries *database.Queries, uid uuid.UUID, c *Client,
 
 func FetchMastodonPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, sourceId uuid.UUID) error {
 
+	exclusionMap, err := loadExclusionMap(dbQueries, sourceId)
+	if err != nil {
+		return err
+	}
+
 	processedLinks := make(map[string]struct{})
 
 	var max_id string
@@ -173,6 +178,10 @@ func FetchMastodonPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, s
 			}
 
 			processedLinks[postId] = struct{}{}
+
+			if exclusionMap[postId] {
+				continue
+			}
 
 			var intId uuid.UUID
 

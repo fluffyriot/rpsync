@@ -230,6 +230,12 @@ type ScrapedPost struct {
 }
 
 func FetchTikTokPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, sourceId uuid.UUID) error {
+
+	exclusionMap, err := loadExclusionMap(dbQueries, sourceId)
+	if err != nil {
+		return err
+	}
+
 	source, err := dbQueries.GetSourceById(context.Background(), sourceId)
 	if err != nil {
 		return fmt.Errorf("failed to get source: %w", err)
@@ -400,6 +406,10 @@ func FetchTikTokPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, sou
 
 	for _, item := range scrapedPosts {
 		if item.ID == "" {
+			continue
+		}
+
+		if exclusionMap[item.ID] {
 			continue
 		}
 

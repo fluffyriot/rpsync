@@ -78,4 +78,179 @@
     </div>
 </div>
 
+<div class="card" style="margin-top: 1.5rem;">
+    <div class="card-header">Post Exclusions</div>
+
+    <div style="padding: 1.5rem;">
+        <p class="text-muted" style="margin-bottom: 1rem;">
+            Exclude specific posts from being synced. Excluded posts will be permanently deleted from the database and
+            will not be re-synced in future fetches.
+        </p>
+
+        <button type="button" class="btn btn-primary" onclick="showAddExclusionModal()" style="margin-bottom: 1.5rem;">
+            <i data-lucide="plus"></i> Add Exclusion
+        </button>
+
+        <div id="exclusions-list">
+            <p class="text-muted" style="text-align: center; padding: 2rem;">Loading exclusions...</p>
+        </div>
+    </div>
+</div>
+
+<div id="addExclusionModal"
+    style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div class="card" style="width: 90%; max-width: 500px; margin: 2rem;">
+        <div class="card-header">Add Post Exclusion</div>
+        <div style="padding: 1.5rem;">
+            <form id="addExclusionForm" onsubmit="handleAddExclusion(event)">
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label for="exclusion_source_id"
+                        style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Source</label>
+                    <select name="source_id" id="exclusion_source_id" class="form-select" required style="width: 100%;">
+                        <option value="">Select a source...</option>
+                    </select>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label for="exclusion_network_id"
+                        style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Network Internal ID</label>
+                    <input type="text" name="network_internal_id" id="exclusion_network_id" class="form-select" required
+                        style="width: 100%;" placeholder="e.g., post ID, shortcode, etc.">
+                    <p class="text-muted" style="margin-top: 0.5rem; font-size: 0.875rem;">The platform-specific ID of
+                        the post to exclude</p>
+                </div>
+
+                <div class="flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i data-lucide="save"></i> Add Exclusion
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="hideAddExclusionModal()">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    let allSources = [];
+
+    async function loadSources() {
+        try {
+            const response = await fetch('/api/sources');
+            if (!response.ok) throw new Error('Failed to load sources');
+            allSources = await response.json();
+
+            const select = document.getElementById('exclusion_source_id');
+            select.innerHTML = '<option value="">Select a source...</option>';
+            allSources.forEach(source => {
+                const option = document.createElement('option');
+                option.value = source.ID;
+                option.textContent = `${source.Network} - ${source.UserName}`;
+                select.appendChild(option);
+            });
+        } catch (error) {
+            console.error('Error loading sources:', error);
+        }
+    }
+
+    async function loadExclusions() {
+        try {
+            const response = await fetch('/api/exclusions');
+            if (!response.ok) throw new Error('Failed to load exclusions');
+
+            const exclusions = await response.json();
+            const container = document.getElementById('exclusions-list');
+
+            if (exclusions.length === 0) {
+                container.innerHTML = '<p class="text-muted" style="text-align: center; padding: 2rem;">No exclusions configured</p>';
+                return;
+            }
+
+            container.innerHTML = exclusions.map(excl => `
+            <div class="card" style="margin-bottom: 0.75rem; padding: 1rem; display: flex; flex-direction: row; justify-content: space-between; align-items: center;">
+                <div>
+                    <strong>${excl.network} - ${excl.user_name}</strong><br>
+                    <span class="text-muted" style="font-size: 0.875rem;">ID: ${excl.network_internal_id}</span>
+                </div>
+                <button class="btn btn-danger" onclick="deleteExclusion('${excl.id}')" style="margin-left: 1rem;">
+                    <i data-lucide="trash-2"></i> Delete
+                </button>
+            </div>
+        `).join('');
+
+            lucide.createIcons();
+        } catch (error) {
+            console.error('Error loading exclusions:', error);
+            document.getElementById('exclusions-list').innerHTML = '<p style="color: red; text-align: center; padding: 2rem;">Error loading exclusions</p>';
+        }
+    }
+
+    function showAddExclusionModal() {
+        document.getElementById('addExclusionModal').style.display = 'flex';
+    }
+
+    function hideAddExclusionModal() {
+        document.getElementById('addExclusionModal').style.display = 'none';
+        document.getElementById('addExclusionForm').reset();
+    }
+
+    async function handleAddExclusion(event) {
+        event.preventDefault();
+
+        const formData = new FormData(event.target);
+        const data = {
+            source_id: formData.get('source_id'),
+            network_internal_id: formData.get('network_internal_id')
+        };
+
+        try {
+            const response = await fetch('/api/exclusions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to add exclusion');
+            }
+
+            hideAddExclusionModal();
+            await loadExclusions();
+            alert('Exclusion added successfully! The post has been deleted from the database.');
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
+
+    async function deleteExclusion(id) {
+        if (!confirm('Are you sure you want to delete this exclusion? The post may be re-synced in future fetches.')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/exclusions/${id}`, {
+                method: 'DELETE'
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to delete exclusion');
+            }
+
+            await loadExclusions();
+            alert('Exclusion deleted successfully');
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadSources();
+        loadExclusions();
+    });
+</script>
+
 {{ template "footer.html" . }}

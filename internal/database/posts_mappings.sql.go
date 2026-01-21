@@ -13,21 +13,23 @@ import (
 )
 
 const addPostToTarget = `-- name: AddPostToTarget :one
-INSERT INTO posts_on_target (id, first_synced_at, post_id, target_id, target_post_id)
-VALUES (
-    $1,
-    $2,
-    $3,
-    $4,
-    $5
-)
-RETURNING id, first_synced_at, post_id, target_id, target_post_id
+INSERT INTO
+    posts_on_target (
+        id,
+        first_synced_at,
+        post_id,
+        target_id,
+        target_post_id
+    )
+VALUES ($1, $2, $3, $4, $5)
+RETURNING
+    id, first_synced_at, post_id, target_id, target_post_id
 `
 
 type AddPostToTargetParams struct {
 	ID            uuid.UUID
 	FirstSyncedAt time.Time
-	PostID        uuid.UUID
+	PostID        uuid.NullUUID
 	TargetID      uuid.UUID
 	TargetPostID  string
 }
@@ -51,12 +53,21 @@ func (q *Queries) AddPostToTarget(ctx context.Context, arg AddPostToTargetParams
 	return i, err
 }
 
+const deletePostOnTarget = `-- name: DeletePostOnTarget :exec
+DELETE FROM posts_on_target WHERE id = $1
+`
+
+func (q *Queries) DeletePostOnTarget(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, deletePostOnTarget, id)
+	return err
+}
+
 const deletePostsOnTargetAndSource = `-- name: DeletePostsOnTargetAndSource :exec
-DELETE FROM posts_on_target pot
-USING posts p
-WHERE pot.post_id = p.id
-  AND pot.target_id = $1
-  AND p.source_id = $2
+DELETE FROM posts_on_target pot USING posts p
+WHERE
+    pot.post_id = p.id
+    AND pot.target_id = $1
+    AND p.source_id = $2
 `
 
 type DeletePostsOnTargetAndSourceParams struct {
@@ -70,9 +81,12 @@ func (q *Queries) DeletePostsOnTargetAndSource(ctx context.Context, arg DeletePo
 }
 
 const getPostsBySourceAndTarget = `-- name: GetPostsBySourceAndTarget :many
-SELECT pot.id, pot.first_synced_at, pot.post_id, pot.target_id, pot.target_post_id FROM posts_on_target pot
-left join posts p on pot.post_id = p.id
-where target_id = $1 and p.source_id = $2
+SELECT pot.id, pot.first_synced_at, pot.post_id, pot.target_id, pot.target_post_id
+FROM posts_on_target pot
+    left join posts p on pot.post_id = p.id
+where
+    target_id = $1
+    and p.source_id = $2
 `
 
 type GetPostsBySourceAndTargetParams struct {
@@ -110,8 +124,7 @@ func (q *Queries) GetPostsBySourceAndTarget(ctx context.Context, arg GetPostsByS
 }
 
 const getPostsPreviouslySynced = `-- name: GetPostsPreviouslySynced :many
-SELECT id, first_synced_at, post_id, target_id, target_post_id FROM posts_on_target
-where target_id = $1
+SELECT id, first_synced_at, post_id, target_id, target_post_id FROM posts_on_target where target_id = $1
 `
 
 func (q *Queries) GetPostsPreviouslySynced(ctx context.Context, targetID uuid.UUID) ([]PostsOnTarget, error) {

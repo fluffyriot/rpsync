@@ -80,6 +80,11 @@ func getBskyApiString(dbQueries *database.Queries, uid uuid.UUID, cursor string)
 
 func FetchBlueskyPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, sourceId uuid.UUID) error {
 
+	exclusionMap, err := loadExclusionMap(dbQueries, sourceId)
+	if err != nil {
+		return err
+	}
+
 	processedLinks := make(map[string]struct{})
 
 	var cursor string
@@ -128,6 +133,10 @@ func FetchBlueskyPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, so
 			}
 
 			processedLinks[interNetId] = struct{}{}
+
+			if exclusionMap[interNetId] {
+				continue
+			}
 
 			post_type := "post"
 

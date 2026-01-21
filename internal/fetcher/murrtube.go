@@ -38,6 +38,12 @@ func getMurrtubeString(dbQueries *database.Queries, uid uuid.UUID) (string, stri
 }
 
 func FetchMurrtubePosts(uid uuid.UUID, dbQueries *database.Queries, c *Client, sourceId uuid.UUID) error {
+
+	exclusionMap, err := loadExclusionMap(dbQueries, sourceId)
+	if err != nil {
+		return err
+	}
+
 	processedLinks := make(map[string]struct{})
 
 	profileURL, username, err := getMurrtubeString(dbQueries, uid)
@@ -107,6 +113,10 @@ func FetchMurrtubePosts(uid uuid.UUID, dbQueries *database.Queries, c *Client, s
 		pageText := videoDoc.Text()
 
 		id := strings.TrimPrefix(href, "/v/")
+
+		if exclusionMap[id] {
+			return
+		}
 
 		title, _ := videoDoc.Find(`meta[property="og:title"]`).Attr("content")
 		description, _ := videoDoc.Find(`meta[property="og:description"]`).Attr("content")

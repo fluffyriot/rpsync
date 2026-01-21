@@ -417,7 +417,11 @@ func SyncNoco(dbQueries *database.Queries, c *Client, encryptionKey []byte, targ
 		localMap[p.ID.String()] = p
 	}
 	for _, m := range mappedPosts {
-		mappedMap[m.PostID.String()] = m
+		if !m.PostID.Valid {
+			removePosts = append(removePosts, m)
+		} else {
+			mappedMap[m.PostID.UUID.String()] = m
+		}
 	}
 
 	var updatePosts []database.GetAllPostsWithTheLatestInfoForUserRow
@@ -482,7 +486,7 @@ func SyncNoco(dbQueries *database.Queries, c *Client, encryptionKey []byte, targ
 			_, err = dbQueries.AddPostToTarget(context.Background(), database.AddPostToTargetParams{
 				ID:            uuid.New(),
 				FirstSyncedAt: time.Now(),
-				PostID:        parsedCtId,
+				PostID:        uuid.NullUUID{UUID: parsedCtId, Valid: true},
 				TargetID:      target.ID,
 				TargetPostID:  fmt.Sprintf("%.0f", id),
 			})
@@ -617,6 +621,13 @@ func SyncNoco(dbQueries *database.Queries, c *Client, encryptionKey []byte, targ
 
 	if err := flushRemove(); err != nil {
 		return err
+	}
+
+	for _, post := range removePosts {
+		err := dbQueries.DeletePostOnTarget(context.Background(), post.ID)
+		if err != nil {
+			log.Printf("Warning: Failed to delete posts_on_target mapping: %v", err)
+		}
 	}
 
 	var recordsUpdate []NocoTableRecord

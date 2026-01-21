@@ -52,6 +52,13 @@ type ColumnMapping struct {
 	TargetColumnCode sql.NullString
 }
 
+type Exclusion struct {
+	ID                uuid.UUID
+	CreatedAt         time.Time
+	SourceID          uuid.UUID
+	NetworkInternalID string
+}
+
 type Export struct {
 	ID            uuid.UUID
 	CreatedAt     time.Time
@@ -87,7 +94,7 @@ type Post struct {
 type PostsOnTarget struct {
 	ID            uuid.UUID
 	FirstSyncedAt time.Time
-	PostID        uuid.UUID
+	PostID        uuid.NullUUID
 	TargetID      uuid.UUID
 	TargetPostID  string
 }

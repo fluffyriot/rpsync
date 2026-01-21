@@ -111,6 +111,11 @@ func main() {
 
 	r.GET("/stats", h.StatsHandler)
 
+	r.GET("/api/sources", h.HandleGetSourcesAPI)
+	r.GET("/api/exclusions", h.HandleGetExclusions)
+	r.POST("/api/exclusions", h.HandleCreateExclusion)
+	r.DELETE("/api/exclusions/:id", h.HandleDeleteExclusion)
+
 	log.Printf("Server started on http://localhost:%s", cfg.AppPort)
 	if err := r.Run(":" + cfg.AppPort); err != nil {
 		log.Fatal(err)

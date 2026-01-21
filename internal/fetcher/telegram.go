@@ -83,6 +83,12 @@ func FetchTelegramPosts(dbQueries *database.Queries, encryptionKey []byte, sid u
 	})
 
 	return client.Run(ctx, func(ctx context.Context) error {
+
+		exclusionMap, err := loadExclusionMap(dbQueries, sid)
+		if err != nil {
+			return err
+		}
+
 		if err := botAuth(ctx, client, botToken, 5); err != nil {
 			return err
 		}
@@ -158,17 +164,24 @@ func FetchTelegramPosts(dbQueries *database.Queries, encryptionKey []byte, sid u
 
 			for _, m := range messages {
 				if msg, ok := m.(*tg.Message); ok {
+
+					msgIDStr := fmt.Sprintf("%d", msg.ID)
+
 					if _, exists := processedLinks[msg.ID]; exists {
 						continue
 					}
 					processedLinks[msg.ID] = struct{}{}
+
+					if exclusionMap[msgIDStr] {
+						continue
+					}
 
 					likes, _ := FetchTelegramWebStats(channelUsername, msg.ID, c)
 
 					msgTime := time.Unix(int64(msg.Date), 0).UTC()
 
 					post, err := dbQueries.GetPostByNetworkAndId(ctx, database.GetPostByNetworkAndIdParams{
-						NetworkInternalID: fmt.Sprintf("%d", msg.ID),
+						NetworkInternalID: msgIDStr,
 						Network:           "Telegram",
 					})
 
