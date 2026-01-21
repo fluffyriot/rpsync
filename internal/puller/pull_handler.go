@@ -79,7 +79,7 @@ func PullByTarget(tid uuid.UUID, dbQueries *database.Queries, c *Client, encrypt
 				filename, err := GeneratePostsCsv(dbQueries, target, exportPosts)
 				if err != nil {
 					exports.UpdateLogAutoExport(exportPosts, dbQueries, "Failed", err.Error(), filename)
-					finalErr = err // Track error but continue to next export?
+					finalErr = err
 				} else {
 					exports.UpdateLogAutoExport(exportPosts, dbQueries, "Completed", "", filename)
 				}
@@ -104,6 +104,21 @@ func PullByTarget(tid uuid.UUID, dbQueries *database.Queries, c *Client, encrypt
 					}
 				} else {
 					exports.UpdateLogAutoExport(exportWeb, dbQueries, "Completed", "", filename)
+				}
+			}
+
+			exportPages, err := exports.CreateLogAutoExport(target.UserID, dbQueries, "CSV - Pages", target.ID)
+			if err != nil {
+				log.Println("Error creating website pages export log:", err)
+			} else {
+				filename, err := GeneratePageViewsCsv(dbQueries, target, exportPages)
+				if err != nil {
+					exports.UpdateLogAutoExport(exportPages, dbQueries, "Failed", err.Error(), filename)
+					if finalErr == nil {
+						finalErr = err
+					}
+				} else {
+					exports.UpdateLogAutoExport(exportPages, dbQueries, "Completed", "", filename)
 				}
 			}
 		}

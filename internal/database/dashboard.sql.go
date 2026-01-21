@@ -7,25 +7,27 @@ package database
 
 import (
 	"context"
+
+	"github.com/google/uuid"
 )
 
 const getActiveSourcesCount = `-- name: GetActiveSourcesCount :one
-SELECT COUNT(*) FROM sources
+SELECT COUNT(*) FROM sources where is_active = TRUE and user_id = $1
 `
 
-func (q *Queries) GetActiveSourcesCount(ctx context.Context) (int64, error) {
-	row := q.db.QueryRowContext(ctx, getActiveSourcesCount)
+func (q *Queries) GetActiveSourcesCount(ctx context.Context, userID uuid.UUID) (int64, error) {
+	row := q.db.QueryRowContext(ctx, getActiveSourcesCount, userID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
 }
 
 const getActiveTargetsCount = `-- name: GetActiveTargetsCount :one
-SELECT COUNT(*) FROM targets
+SELECT COUNT(*) FROM targets where is_active = TRUE and user_id = $1
 `
 
-func (q *Queries) GetActiveTargetsCount(ctx context.Context) (int64, error) {
-	row := q.db.QueryRowContext(ctx, getActiveTargetsCount)
+func (q *Queries) GetActiveTargetsCount(ctx context.Context, userID uuid.UUID) (int64, error) {
+	row := q.db.QueryRowContext(ctx, getActiveTargetsCount, userID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -33,11 +35,15 @@ func (q *Queries) GetActiveTargetsCount(ctx context.Context) (int64, error) {
 
 const getAverageWebsiteSession = `-- name: GetAverageWebsiteSession :one
 SELECT COALESCE(AVG(avg_session_duration), 0)::BIGINT AS average_website_session
-FROM analytics_site_stats
+FROM
+    analytics_site_stats
+    left join sources on analytics_site_stats.source_id = sources.id
+where
+    sources.user_id = $1
 `
 
-func (q *Queries) GetAverageWebsiteSession(ctx context.Context) (int64, error) {
-	row := q.db.QueryRowContext(ctx, getAverageWebsiteSession)
+func (q *Queries) GetAverageWebsiteSession(ctx context.Context, userID uuid.UUID) (int64, error) {
+	row := q.db.QueryRowContext(ctx, getAverageWebsiteSession, userID)
 	var average_website_session int64
 	err := row.Scan(&average_website_session)
 	return average_website_session, err
@@ -45,22 +51,30 @@ func (q *Queries) GetAverageWebsiteSession(ctx context.Context) (int64, error) {
 
 const getTotalPageViews = `-- name: GetTotalPageViews :one
 SELECT COALESCE(SUM(views), 0)::BIGINT AS total_page_views
-FROM analytics_page_stats
+FROM
+    analytics_page_stats
+    left join sources on analytics_page_stats.source_id = sources.id
+where
+    sources.user_id = $1
 `
 
-func (q *Queries) GetTotalPageViews(ctx context.Context) (int64, error) {
-	row := q.db.QueryRowContext(ctx, getTotalPageViews)
+func (q *Queries) GetTotalPageViews(ctx context.Context, userID uuid.UUID) (int64, error) {
+	row := q.db.QueryRowContext(ctx, getTotalPageViews, userID)
 	var total_page_views int64
 	err := row.Scan(&total_page_views)
 	return total_page_views, err
 }
 
 const getTotalPostsCount = `-- name: GetTotalPostsCount :one
-SELECT COUNT(*) FROM posts
+SELECT COUNT(*)
+FROM posts
+    left join sources on posts.source_id = sources.id
+where
+    sources.user_id = $1
 `
 
-func (q *Queries) GetTotalPostsCount(ctx context.Context) (int64, error) {
-	row := q.db.QueryRowContext(ctx, getTotalPostsCount)
+func (q *Queries) GetTotalPostsCount(ctx context.Context, userID uuid.UUID) (int64, error) {
+	row := q.db.QueryRowContext(ctx, getTotalPostsCount, userID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -73,9 +87,14 @@ SELECT
     COALESCE(SUM(views), 0)::BIGINT AS total_views
 FROM (
         SELECT DISTINCT
-            ON (post_id) likes, reposts, views
-        FROM posts_reactions_history
-        ORDER BY post_id, synced_at DESC
+            ON (prh.post_id) prh.likes, prh.reposts, prh.views
+        FROM
+            posts_reactions_history prh
+            left join posts p on prh.post_id = p.id
+            left join sources s on p.source_id = s.id
+        where
+            s.user_id = $1
+        ORDER BY prh.post_id, prh.synced_at DESC
     ) AS latest_reactions
 `
 
@@ -85,8 +104,8 @@ type GetTotalReactionsRow struct {
 	TotalViews  int64
 }
 
-func (q *Queries) GetTotalReactions(ctx context.Context) (GetTotalReactionsRow, error) {
-	row := q.db.QueryRowContext(ctx, getTotalReactions)
+func (q *Queries) GetTotalReactions(ctx context.Context, userID uuid.UUID) (GetTotalReactionsRow, error) {
+	row := q.db.QueryRowContext(ctx, getTotalReactions, userID)
 	var i GetTotalReactionsRow
 	err := row.Scan(&i.TotalLikes, &i.TotalShares, &i.TotalViews)
 	return i, err
@@ -94,11 +113,15 @@ func (q *Queries) GetTotalReactions(ctx context.Context) (GetTotalReactionsRow, 
 
 const getTotalSiteStats = `-- name: GetTotalSiteStats :one
 SELECT COALESCE(SUM(visitors), 0)::BIGINT AS total_visitors
-FROM analytics_site_stats
+FROM
+    analytics_site_stats
+    left join sources on analytics_site_stats.source_id = sources.id
+where
+    sources.user_id = $1
 `
 
-func (q *Queries) GetTotalSiteStats(ctx context.Context) (int64, error) {
-	row := q.db.QueryRowContext(ctx, getTotalSiteStats)
+func (q *Queries) GetTotalSiteStats(ctx context.Context, userID uuid.UUID) (int64, error) {
+	row := q.db.QueryRowContext(ctx, getTotalSiteStats, userID)
 	var total_visitors int64
 	err := row.Scan(&total_visitors)
 	return total_visitors, err

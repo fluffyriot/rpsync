@@ -66,6 +66,9 @@ FROM
     logs l
     LEFT JOIN sources s ON l.source_id = s.id
     LEFT JOIN targets t ON l.target_id = t.id
+WHERE
+    s.user_id = $1
+    OR t.user_id = $1
 ORDER BY l.created_at DESC
 LIMIT 20
 `
@@ -79,8 +82,8 @@ type GetRecentLogsRow struct {
 	TargetType     sql.NullString
 }
 
-func (q *Queries) GetRecentLogs(ctx context.Context) ([]GetRecentLogsRow, error) {
-	rows, err := q.db.QueryContext(ctx, getRecentLogs)
+func (q *Queries) GetRecentLogs(ctx context.Context, userID uuid.UUID) ([]GetRecentLogsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getRecentLogs, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -111,13 +114,19 @@ func (q *Queries) GetRecentLogs(ctx context.Context) ([]GetRecentLogsRow, error)
 
 const getSyncErrorsCountLast30Days = `-- name: GetSyncErrorsCountLast30Days :one
 SELECT COUNT(*)
-FROM logs
-WHERE
-    created_at > NOW() - INTERVAL '30 days'
+FROM
+    logs l
+    LEFT JOIN sources s ON l.source_id = s.id
+    LEFT JOIN targets t ON l.target_id = t.id
+WHERE (
+        s.user_id = $1
+        OR t.user_id = $1
+    )
+    AND created_at > NOW() - INTERVAL '30 days'
 `
 
-func (q *Queries) GetSyncErrorsCountLast30Days(ctx context.Context) (int64, error) {
-	row := q.db.QueryRowContext(ctx, getSyncErrorsCountLast30Days)
+func (q *Queries) GetSyncErrorsCountLast30Days(ctx context.Context, userID uuid.UUID) (int64, error) {
+	row := q.db.QueryRowContext(ctx, getSyncErrorsCountLast30Days, userID)
 	var count int64
 	err := row.Scan(&count)
 	return count, err

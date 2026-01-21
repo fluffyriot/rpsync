@@ -161,3 +161,50 @@ func GenerateWebsiteCsv(dbQueries *database.Queries, target database.Target, exp
 
 	return filename, nil
 }
+
+func GeneratePageViewsCsv(dbQueries *database.Queries, target database.Target, export database.Export) (string, error) {
+	stats, err := dbQueries.GetAllAnalyticsPageStatsForUser(context.Background(), target.UserID)
+	if err != nil {
+		return "", fmt.Errorf("fetching pages stats: %w", err)
+	}
+
+	if len(stats) == 0 {
+		return "", nil
+	}
+
+	filename := fmt.Sprintf("outputs/export_id_%s_webpages_%s.csv", export.ID.String(), time.Now().Format("20060102_150405"))
+	file, err := os.Create(filename)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
+	if err := writer.Write([]string{
+		"ct_id",
+		"date",
+		"url_path",
+		"views",
+		"source_network",
+		"source_username",
+	}); err != nil {
+		return "", err
+	}
+
+	for _, s := range stats {
+		if err := writer.Write([]string{
+			s.ID.String(),
+			s.Date.Format("2006-01-02"),
+			s.UrlPath,
+			strconv.Itoa(int(s.Views)),
+			s.SourceNetwork,
+			s.SourceUserName,
+		}); err != nil {
+			return "", err
+		}
+	}
+
+	return filename, nil
+}

@@ -61,15 +61,15 @@ func (h *Handler) RootHandler(c *gin.Context) {
 
 	user := users[0]
 
-	activeSources, _ := h.DB.GetActiveSourcesCount(ctx)
-	activeTargets, _ := h.DB.GetActiveTargetsCount(ctx)
-	totalPosts, _ := h.DB.GetTotalPostsCount(ctx)
-	reactions, _ := h.DB.GetTotalReactions(ctx)
-	siteStats, _ := h.DB.GetTotalSiteStats(ctx)
-	pageViews, _ := h.DB.GetTotalPageViews(ctx)
-	siteAvSession, _ := h.DB.GetAverageWebsiteSession(ctx)
-	syncErrors30d, _ := h.DB.GetSyncErrorsCountLast30Days(ctx)
-	recentLogs, _ := h.DB.GetRecentLogs(ctx)
+	activeSources, _ := h.DB.GetActiveSourcesCount(ctx, user.ID)
+	activeTargets, _ := h.DB.GetActiveTargetsCount(ctx, user.ID)
+	totalPosts, _ := h.DB.GetTotalPostsCount(ctx, user.ID)
+	reactions, _ := h.DB.GetTotalReactions(ctx, user.ID)
+	siteStats, _ := h.DB.GetTotalSiteStats(ctx, user.ID)
+	pageViews, _ := h.DB.GetTotalPageViews(ctx, user.ID)
+	siteAvSession, _ := h.DB.GetAverageWebsiteSession(ctx, user.ID)
+	syncErrors30d, _ := h.DB.GetSyncErrorsCountLast30Days(ctx, user.ID)
+	recentLogs, _ := h.DB.GetRecentLogs(ctx, user.ID)
 
 	workerStatus := "Off"
 	workerIsOff := true
