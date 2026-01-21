@@ -26,6 +26,30 @@
 
 <div class="grid-dashboard">
 
+  <div class="stat-card {{if .worker_is_off}}has-errors{{end}}">
+    <div class="stat-icon"><i data-lucide="activity" style="width: 24px; height: 24px;"></i></div>
+    <div class="stat-value">{{.worker_status}}</div>
+    <div class="stat-label">Syncer Status</div>
+    <a href="/settings/sync" class="stat-link">Manage Settings &rarr;</a>
+  </div>
+
+
+  {{if not .worker_is_off}}
+  <div class="stat-card">
+    <div class="stat-icon"><i data-lucide="clock" style="width: 24px; height: 24px;"></i></div>
+    <div class="stat-value">{{.sync_period}}</div>
+    <div class="stat-label">Sync Frequency</div>
+    <a href="/settings/sync" class="stat-link">Change Frequency &rarr;</a>
+  </div>
+  {{end}}
+
+
+  <div class="stat-card {{if gt .sync_errors_30d 0}}has-errors{{end}}">
+    <div class="stat-icon"><i data-lucide="alert-circle" style="width: 24px; height: 24px;"></i></div>
+    <div class="stat-value">{{.sync_errors_30d}}</div>
+    <div class="stat-label">Sync Errors (Last 30 days)</div>
+  </div>
+
   <div class="stat-card">
     <div class="stat-icon"><i data-lucide="server" style="width: 24px; height: 24px;"></i></div>
     <div class="stat-value">{{.active_sources}}</div>
@@ -33,18 +57,11 @@
     <a href="/sources" class="stat-link">Manage Sources &rarr;</a>
   </div>
 
-
   <div class="stat-card">
     <div class="stat-icon"><i data-lucide="database" style="width: 24px; height: 24px;"></i></div>
     <div class="stat-value">{{.active_targets}}</div>
     <div class="stat-label">Active Targets</div>
     <a href="/targets" class="stat-link">Manage Targets &rarr;</a>
-  </div>
-
-  <div class="stat-card {{if gt .sync_errors_30d 0}}has-errors{{end}}">
-    <div class="stat-icon"><i data-lucide="alert-circle" style="width: 24px; height: 24px;"></i></div>
-    <div class="stat-value">{{.sync_errors_30d}}</div>
-    <div class="stat-label">Sync Errors (30d)</div>
   </div>
 
   <div class="stat-card">
@@ -82,6 +99,13 @@
     <div class="stat-value formatted-metric">{{.total_page_views}}</div>
     <div class="stat-label">Website Page Views</div>
   </div>
+
+  <div class="stat-card">
+    <div class="stat-icon"><i data-lucide="hourglass" style="width: 24px; height: 24px;"></i></div>
+    <div class="stat-value formatted-metric">{{.average_website_session}}s</div>
+    <div class="stat-label">Average Website Session</div>
+  </div>
+
 </div>
 
 <div class="card" style="margin-bottom: 2rem;">

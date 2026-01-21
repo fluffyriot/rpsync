@@ -13,21 +13,27 @@ import (
 )
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (id, username, created_at, updated_at)
-VALUES (
-    $1,
-    $2,
-    $3,
-    $4
-)
-RETURNING id, username, created_at, updated_at
+INSERT INTO
+    users (
+        id,
+        username,
+        created_at,
+        updated_at,
+        sync_period,
+        enabled_on_startup
+    )
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING
+    id, username, created_at, updated_at, sync_period, enabled_on_startup
 `
 
 type CreateUserParams struct {
-	ID        uuid.UUID
-	Username  string
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID               uuid.UUID
+	Username         string
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+	SyncPeriod       string
+	EnabledOnStartup bool
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
@@ -36,6 +42,8 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		arg.Username,
 		arg.CreatedAt,
 		arg.UpdatedAt,
+		arg.SyncPeriod,
+		arg.EnabledOnStartup,
 	)
 	var i User
 	err := row.Scan(
@@ -43,6 +51,8 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.Username,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SyncPeriod,
+		&i.EnabledOnStartup,
 	)
 	return i, err
 }
@@ -57,7 +67,7 @@ func (q *Queries) EmptyUsers(ctx context.Context) error {
 }
 
 const getAllUsers = `-- name: GetAllUsers :many
-SELECT id, username, created_at, updated_at FROM users
+SELECT id, username, created_at, updated_at, sync_period, enabled_on_startup FROM users
 `
 
 func (q *Queries) GetAllUsers(ctx context.Context) ([]User, error) {
@@ -74,6 +84,8 @@ func (q *Queries) GetAllUsers(ctx context.Context) ([]User, error) {
 			&i.Username,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.SyncPeriod,
+			&i.EnabledOnStartup,
 		); err != nil {
 			return nil, err
 		}
@@ -86,4 +98,36 @@ func (q *Queries) GetAllUsers(ctx context.Context) ([]User, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateUserSyncSettings = `-- name: UpdateUserSyncSettings :one
+UPDATE users
+SET
+    sync_period = $2,
+    enabled_on_startup = $3,
+    updated_at = NOW()
+WHERE
+    id = $1
+RETURNING
+    id, username, created_at, updated_at, sync_period, enabled_on_startup
+`
+
+type UpdateUserSyncSettingsParams struct {
+	ID               uuid.UUID
+	SyncPeriod       string
+	EnabledOnStartup bool
+}
+
+func (q *Queries) UpdateUserSyncSettings(ctx context.Context, arg UpdateUserSyncSettingsParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, updateUserSyncSettings, arg.ID, arg.SyncPeriod, arg.EnabledOnStartup)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.SyncPeriod,
+		&i.EnabledOnStartup,
+	)
+	return i, err
 }

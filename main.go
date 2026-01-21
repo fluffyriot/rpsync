@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"time"
 
@@ -38,7 +39,31 @@ func main() {
 	cfg.DBInitErr = dbInitErr
 
 	w := worker.NewWorker(dbQueries, clientFetch, clientPull, cfg)
-	w.Start(30 * time.Minute)
+
+	ctx := context.Background()
+	users, err := dbQueries.GetAllUsers(ctx)
+	shouldStart := true
+	startInterval := 30 * time.Minute
+
+	if err == nil && len(users) > 0 {
+		user := users[0]
+		if !user.EnabledOnStartup {
+			shouldStart = false
+		} else {
+			parsedDuration, err := time.ParseDuration(user.SyncPeriod)
+			if err == nil {
+				startInterval = parsedDuration
+			} else {
+				log.Printf("Invalid sync period '%s', defaulting to 30m", user.SyncPeriod)
+			}
+		}
+	}
+
+	if shouldStart {
+		w.Start(startInterval)
+	} else {
+		log.Println("Worker disabled on startup by user settings")
+	}
 
 	h := handlers.NewHandler(
 		dbQueries,
@@ -49,6 +74,12 @@ func main() {
 	)
 
 	r.GET("/", h.RootHandler)
+
+	r.GET("/settings/sync", h.SyncSettingsHandler)
+	r.POST("/settings/sync", h.UpdateSyncSettingsHandler)
+	r.POST("/settings/sync/reset", h.ResetSyncSettingsHandler)
+	r.POST("/settings/sync/start", h.StartWorkerHandler)
+	r.POST("/settings/sync/stop", h.StopWorkerHandler)
 
 	r.GET("/auth/facebook/login", h.FacebookLoginHandler)
 	r.GET("/auth/facebook/callback", h.FacebookCallbackHandler)

@@ -31,6 +31,18 @@ func (q *Queries) GetActiveTargetsCount(ctx context.Context) (int64, error) {
 	return count, err
 }
 
+const getAverageWebsiteSession = `-- name: GetAverageWebsiteSession :one
+SELECT COALESCE(AVG(avg_session_duration), 0)::BIGINT AS average_website_session
+FROM analytics_site_stats
+`
+
+func (q *Queries) GetAverageWebsiteSession(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, getAverageWebsiteSession)
+	var average_website_session int64
+	err := row.Scan(&average_website_session)
+	return average_website_session, err
+}
+
 const getTotalPageViews = `-- name: GetTotalPageViews :one
 SELECT COALESCE(SUM(views), 0)::BIGINT AS total_page_views
 FROM analytics_page_stats

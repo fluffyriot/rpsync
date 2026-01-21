@@ -26,3 +26,7 @@ FROM analytics_site_stats;
 -- name: GetTotalPageViews :one
 SELECT COALESCE(SUM(views), 0)::BIGINT AS total_page_views
 FROM analytics_page_stats;
+
+-- name: GetAverageWebsiteSession :one
+SELECT COALESCE(AVG(avg_session_duration), 0)::BIGINT AS average_website_session
+FROM analytics_site_stats;

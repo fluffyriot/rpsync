@@ -21,6 +21,7 @@ type Worker struct {
 	StopChan chan bool
 	mu       sync.Mutex
 	running  bool
+	active   bool
 }
 
 func NewWorker(db *database.Queries, fetcher *fetcher.Client, puller *puller.Client, cfg *config.AppConfig) *Worker {
@@ -34,8 +35,22 @@ func NewWorker(db *database.Queries, fetcher *fetcher.Client, puller *puller.Cli
 }
 
 func (w *Worker) Start(interval time.Duration) {
+	w.mu.Lock()
+	if w.active {
+		w.mu.Unlock()
+		log.Println("Worker: Scheduler already active, use Restart to change interval")
+		return
+	}
+	w.active = true
+	w.mu.Unlock()
+
 	w.Ticker = time.NewTicker(interval)
 	go func() {
+		defer func() {
+			w.mu.Lock()
+			w.active = false
+			w.mu.Unlock()
+		}()
 		for {
 			select {
 			case <-w.Ticker.C:
@@ -50,8 +65,34 @@ func (w *Worker) Start(interval time.Duration) {
 }
 
 func (w *Worker) Stop() {
+	w.mu.Lock()
+	if !w.active {
+		w.mu.Unlock()
+		log.Println("Worker: Scheduler not active")
+		return
+	}
+	w.mu.Unlock()
+
 	w.StopChan <- true
 	log.Println("Background worker stopped")
+}
+
+func (w *Worker) Restart(interval time.Duration) {
+	w.mu.Lock()
+	isActive := w.active
+	w.mu.Unlock()
+
+	if isActive {
+		w.Stop()
+		time.Sleep(100 * time.Millisecond)
+	}
+	w.Start(interval)
+}
+
+func (w *Worker) IsActive() bool {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.active
 }
 
 func (w *Worker) SyncAll() {

@@ -67,22 +67,34 @@ func (h *Handler) RootHandler(c *gin.Context) {
 	reactions, _ := h.DB.GetTotalReactions(ctx)
 	siteStats, _ := h.DB.GetTotalSiteStats(ctx)
 	pageViews, _ := h.DB.GetTotalPageViews(ctx)
+	siteAvSession, _ := h.DB.GetAverageWebsiteSession(ctx)
 	syncErrors30d, _ := h.DB.GetSyncErrorsCountLast30Days(ctx)
 	recentLogs, _ := h.DB.GetRecentLogs(ctx)
 
+	workerStatus := "Off"
+	workerIsOff := true
+	if h.Worker.IsActive() {
+		workerStatus = "On"
+		workerIsOff = false
+	}
+
 	c.HTML(http.StatusOK, "index.html", gin.H{
-		"username":         user.Username,
-		"user_id":          user.ID,
-		"app_version":      config.AppVersion,
-		"active_sources":   activeSources,
-		"active_targets":   activeTargets,
-		"total_posts":      totalPosts,
-		"total_likes":      reactions.TotalLikes,
-		"total_shares":     reactions.TotalShares,
-		"total_views":      reactions.TotalViews,
-		"total_visitors":   siteStats,
-		"total_page_views": pageViews,
-		"sync_errors_30d":  syncErrors30d,
-		"recent_logs":      recentLogs,
+		"username":                user.Username,
+		"user_id":                 user.ID,
+		"app_version":             config.AppVersion,
+		"active_sources":          activeSources,
+		"active_targets":          activeTargets,
+		"total_posts":             totalPosts,
+		"total_likes":             reactions.TotalLikes,
+		"total_shares":            reactions.TotalShares,
+		"total_views":             reactions.TotalViews,
+		"total_visitors":          siteStats,
+		"total_page_views":        pageViews,
+		"average_website_session": siteAvSession,
+		"sync_errors_30d":         syncErrors30d,
+		"recent_logs":             recentLogs,
+		"worker_status":           workerStatus,
+		"worker_is_off":           workerIsOff,
+		"sync_period":             user.SyncPeriod,
 	})
 }

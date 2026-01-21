@@ -157,8 +157,10 @@ type Token struct {
 }
 
 type User struct {
-	ID        uuid.UUID
-	Username  string
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID               uuid.UUID
+	Username         string
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+	SyncPeriod       string
+	EnabledOnStartup bool
 }
