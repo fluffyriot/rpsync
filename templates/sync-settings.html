@@ -171,8 +171,8 @@
             container.innerHTML = exclusions.map(excl => `
             <div class="card" style="margin-bottom: 0.75rem; padding: 1rem; display: flex; flex-direction: row; justify-content: space-between; align-items: center;">
                 <div>
-                    <strong>${excl.network} - ${excl.user_name}</strong><br>
-                    <span class="text-muted" style="font-size: 0.875rem;">ID: ${excl.network_internal_id}</span>
+                    <strong>ID: ${excl.network_internal_id}</strong><br>
+                    <span class="text-muted" style="font-size: 0.875rem;">${excl.network} - ${excl.user_name}</span>
                 </div>
                 <button class="btn btn-danger" onclick="deleteExclusion('${excl.id}')" style="margin-left: 1rem;">
                     <i data-lucide="trash-2"></i> Delete

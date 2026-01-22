@@ -116,6 +116,19 @@ func FetchTelegramPosts(dbQueries *database.Queries, encryptionKey []byte, sid u
 			AccessHash: channel.AccessHash,
 		}
 
+		var participantCount *int
+		fullChan, err := client.API().ChannelsGetFullChannel(ctx, input)
+		if err != nil {
+			log.Printf("Telegram: Failed to get full channel info: %v", err)
+		} else {
+			if channelFull, ok := fullChan.FullChat.(*tg.ChannelFull); ok {
+				if channelFull.ParticipantsCount != 0 {
+					count := int(channelFull.ParticipantsCount)
+					participantCount = &count
+				}
+			}
+		}
+
 		var (
 			startID          = 1
 			batchSize        = 100
@@ -245,6 +258,18 @@ func FetchTelegramPosts(dbQueries *database.Queries, encryptionKey []byte, sid u
 		if len(processedLinks) == 0 {
 			return fmt.Errorf("no new messages found")
 		}
+
+		stats, err := calculateAverageStats(ctx, dbQueries, sid)
+		if err != nil {
+			log.Printf("Telegram: Failed to calculate stats for source %s: %v", sid, err)
+		} else {
+			stats.FollowersCount = participantCount
+
+			if err := saveOrUpdateSourceStats(ctx, dbQueries, sid, stats); err != nil {
+				log.Printf("Telegram: Failed to save stats for source %s: %v", sid, err)
+			}
+		}
+
 		return nil
 	})
 }

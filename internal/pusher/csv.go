@@ -1,4 +1,4 @@
-package puller
+package pusher
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/fluffyriot/commission-tracker/internal/database"
+	"github.com/fluffyriot/commission-tracker/internal/pusher/common"
 	"github.com/google/uuid"
 )
 
@@ -92,7 +93,7 @@ func GeneratePostsCsv(dbQueries *database.Queries, target database.Target, expor
 			views = strconv.FormatInt(int64(r.Views.Int32), 10)
 		}
 
-		url, _ := ConvPostToURL(network, r.Author, r.NetworkInternalID)
+		url, _ := common.ConvPostToURL(network, r.Author, r.NetworkInternalID)
 
 		if err := writer.Write([]string{
 			r.ID.String(),

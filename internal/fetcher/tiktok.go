@@ -464,6 +464,51 @@ func FetchTikTokPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, sou
 		}
 	}
 
+	var followersCount *int
+	err = chromedp.Run(ctx,
+		chromedp.Navigate("https://www.tiktok.com/tiktokstudio/analytics/followers"),
+		chromedp.Sleep(3*time.Second),
+		chromedp.ActionFunc(func(ctx context.Context) error {
+			var followerText string
+			err := chromedp.Evaluate(`
+				(function() {
+					const cards = document.querySelectorAll('div[data-tt="components_AnalyticsCard_CardWrapper"]');
+					for (const card of cards) {
+						const text = card.innerText;
+						if (text.includes('Total followers')) {
+							const valueSpan = card.querySelector('span.absolute-value');
+							if (valueSpan) {
+								return valueSpan.innerText;
+							}
+						}
+					}
+					return '';
+				})()
+			`, &followerText).Do(ctx)
+
+			if err == nil && followerText != "" {
+				count := parseCount(followerText)
+				followersCount = &count
+			}
+			return nil
+		}),
+	)
+	if err != nil {
+		log.Printf("TikTok: Failed to scrape follower count: %v", err)
+	}
+
+	stats, err := calculateAverageStats(context.Background(), dbQueries, sourceId)
+	if err != nil {
+		log.Printf("TikTok: Failed to calculate stats for source %s: %v", sourceId, err)
+	} else {
+
+		stats.FollowersCount = followersCount
+
+		if err := saveOrUpdateSourceStats(context.Background(), dbQueries, sourceId, stats); err != nil {
+			log.Printf("TikTok: Failed to save stats for source %s: %v", sourceId, err)
+		}
+	}
+
 	return nil
 }
 

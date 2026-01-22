@@ -11,7 +11,8 @@ import (
 	"github.com/fluffyriot/commission-tracker/internal/config"
 	"github.com/fluffyriot/commission-tracker/internal/database"
 	"github.com/fluffyriot/commission-tracker/internal/fetcher"
-	"github.com/fluffyriot/commission-tracker/internal/puller"
+	"github.com/fluffyriot/commission-tracker/internal/pusher"
+	"github.com/fluffyriot/commission-tracker/internal/pusher/common"
 	"github.com/google/uuid"
 )
 
@@ -33,7 +34,7 @@ func backoffWithJitter(attempt int) time.Duration {
 	return jitter
 }
 
-func RunSync(db *database.Queries, f *fetcher.Client, p *puller.Client, cfg *config.AppConfig) {
+func RunSync(db *database.Queries, f *fetcher.Client, p *common.Client, cfg *config.AppConfig) {
 	log.Println("Worker: Starting sync...")
 	ctx := context.Background()
 
@@ -101,7 +102,7 @@ func RunSync(db *database.Queries, f *fetcher.Client, p *puller.Client, cfg *con
 					}
 				}()
 
-				puller.PullByTarget(tid, db, p, cfg.TokenEncryptionKey)
+				pusher.PullByTarget(tid, db, p, cfg.TokenEncryptionKey)
 			}(target.ID)
 		}
 	}

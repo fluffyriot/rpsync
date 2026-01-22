@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"path"
@@ -17,7 +18,9 @@ import (
 )
 
 type mastUser struct {
-	ID string `json:"id"`
+	ID             string `json:"id"`
+	FollowersCount int    `json:"followers_count"`
+	FollowingCount int    `json:"following_count"`
 }
 
 type mastFeed []struct {
@@ -46,8 +49,7 @@ type mastFeed []struct {
 	} `json:"reblog"`
 }
 
-func getMastodonApiString(dbQueries *database.Queries, uid uuid.UUID, c *Client, max_id string) (string, error) {
-
+func getMastodonProfile(dbQueries *database.Queries, uid uuid.UUID, c *Client) (string, *mastUser, error) {
 	username, err := dbQueries.GetUserActiveSourceByName(
 		context.Background(),
 		database.GetUserActiveSourceByNameParams{
@@ -57,7 +59,7 @@ func getMastodonApiString(dbQueries *database.Queries, uid uuid.UUID, c *Client,
 	)
 
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 
 	splits := strings.SplitN(username.UserName, "@", 2)
@@ -72,41 +74,30 @@ func getMastodonApiString(dbQueries *database.Queries, uid uuid.UUID, c *Client,
 
 	req, err := http.NewRequest("GET", initUrl, nil)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		return "", fmt.Errorf("Failed to get a successfull response. %v: %v", resp.StatusCode, resp.Status)
+		return "", nil, fmt.Errorf("Failed to get a successfull response. %v: %v", resp.StatusCode, resp.Status)
 	}
 
 	data, err := io.ReadAll(resp.Body)
-	resp.Body.Close()
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 
 	var mastUser mastUser
 	if err := json.Unmarshal(data, &mastUser); err != nil {
-		return "", err
+		return "", nil, err
 	}
 
-	apiString := fmt.Sprintf(
-		"https://%s/api/v1/accounts/%s/statuses?only_media=false&exclude_reblogs=false&exclude_replies=true&limit=40",
-		domain,
-		mastUser.ID,
-	)
-
-	if max_id != "" {
-		apiString += "&max_id=" + max_id
-	}
-
-	return apiString, nil
-
+	return domain, &mastUser, nil
 }
 
 func FetchMastodonPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, sourceId uuid.UUID) error {
@@ -116,17 +107,40 @@ func FetchMastodonPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, s
 		return err
 	}
 
+	domain, profile, err := getMastodonProfile(dbQueries, uid, c)
+	if err != nil {
+		return fmt.Errorf("failed to get mastodon profile: %w", err)
+	}
+
+	defer func() {
+		stats, err := calculateAverageStats(context.Background(), dbQueries, sourceId)
+		if err != nil {
+			log.Printf("Mastodon: Failed to calculate stats for source %s: %v", sourceId, err)
+		} else {
+			if profile != nil {
+				stats.FollowersCount = &profile.FollowersCount
+				stats.FollowingCount = &profile.FollowingCount
+			}
+			if err := saveOrUpdateSourceStats(context.Background(), dbQueries, sourceId, stats); err != nil {
+				log.Printf("Mastodon: Failed to save stats for source %s: %v", sourceId, err)
+			}
+		}
+	}()
+
 	processedLinks := make(map[string]struct{})
-
-	var max_id string
-
 	const maxPages = 500
+	var max_id string
 
 	for page := 0; page < maxPages; page++ {
 
-		urlReq, err := getMastodonApiString(dbQueries, uid, c, max_id)
-		if err != nil {
-			return err
+		urlReq := fmt.Sprintf(
+			"https://%s/api/v1/accounts/%s/statuses?only_media=false&exclude_reblogs=false&exclude_replies=true&limit=40",
+			domain,
+			profile.ID,
+		)
+
+		if max_id != "" {
+			urlReq += "&max_id=" + max_id
 		}
 
 		req, err := http.NewRequest("GET", urlReq, nil)
@@ -140,6 +154,7 @@ func FetchMastodonPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, s
 		}
 
 		if resp.StatusCode != 200 {
+			resp.Body.Close()
 			return fmt.Errorf("Failed to get a successfull response. %v: %v", resp.StatusCode, resp.Status)
 		}
 
@@ -155,7 +170,7 @@ func FetchMastodonPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, s
 		}
 
 		if len(feed) == 0 {
-			return nil
+			break
 		}
 
 		for _, item := range feed {

@@ -128,6 +128,26 @@ type SourcesOnTarget struct {
 	TargetSourceID string
 }
 
+type SourcesStat struct {
+	ID             uuid.UUID
+	Date           time.Time
+	SourceID       uuid.UUID
+	FollowersCount sql.NullInt32
+	FollowingCount sql.NullInt32
+	PostsCount     sql.NullInt32
+	AverageLikes   sql.NullFloat64
+	AverageReposts sql.NullFloat64
+	AverageViews   sql.NullFloat64
+}
+
+type SourcesStatsOnTarget struct {
+	ID             uuid.UUID
+	SyncedAt       time.Time
+	StatID         uuid.UUID
+	TargetID       uuid.UUID
+	TargetRecordID string
+}
+
 type TableMapping struct {
 	ID              uuid.UUID
 	CreatedAt       time.Time

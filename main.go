@@ -8,7 +8,7 @@ import (
 	"github.com/fluffyriot/commission-tracker/internal/api/handlers"
 	"github.com/fluffyriot/commission-tracker/internal/config"
 	"github.com/fluffyriot/commission-tracker/internal/fetcher"
-	"github.com/fluffyriot/commission-tracker/internal/puller"
+	"github.com/fluffyriot/commission-tracker/internal/pusher/common"
 	"github.com/fluffyriot/commission-tracker/internal/worker"
 	"github.com/gin-gonic/gin"
 )
@@ -21,7 +21,7 @@ func main() {
 	}
 
 	clientFetch := fetcher.NewClient(600 * time.Second)
-	clientPull := puller.NewClient(600 * time.Second)
+	clientPull := common.NewClient(600 * time.Second)
 
 	r := gin.Default()
 

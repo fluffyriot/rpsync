@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -51,7 +52,13 @@ type bskyFeed struct {
 	Cursor string `json:"cursor,omitempty"`
 }
 
-func getBskyApiString(dbQueries *database.Queries, uid uuid.UUID, cursor string) (string, error) {
+type bskyProfile struct {
+	FollowersCount int `json:"followersCount"`
+	FollowsCount   int `json:"followsCount"`
+	PostsCount     int `json:"postsCount"`
+}
+
+func getBskyApiString(dbQueries *database.Queries, uid uuid.UUID, cursor string) (string, string, error) {
 
 	username, err := dbQueries.GetUserActiveSourceByName(
 		context.Background(),
@@ -62,7 +69,7 @@ func getBskyApiString(dbQueries *database.Queries, uid uuid.UUID, cursor string)
 	)
 
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	apiString := fmt.Sprintf(
@@ -74,8 +81,40 @@ func getBskyApiString(dbQueries *database.Queries, uid uuid.UUID, cursor string)
 		apiString += "&cursor=" + cursor
 	}
 
-	return apiString, nil
+	return apiString, username.UserName, nil
 
+}
+
+func fetchBlueskyProfile(username string, c *Client) (*bskyProfile, error) {
+
+	url := fmt.Sprintf("https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=%s", username)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("failed to get profile: %v %v", resp.StatusCode, resp.Status)
+	}
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var profile bskyProfile
+	if err := json.Unmarshal(data, &profile); err != nil {
+		return nil, err
+	}
+
+	return &profile, nil
 }
 
 func FetchBlueskyPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, sourceId uuid.UUID) error {
@@ -87,13 +126,15 @@ func FetchBlueskyPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, so
 
 	processedLinks := make(map[string]struct{})
 
-	var cursor string
-
 	const maxPages = 500
+
+	var cursor string
+	var username string
+	var url string
 
 	for page := 0; page < maxPages; page++ {
 
-		url, err := getBskyApiString(dbQueries, uid, cursor)
+		url, username, err = getBskyApiString(dbQueries, uid, cursor)
 		if err != nil {
 			return err
 		}
@@ -206,6 +247,24 @@ func FetchBlueskyPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, so
 
 	if len(processedLinks) == 0 {
 		return errors.New("No content found")
+	}
+
+	stats, err := calculateAverageStats(context.Background(), dbQueries, sourceId)
+	if err != nil {
+		log.Printf("Bluesky: Failed to calculate stats for source %s: %v", sourceId, err)
+	} else {
+
+		profile, err := fetchBlueskyProfile(username, c)
+		if err != nil {
+			log.Printf("Bluesky: Failed to fetch profile for source %s: %v", sourceId, err)
+		} else {
+			stats.FollowersCount = &profile.FollowersCount
+			stats.FollowingCount = &profile.FollowsCount
+		}
+
+		if err := saveOrUpdateSourceStats(context.Background(), dbQueries, sourceId, stats); err != nil {
+			log.Printf("Bluesky: Failed to save stats for source %s: %v", sourceId, err)
+		}
 	}
 
 	return nil

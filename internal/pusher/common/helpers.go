@@ -1,4 +1,4 @@
-package puller
+package common
 
 import (
 	"fmt"

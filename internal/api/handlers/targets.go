@@ -8,7 +8,7 @@ import (
 
 	"github.com/fluffyriot/commission-tracker/internal/config"
 	"github.com/fluffyriot/commission-tracker/internal/database"
-	"github.com/fluffyriot/commission-tracker/internal/puller"
+	"github.com/fluffyriot/commission-tracker/internal/pusher"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
@@ -192,7 +192,7 @@ func (h *Handler) SyncTargetHandler(c *gin.Context) {
 				log.Printf("panic in background sync: %v", r)
 			}
 		}()
-		puller.PullByTarget(tid, h.DB, h.Puller, h.Config.TokenEncryptionKey)
+		pusher.PullByTarget(tid, h.DB, h.Puller, h.Config.TokenEncryptionKey)
 	}(targetID)
 
 	c.Redirect(http.StatusSeeOther, "/targets")

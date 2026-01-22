@@ -56,11 +56,16 @@ type instagramTagsFeed struct {
 	} `json:"paging"`
 }
 
-func getInstagramApiString(dbQueries *database.Queries, sid uuid.UUID, next string, version string, encryptionKey []byte) (string, error) {
+type instagramProfile struct {
+	FollowsCount   int `json:"follows_count"`
+	FollowersCount int `json:"followers_count"`
+}
+
+func getInstagramApiString(dbQueries *database.Queries, sid uuid.UUID, next string, version string, encryptionKey []byte) (string, string, string, string, error) {
 
 	token, pid, _, err := authhelp.GetSourceToken(context.Background(), dbQueries, encryptionKey, sid)
 	if err != nil {
-		return "", err
+		return "", "", "", "", err
 	}
 
 	apiString := fmt.Sprintf("https://graph.facebook.com/v%v/%v/media?fields=id,caption,shortcode,like_count,timestamp,media_type,username,insights.metric(views)&access_token=%v&limit=25", version, pid, token)
@@ -69,7 +74,7 @@ func getInstagramApiString(dbQueries *database.Queries, sid uuid.UUID, next stri
 		apiString = next
 	}
 
-	return apiString, nil
+	return apiString, token, pid, version, nil
 
 }
 
@@ -90,6 +95,37 @@ func getInstagramTagstring(dbQueries *database.Queries, sid uuid.UUID, next stri
 
 }
 
+func fetchInstagramProfile(token, pid, version string, c *Client) (*instagramProfile, error) {
+	url := fmt.Sprintf("https://graph.facebook.com/v%s/%s?fields=follows_count,followers_count&access_token=%s", version, pid, token)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("failed to get profile: %v %v", resp.StatusCode, resp.Status)
+	}
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var profile instagramProfile
+	if err := json.Unmarshal(data, &profile); err != nil {
+		return nil, err
+	}
+
+	return &profile, nil
+}
+
 func FetchInstagramPosts(dbQueries *database.Queries, c *Client, sourceId uuid.UUID, version string, encryptionKey []byte) error {
 
 	exclusionMap, err := loadExclusionMap(dbQueries, sourceId)
@@ -99,13 +135,15 @@ func FetchInstagramPosts(dbQueries *database.Queries, c *Client, sourceId uuid.U
 
 	processedLinks := make(map[string]struct{})
 
-	var next string
-
 	const maxPages = 500
+
+	var next string
+	var token, pid, ver string
+	var url string
 
 	for page := 0; page < maxPages; page++ {
 
-		url, err := getInstagramApiString(dbQueries, sourceId, next, version, encryptionKey)
+		url, token, pid, ver, err = getInstagramApiString(dbQueries, sourceId, next, version, encryptionKey)
 		if err != nil {
 			return err
 		}
@@ -231,6 +269,24 @@ func FetchInstagramPosts(dbQueries *database.Queries, c *Client, sourceId uuid.U
 
 	if len(processedLinks) == 0 {
 		return errors.New("No content found")
+	}
+
+	stats, err := calculateAverageStats(context.Background(), dbQueries, sourceId)
+	if err != nil {
+		log.Printf("Instagram: Failed to calculate stats for source %s: %v", sourceId, err)
+	} else {
+
+		profile, err := fetchInstagramProfile(token, pid, ver, c)
+		if err != nil {
+			log.Printf("Instagram: Failed to fetch profile for source %s: %v", sourceId, err)
+		} else {
+			stats.FollowersCount = &profile.FollowersCount
+			stats.FollowingCount = &profile.FollowsCount
+		}
+
+		if err := saveOrUpdateSourceStats(context.Background(), dbQueries, sourceId, stats); err != nil {
+			log.Printf("Instagram: Failed to save stats for source %s: %v", sourceId, err)
+		}
 	}
 
 	return nil

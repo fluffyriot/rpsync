@@ -8,14 +8,14 @@ import (
 	"github.com/fluffyriot/commission-tracker/internal/config"
 	"github.com/fluffyriot/commission-tracker/internal/database"
 	"github.com/fluffyriot/commission-tracker/internal/fetcher"
-	"github.com/fluffyriot/commission-tracker/internal/puller"
+	"github.com/fluffyriot/commission-tracker/internal/pusher/common"
 	"github.com/google/uuid"
 )
 
 type Worker struct {
 	DB       *database.Queries
 	Fetcher  *fetcher.Client
-	Puller   *puller.Client
+	Puller   *common.Client
 	Config   *config.AppConfig
 	Ticker   *time.Ticker
 	StopChan chan bool
@@ -24,7 +24,7 @@ type Worker struct {
 	active   bool
 }
 
-func NewWorker(db *database.Queries, fetcher *fetcher.Client, puller *puller.Client, cfg *config.AppConfig) *Worker {
+func NewWorker(db *database.Queries, fetcher *fetcher.Client, puller *common.Client, cfg *config.AppConfig) *Worker {
 	return &Worker{
 		DB:       db,
 		Fetcher:  fetcher,
