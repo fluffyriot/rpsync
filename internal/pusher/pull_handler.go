@@ -1,4 +1,4 @@
-package puller
+package pusher
 
 import (
 	"context"
@@ -9,10 +9,12 @@ import (
 
 	"github.com/fluffyriot/commission-tracker/internal/database"
 	"github.com/fluffyriot/commission-tracker/internal/exports"
+	"github.com/fluffyriot/commission-tracker/internal/pusher/common"
+	"github.com/fluffyriot/commission-tracker/internal/pusher/noco"
 	"github.com/google/uuid"
 )
 
-func RemoveByTarget(tid, sid uuid.UUID, dbQueries *database.Queries, c *Client, encryptionKey []byte) error {
+func RemoveByTarget(tid, sid uuid.UUID, dbQueries *database.Queries, c *common.Client, encryptionKey []byte) error {
 
 	target, err := dbQueries.GetTargetById(context.Background(), tid)
 	if err != nil {
@@ -32,7 +34,7 @@ func RemoveByTarget(tid, sid uuid.UUID, dbQueries *database.Queries, c *Client, 
 	return nil
 }
 
-func PullByTarget(tid uuid.UUID, dbQueries *database.Queries, c *Client, encryptionKey []byte) error {
+func PullByTarget(tid uuid.UUID, dbQueries *database.Queries, c *common.Client, encryptionKey []byte) error {
 
 	target, err := dbQueries.GetTargetById(context.Background(), tid)
 	if err != nil {
@@ -150,7 +152,7 @@ func PullByTarget(tid uuid.UUID, dbQueries *database.Queries, c *Client, encrypt
 	return finalErr
 }
 
-func startDbSync(dbQueries *database.Queries, c *Client, encryptionKey []byte, target database.Target) error {
+func startDbSync(dbQueries *database.Queries, c *common.Client, encryptionKey []byte, target database.Target) error {
 
 	if target.TargetType == "Notion" {
 		return fmt.Errorf("not implemented yet")
@@ -161,22 +163,22 @@ func startDbSync(dbQueries *database.Queries, c *Client, encryptionKey []byte, t
 		TargetTableName: "Analytics_Page_Stats",
 	})
 	if err != nil {
-		err := InitializeNoco(dbQueries, c, encryptionKey, target)
+		err := noco.InitializeNoco(dbQueries, c, encryptionKey, target)
 		if err != nil {
 			return err
 		}
 	}
 
-	err = SyncNoco(dbQueries, c, encryptionKey, target)
+	err = noco.SyncNoco(dbQueries, c, encryptionKey, target)
 	return err
 
 }
 
-func startDbRemoval(dbQueries *database.Queries, c *Client, targetId uuid.UUID, encryptionKey []byte, target database.Target, source database.Source) error {
+func startDbRemoval(dbQueries *database.Queries, c *common.Client, targetId uuid.UUID, encryptionKey []byte, target database.Target, source database.Source) error {
 	if target.TargetType == "Notion" || target.TargetType == "CSV" {
 		return nil
 	}
 
-	err := DeletePostsAndSourceNoco(dbQueries, c, encryptionKey, target, source)
+	err := noco.DeletePostsAndSourceNoco(dbQueries, c, encryptionKey, target, source)
 	return err
 }

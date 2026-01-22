@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -72,6 +73,21 @@ func FetchMurrtubePosts(uid uuid.UUID, dbQueries *database.Queries, c *Client, s
 	if err != nil {
 		return err
 	}
+
+	var followersCount, followingCount *int
+	doc.Find("ul li a").Each(func(_ int, s *goquery.Selection) {
+		text := strings.TrimSpace(s.Text())
+
+		if strings.HasPrefix(text, "Followers") {
+			if count, err := extractMurrNumber(text, `Followers \((\d+)\)`); err == nil {
+				followersCount = &count
+			}
+		} else if strings.HasPrefix(text, "Following") {
+			if count, err := extractMurrNumber(text, `Following \((\d+)\)`); err == nil {
+				followingCount = &count
+			}
+		}
+	})
 
 	linkPattern := regexp.MustCompile(`^/v/.{4}$`)
 
@@ -176,6 +192,18 @@ func FetchMurrtubePosts(uid uuid.UUID, dbQueries *database.Queries, c *Client, s
 
 	if len(processedLinks) == 0 {
 		return errors.New("No content found")
+	}
+
+	stats, err := calculateAverageStats(context.Background(), dbQueries, sourceId)
+	if err != nil {
+		log.Printf("Murrtube: Failed to calculate stats for source %s: %v", sourceId, err)
+	} else {
+		stats.FollowersCount = followersCount
+		stats.FollowingCount = followingCount
+
+		if err := saveOrUpdateSourceStats(context.Background(), dbQueries, sourceId, stats); err != nil {
+			log.Printf("Murrtube: Failed to save stats for source %s: %v", sourceId, err)
+		}
 	}
 
 	return nil

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -116,6 +117,17 @@ func FetchBadpupsPosts(uid uuid.UUID, dbQueries *database.Queries, c *Client, so
 	if err != nil {
 		return err
 	}
+
+	var followersCount *int
+	doc.Find("div.profile-stat").Each(func(_ int, s *goquery.Selection) {
+		label := strings.TrimSpace(s.Find("div.stat-label").Text())
+		if label == "Followers" {
+			numText := strings.TrimSpace(s.Find("div.stat-num").Text())
+			if num, err := strconv.Atoi(numText); err == nil {
+				followersCount = &num
+			}
+		}
+	})
 
 	linkPattern := regexp.MustCompile(`^https?://[^/]+/lite/video/[^/]+$`)
 
@@ -242,6 +254,16 @@ func FetchBadpupsPosts(uid uuid.UUID, dbQueries *database.Queries, c *Client, so
 
 	if len(processedLinks) == 0 {
 		return errors.New("No content found")
+	}
+
+	stats, err := calculateAverageStats(context.Background(), dbQueries, sourceId)
+	if err != nil {
+		log.Printf("BadPups: Failed to calculate stats for source %s: %v", sourceId, err)
+	} else {
+		stats.FollowersCount = followersCount
+		if err := saveOrUpdateSourceStats(context.Background(), dbQueries, sourceId, stats); err != nil {
+			log.Printf("BadPups: Failed to save stats for source %s: %v", sourceId, err)
+		}
 	}
 
 	return nil

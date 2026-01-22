@@ -36,3 +36,12 @@ type PostReactions struct {
 	reposts    int
 	views      int
 }
+
+type ProfileStats struct {
+	FollowersCount *int
+	FollowingCount *int
+	PostsCount     *int
+	AverageLikes   *float64
+	AverageReposts *float64
+	AverageViews   *float64
+}

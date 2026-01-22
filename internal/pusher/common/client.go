@@ -1,4 +1,4 @@
-package puller
+package common
 
 import (
 	"net/http"
@@ -6,12 +6,12 @@ import (
 )
 
 type Client struct {
-	httpClient http.Client
+	HTTPClient http.Client
 }
 
 func NewClient(timeout time.Duration) *Client {
 	return &Client{
-		httpClient: http.Client{
+		HTTPClient: http.Client{
 			Timeout: timeout,
 		},
 	}

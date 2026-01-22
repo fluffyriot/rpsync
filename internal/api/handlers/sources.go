@@ -8,7 +8,7 @@ import (
 
 	"github.com/fluffyriot/commission-tracker/internal/config"
 	"github.com/fluffyriot/commission-tracker/internal/database"
-	"github.com/fluffyriot/commission-tracker/internal/puller"
+	"github.com/fluffyriot/commission-tracker/internal/pusher"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
@@ -221,7 +221,7 @@ func (h *Handler) DeleteSourceHandler(c *gin.Context) {
 	}
 
 	for _, target := range syncedTargets {
-		err = puller.RemoveByTarget(target.TargetID, sourceID, h.DB, h.Puller, h.Config.TokenEncryptionKey)
+		err = pusher.RemoveByTarget(target.TargetID, sourceID, h.DB, h.Puller, h.Config.TokenEncryptionKey)
 		if err != nil {
 			c.HTML(http.StatusInternalServerError, "error.html", gin.H{
 				"error": err.Error(),
