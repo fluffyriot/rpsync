@@ -2,8 +2,10 @@ package handlers
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/fluffyriot/rpsync/internal/database"
@@ -101,39 +103,54 @@ func (h *Handler) HandleCreateExclusion(c *gin.Context) {
 		return
 	}
 
-	exclusion, err := h.DB.CreateExclusion(ctx, database.CreateExclusionParams{
-		ID:                uuid.New(),
-		CreatedAt:         time.Now(),
-		SourceID:          sourceID,
-		NetworkInternalID: req.NetworkInternalID,
-	})
-	if err != nil {
-		if err.Error() == "pq: duplicate key value violates unique constraint \"unique_exclusion\"" {
-			c.JSON(http.StatusConflict, ErrorResponse{Error: "This exclusion already exists"})
-			return
+	rawIDs := strings.Split(req.NetworkInternalID, ",")
+	var createdExclusions []ExclusionResponse
+	var errors []string
+
+	for _, rawID := range rawIDs {
+		networkInternalID := strings.TrimSpace(rawID)
+		if networkInternalID == "" {
+			continue
 		}
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
+
+		exclusion, err := h.DB.CreateExclusion(ctx, database.CreateExclusionParams{
+			ID:                uuid.New(),
+			CreatedAt:         time.Now(),
+			SourceID:          sourceID,
+			NetworkInternalID: networkInternalID,
+		})
+		if err != nil {
+			if err.Error() == "pq: duplicate key value violates unique constraint \"unique_exclusion\"" {
+				log.Printf("Info: Exclusion already exists for %s", networkInternalID)
+				continue
+			}
+			errors = append(errors, fmt.Sprintf("Failed to exclude %s: %v", networkInternalID, err))
+			continue
+		}
+
+		err = h.DB.DeletePostBySourceAndNetworkId(ctx, database.DeletePostBySourceAndNetworkIdParams{
+			SourceID:          sourceID,
+			NetworkInternalID: networkInternalID,
+		})
+		if err != nil {
+			log.Printf("Warning: Failed to delete post for exclusion: %v", err)
+		}
+
+		createdExclusions = append(createdExclusions, ExclusionResponse{
+			ID:                exclusion.ID.String(),
+			CreatedAt:         exclusion.CreatedAt.Format(time.RFC3339),
+			SourceID:          exclusion.SourceID.String(),
+			NetworkInternalID: exclusion.NetworkInternalID,
+			Network:           source.Network,
+			UserName:          source.UserName,
+		})
+	}
+
+	if len(errors) > 0 && len(createdExclusions) == 0 {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: strings.Join(errors, "; ")})
 		return
 	}
-
-	err = h.DB.DeletePostBySourceAndNetworkId(ctx, database.DeletePostBySourceAndNetworkIdParams{
-		SourceID:          sourceID,
-		NetworkInternalID: req.NetworkInternalID,
-	})
-	if err != nil {
-		log.Printf("Warning: Failed to delete post for exclusion: %v", err)
-	}
-
-	response := ExclusionResponse{
-		ID:                exclusion.ID.String(),
-		CreatedAt:         exclusion.CreatedAt.Format(time.RFC3339),
-		SourceID:          exclusion.SourceID.String(),
-		NetworkInternalID: exclusion.NetworkInternalID,
-		Network:           source.Network,
-		UserName:          source.UserName,
-	}
-
-	c.JSON(http.StatusCreated, response)
+	c.JSON(http.StatusCreated, createdExclusions)
 }
 
 func (h *Handler) HandleDeleteExclusion(c *gin.Context) {
