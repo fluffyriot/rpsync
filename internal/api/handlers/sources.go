@@ -6,9 +6,9 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/fluffyriot/commission-tracker/internal/config"
-	"github.com/fluffyriot/commission-tracker/internal/database"
-	"github.com/fluffyriot/commission-tracker/internal/pusher"
+	"github.com/fluffyriot/rpsync/internal/config"
+	"github.com/fluffyriot/rpsync/internal/database"
+	"github.com/fluffyriot/rpsync/internal/pusher"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )

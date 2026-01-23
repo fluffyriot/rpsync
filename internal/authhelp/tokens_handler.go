@@ -11,7 +11,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/fluffyriot/commission-tracker/internal/database"
+	"github.com/fluffyriot/rpsync/internal/database"
 	"github.com/google/uuid"
 )
 

@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/fluffyriot/commission-tracker/internal/database"
+	"github.com/fluffyriot/rpsync/internal/database"
 	"github.com/google/uuid"
 )
 
@@ -71,7 +71,7 @@ func UpdateLogAutoExport(export database.Export, dbQueries *database.Queries, st
 
 	var statusMessage sql.NullString
 	if statusReason != "" {
-		downloadURL = sql.NullString{
+		statusMessage = sql.NullString{
 			String: statusReason,
 			Valid:  true,
 		}

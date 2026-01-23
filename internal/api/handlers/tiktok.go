@@ -4,7 +4,7 @@ import (
 	"encoding/base64"
 	"net/http"
 
-	"github.com/fluffyriot/commission-tracker/internal/fetcher"
+	"github.com/fluffyriot/rpsync/internal/fetcher"
 	"github.com/gin-gonic/gin"
 )
 

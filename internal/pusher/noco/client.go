@@ -9,9 +9,9 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/fluffyriot/commission-tracker/internal/authhelp"
-	"github.com/fluffyriot/commission-tracker/internal/database"
-	"github.com/fluffyriot/commission-tracker/internal/pusher/common"
+	"github.com/fluffyriot/rpsync/internal/authhelp"
+	"github.com/fluffyriot/rpsync/internal/database"
+	"github.com/fluffyriot/rpsync/internal/pusher/common"
 	"github.com/google/uuid"
 )
 

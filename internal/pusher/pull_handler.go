@@ -7,10 +7,10 @@ import (
 	"log"
 	"time"
 
-	"github.com/fluffyriot/commission-tracker/internal/database"
-	"github.com/fluffyriot/commission-tracker/internal/exports"
-	"github.com/fluffyriot/commission-tracker/internal/pusher/common"
-	"github.com/fluffyriot/commission-tracker/internal/pusher/noco"
+	"github.com/fluffyriot/rpsync/internal/database"
+	"github.com/fluffyriot/rpsync/internal/exports"
+	"github.com/fluffyriot/rpsync/internal/pusher/common"
+	"github.com/fluffyriot/rpsync/internal/pusher/noco"
 	"github.com/google/uuid"
 )
 

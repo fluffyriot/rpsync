@@ -8,16 +8,8 @@
 
   <div class="flex gap-2">
     <form method="GET" action="/">
-      <button class="btn btn-secondary btn-icon" title="Refresh Page">
-        <i data-lucide="refresh-cw"></i> Refresh Page
-      </button>
-    </form>
-
-    <form method="POST" action="/syncAll"
-      onsubmit="return submitWithConfirm(this, 'Do you want to start a full import/export sync now?');">
-      <input type="hidden" name="user_id" value="{{.user_id}}">
-      <button type="submit" class="btn btn-primary" title="Sync Everything">
-        <i data-lucide="cloud-sync"></i> Sync Everything
+      <button class="btn btn-secondary btn-icon" title="Refresh">
+        <i data-lucide="refresh-cw"></i> Refresh
       </button>
     </form>
 

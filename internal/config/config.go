@@ -9,8 +9,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/fluffyriot/commission-tracker/internal/authhelp"
-	"github.com/fluffyriot/commission-tracker/internal/database"
+	"github.com/fluffyriot/rpsync/internal/authhelp"
+	"github.com/fluffyriot/rpsync/internal/database"
 	"github.com/google/uuid"
 	"github.com/pressly/goose/v3"
 	"golang.org/x/oauth2"
@@ -27,7 +27,7 @@ const (
 	NocoDb SyncMethodEnum = "NocoDb"
 )
 
-const AppVersion = "0.13"
+const AppVersion = "0.14"
 
 type User struct {
 	Id        uuid.UUID

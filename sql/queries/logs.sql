@@ -39,4 +39,4 @@ WHERE (
         s.user_id = $1
         OR t.user_id = $1
     )
-    AND created_at > NOW() - INTERVAL '30 days';
+    AND l.created_at > NOW() - INTERVAL '30 days';

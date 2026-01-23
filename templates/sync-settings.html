@@ -54,7 +54,7 @@
             Manually control the background worker or reset to default settings.
         </p>
 
-        <div class="flex gap-2" style="flex-wrap: wrap;">
+        <div class="flex gap-2 mobile-equal-width" style="flex-wrap: wrap;">
             <form method="POST" action="/settings/sync/reset"
                 onsubmit="return submitWithConfirm(this, 'Reset to default settings (30m interval, enabled on startup)?');">
                 <button type="submit" class="btn btn-secondary">
@@ -62,18 +62,29 @@
                 </button>
             </form>
 
-            <form method="POST" action="/settings/sync/start">
-                <button type="submit" class="btn btn-primary">
-                    <i data-lucide="play"></i> Start Worker
-                </button>
-            </form>
-
+            {{ if .worker_running }}
             <form method="POST" action="/settings/sync/stop"
                 onsubmit="return submitWithConfirm(this, 'Stop the background worker?');">
                 <button type="submit" class="btn btn-danger">
                     <i data-lucide="square"></i> Stop Worker
                 </button>
             </form>
+            {{ else }}
+            <form method="POST" action="/settings/sync/start">
+                <button type="submit" class="btn btn-primary">
+                    <i data-lucide="play"></i> Start Worker
+                </button>
+            </form>
+            {{ end }}
+
+            <form method="POST" action="/syncAll"
+                onsubmit="return submitWithConfirm(this, 'Do you want to start a full import/export sync now?');">
+                <input type="hidden" name="user_id" value="{{.user_id}}">
+                <button type="submit" class="btn btn-primary" title="Manual Sync">
+                    <i data-lucide="cloud-sync"></i> Manual Sync
+                </button>
+            </form>
+
         </div>
     </div>
 </div>
@@ -171,11 +182,11 @@
             container.innerHTML = exclusions.map(excl => `
             <div class="card" style="margin-bottom: 0.75rem; padding: 1rem; display: flex; flex-direction: row; justify-content: space-between; align-items: center;">
                 <div>
-                    <strong>ID: ${excl.network_internal_id}</strong><br>
+                    <strong>${excl.network_internal_id}</strong><br>
                     <span class="text-muted" style="font-size: 0.875rem;">${excl.network} - ${excl.user_name}</span>
                 </div>
                 <button class="btn btn-danger" onclick="deleteExclusion('${excl.id}')" style="margin-left: 1rem;">
-                    <i data-lucide="trash-2"></i> Delete
+                    <i data-lucide="trash-2"></i>
                 </button>
             </div>
         `).join('');
