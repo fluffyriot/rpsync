@@ -9,4 +9,4 @@ done
 echo "Postgres is up!"
 
 echo "Starting app..."
-exec ./commission-tracker
+exec ./rpsync

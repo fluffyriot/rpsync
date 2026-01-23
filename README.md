@@ -1,9 +1,9 @@
-# Commission Tracker
+# RPSync
 
 
 Collect and track your online presence statistics in a local database that runs entirely on your machine.
 
-**Commission Tracker** is your personal, privacy-first command center for social media analytics. Stop relying on fragmented, invasive, and expensive third-party tools. Run this application locally to collect, visualize, and own your data forever.
+**RPSync** is your personal, privacy-first command center for social media analytics. Stop relying on fragmented, invasive, and expensive third-party tools. Run this application locally to collect, visualize, and own your data forever.
 
 **Key Benefits:**
 *   **100% Local & Private**: Your data never leaves your machine unless you say so.
@@ -65,8 +65,8 @@ docker compose version
 ### 1. Create a Working Directory
 
 ```bash
-mkdir commission-tracker
-cd commission-tracker
+mkdir rpsync
+cd rpsync
 ```
 
 > **IMPORTANT**
@@ -79,7 +79,7 @@ cd commission-tracker
 Create a `.env` file in the project root using the template below:
 
 ```env
-POSTGRES_DB=commission-tracker-db
+POSTGRES_DB=rpsync-db
 POSTGRES_USER=local-user-ctd
 POSTGRES_PASSWORD=password123
 POSTGRES_PORT=5435
@@ -156,7 +156,7 @@ services:
       - "${POSTGRES_PORT}:5432"
 
   app:
-    image: fluffyriot/commission-tracker:latest
+    image: fluffyriot/rpsync:latest
     restart: unless-stopped
     env_file: .env
     depends_on:

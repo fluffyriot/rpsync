@@ -9,8 +9,8 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/fluffyriot/commission-tracker/internal/database"
-	"github.com/fluffyriot/commission-tracker/internal/pusher/common"
+	"github.com/fluffyriot/rpsync/internal/database"
+	"github.com/fluffyriot/rpsync/internal/pusher/common"
 )
 
 func linkChildrenToParent(c *common.Client, dbQueries *database.Queries, encryptionKey []byte, target database.Target, parentTableMapping database.TableMapping, columnName string, parentRecordID int32, childRecordIDs []int32) error {

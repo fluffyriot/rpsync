@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/fluffyriot/commission-tracker/internal/authhelp"
+	"github.com/fluffyriot/rpsync/internal/authhelp"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"golang.org/x/oauth2"

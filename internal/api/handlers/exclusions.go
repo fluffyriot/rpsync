@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/fluffyriot/commission-tracker/internal/database"
+	"github.com/fluffyriot/rpsync/internal/database"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )

@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/fluffyriot/commission-tracker/internal/config"
-	"github.com/fluffyriot/commission-tracker/internal/database"
+	"github.com/fluffyriot/rpsync/internal/config"
+	"github.com/fluffyriot/rpsync/internal/database"
 	"github.com/gin-gonic/gin"
 )
 

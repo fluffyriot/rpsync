@@ -1,4 +1,4 @@
-module github.com/fluffyriot/commission-tracker
+module github.com/fluffyriot/rpsync
 
 go 1.25.5
 

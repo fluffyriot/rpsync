@@ -13,7 +13,7 @@ RUN go mod download
 
 COPY . .
 
-RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -o commission-tracker .
+RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -o rpsync .
 
 # Stage 2: Runtime
 FROM --platform=$TARGETPLATFORM debian:bookworm
@@ -26,7 +26,7 @@ RUN apt-get update \
  && mkdir -p /app/outputs \
  && mkdir -p /app/certs
 
-COPY --from=builder /app/commission-tracker .
+COPY --from=builder /app/rpsync .
 
 COPY templates/ templates/
 COPY sql/schema/ sql/schema/

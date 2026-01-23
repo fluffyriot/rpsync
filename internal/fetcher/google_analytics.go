@@ -6,8 +6,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/fluffyriot/commission-tracker/internal/authhelp"
-	"github.com/fluffyriot/commission-tracker/internal/database"
+	"github.com/fluffyriot/rpsync/internal/authhelp"
+	"github.com/fluffyriot/rpsync/internal/database"
 	"github.com/google/uuid"
 	"golang.org/x/oauth2/google"
 	analyticsdata "google.golang.org/api/analyticsdata/v1beta"

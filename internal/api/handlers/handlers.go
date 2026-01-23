@@ -1,11 +1,11 @@
 package handlers
 
 import (
-	"github.com/fluffyriot/commission-tracker/internal/config"
-	"github.com/fluffyriot/commission-tracker/internal/database"
-	"github.com/fluffyriot/commission-tracker/internal/fetcher"
-	"github.com/fluffyriot/commission-tracker/internal/pusher/common"
-	"github.com/fluffyriot/commission-tracker/internal/worker"
+	"github.com/fluffyriot/rpsync/internal/config"
+	"github.com/fluffyriot/rpsync/internal/database"
+	"github.com/fluffyriot/rpsync/internal/fetcher"
+	"github.com/fluffyriot/rpsync/internal/pusher/common"
+	"github.com/fluffyriot/rpsync/internal/worker"
 )
 
 type Handler struct {

@@ -8,11 +8,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fluffyriot/commission-tracker/internal/config"
-	"github.com/fluffyriot/commission-tracker/internal/database"
-	"github.com/fluffyriot/commission-tracker/internal/fetcher"
-	"github.com/fluffyriot/commission-tracker/internal/pusher"
-	"github.com/fluffyriot/commission-tracker/internal/pusher/common"
+	"github.com/fluffyriot/rpsync/internal/config"
+	"github.com/fluffyriot/rpsync/internal/database"
+	"github.com/fluffyriot/rpsync/internal/fetcher"
+	"github.com/fluffyriot/rpsync/internal/pusher"
+	"github.com/fluffyriot/rpsync/internal/pusher/common"
 	"github.com/google/uuid"
 )
 

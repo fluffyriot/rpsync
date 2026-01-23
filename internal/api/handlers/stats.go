@@ -4,7 +4,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/fluffyriot/commission-tracker/internal/stats"
+	"github.com/fluffyriot/rpsync/internal/stats"
 	"github.com/gin-gonic/gin"
 )
 

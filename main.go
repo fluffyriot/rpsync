@@ -5,11 +5,11 @@ import (
 	"log"
 	"time"
 
-	"github.com/fluffyriot/commission-tracker/internal/api/handlers"
-	"github.com/fluffyriot/commission-tracker/internal/config"
-	"github.com/fluffyriot/commission-tracker/internal/fetcher"
-	"github.com/fluffyriot/commission-tracker/internal/pusher/common"
-	"github.com/fluffyriot/commission-tracker/internal/worker"
+	"github.com/fluffyriot/rpsync/internal/api/handlers"
+	"github.com/fluffyriot/rpsync/internal/config"
+	"github.com/fluffyriot/rpsync/internal/fetcher"
+	"github.com/fluffyriot/rpsync/internal/pusher/common"
+	"github.com/fluffyriot/rpsync/internal/worker"
 	"github.com/gin-gonic/gin"
 )
 

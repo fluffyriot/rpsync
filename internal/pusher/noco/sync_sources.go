@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/fluffyriot/commission-tracker/internal/database"
-	"github.com/fluffyriot/commission-tracker/internal/pusher/common"
+	"github.com/fluffyriot/rpsync/internal/database"
+	"github.com/fluffyriot/rpsync/internal/pusher/common"
 )
 
 func syncNocoSources(c *common.Client, dbQueries *database.Queries, encryptionKey []byte, target database.Target, tableId string) error {

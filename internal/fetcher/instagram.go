@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fluffyriot/commission-tracker/internal/authhelp"
-	"github.com/fluffyriot/commission-tracker/internal/database"
+	"github.com/fluffyriot/rpsync/internal/authhelp"
+	"github.com/fluffyriot/rpsync/internal/database"
 	"github.com/google/uuid"
 
 	_ "github.com/lib/pq"
@@ -324,7 +324,7 @@ func FetchInstagramTags(dbQueries *database.Queries, c *Client, sourceId uuid.UU
 		}
 
 		if resp.StatusCode != 200 {
-			return fmt.Errorf("Failed to get a successfull response. %v: %v", resp.StatusCode)
+			return fmt.Errorf("Failed to get a successfull response. %v: %v", resp.StatusCode, resp.Status)
 		}
 
 		data, err := io.ReadAll(resp.Body)

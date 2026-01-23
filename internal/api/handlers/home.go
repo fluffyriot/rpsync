@@ -3,7 +3,7 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/fluffyriot/commission-tracker/internal/config"
+	"github.com/fluffyriot/rpsync/internal/config"
 	"github.com/gin-gonic/gin"
 )
 
