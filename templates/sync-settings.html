@@ -98,12 +98,29 @@
             will not be re-synced in future fetches.
         </p>
 
-        <button type="button" class="btn btn-primary" onclick="showAddExclusionModal()" style="margin-bottom: 1.5rem;">
-            <i data-lucide="plus"></i> Add Exclusion
-        </button>
+        <div class="exclusion-controls">
+            <button type="button" class="btn btn-primary" onclick="showAddExclusionModal()">
+                <i data-lucide="plus"></i> Add Exclusion
+            </button>
+
+            <div class="exclusion-search-container">
+                <input type="text" id="exclusionSearch" class="form-select" placeholder="Search by ID...">
+            </div>
+        </div>
 
         <div id="exclusions-list">
-            <p class="text-muted" style="text-align: center; padding: 2rem;">Loading exclusions...</p>
+            <p class="text-muted exclusion-list-empty">Loading exclusions...</p>
+        </div>
+
+        <div id="pagination-controls" class="pagination-controls" style="display: none;">
+            <button id="prevBtn" class="btn btn-secondary btn-icon" onclick="changePage(-1)" disabled
+                title="Previous Page">
+                <i data-lucide="chevron-left"></i>
+            </button>
+            <span id="pageInfo" class="text-muted" style="font-weight: 500;">Page 1 of 1</span>
+            <button id="nextBtn" class="btn btn-secondary btn-icon" onclick="changePage(1)" disabled title="Next Page">
+                <i data-lucide="chevron-right"></i>
+            </button>
         </div>
     </div>
 </div>
@@ -127,7 +144,8 @@
                         style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Network Internal ID(s)</label>
                     <input type="text" name="network_internal_id" id="exclusion_network_id" class="form-select" required
                         style="width: 100%;" placeholder="e.g., post ID, shortcode, or comma-separated list...">
-                    <p class="text-muted" style="margin-top: 0.5rem; font-size: 0.875rem;">One or more platform-specific IDs to exclude</p>
+                    <p class="text-muted" style="margin-top: 0.5rem; font-size: 0.875rem;">One or more platform-specific
+                        IDs to exclude</p>
                 </div>
 
                 <div class="flex gap-2">
@@ -145,6 +163,10 @@
 
 <script>
     let allSources = [];
+    let allExclusions = [];
+    let filteredExclusions = [];
+    let currentPage = 1;
+    const itemsPerPage = 5;
 
     async function loadSources() {
         try {
@@ -170,31 +192,78 @@
             const response = await fetch('/api/exclusions');
             if (!response.ok) throw new Error('Failed to load exclusions');
 
-            const exclusions = await response.json();
-            const container = document.getElementById('exclusions-list');
+            allExclusions = await response.json();
+            applyFilters();
+        } catch (error) {
+            console.error('Error loading exclusions:', error);
+            document.getElementById('exclusions-list').innerHTML = '<p class="exclusion-list-error">Error loading exclusions</p>';
+        }
+    }
 
-            if (exclusions.length === 0) {
-                container.innerHTML = '<p class="text-muted" style="text-align: center; padding: 2rem;">No exclusions configured</p>';
-                return;
-            }
+    function applyFilters() {
+        const query = document.getElementById('exclusionSearch').value.toLowerCase();
 
-            container.innerHTML = exclusions.map(excl => `
-            <div class="card" style="margin-bottom: 0.75rem; padding: 1rem; display: flex; flex-direction: row; justify-content: space-between; align-items: center;">
+        if (query) {
+            filteredExclusions = allExclusions.filter(excl =>
+                excl.network_internal_id.toLowerCase().includes(query)
+            );
+        } else {
+            filteredExclusions = [...allExclusions];
+        }
+
+        currentPage = 1;
+        renderExclusions();
+    }
+
+    function renderExclusions() {
+        const container = document.getElementById('exclusions-list');
+        const paginationContainer = document.getElementById('pagination-controls');
+
+        if (filteredExclusions.length === 0) {
+            container.innerHTML = '<p class="text-muted exclusion-list-empty">No exclusions found</p>';
+            paginationContainer.style.display = 'none';
+            return;
+        }
+
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        const pageItems = filteredExclusions.slice(startIndex, endIndex);
+
+        container.innerHTML = pageItems.map(excl => `
+            <div class="card exclusion-item">
                 <div>
                     <strong>${excl.network_internal_id}</strong><br>
                     <span class="text-muted" style="font-size: 0.875rem;">${excl.network} - ${excl.user_name}</span>
                 </div>
-                <button class="btn btn-danger" onclick="deleteExclusion('${excl.id}')" style="margin-left: 1rem;">
+                <button class="btn btn-danger exclusion-delete-btn" onclick="deleteExclusion('${excl.id}')">
                     <i data-lucide="trash-2"></i>
                 </button>
             </div>
         `).join('');
 
-            lucide.createIcons();
-        } catch (error) {
-            console.error('Error loading exclusions:', error);
-            document.getElementById('exclusions-list').innerHTML = '<p style="color: red; text-align: center; padding: 2rem;">Error loading exclusions</p>';
+        renderPagination();
+        lucide.createIcons();
+    }
+
+    function renderPagination() {
+        const paginationContainer = document.getElementById('pagination-controls');
+        const totalPages = Math.ceil(filteredExclusions.length / itemsPerPage);
+
+        if (totalPages <= 1) {
+            paginationContainer.style.display = 'none';
+            return;
         }
+
+        paginationContainer.style.display = 'flex';
+
+        document.getElementById('pageInfo').textContent = `Page ${currentPage} of ${totalPages}`;
+        document.getElementById('prevBtn').disabled = currentPage === 1;
+        document.getElementById('nextBtn').disabled = currentPage === totalPages;
+    }
+
+    function changePage(delta) {
+        currentPage += delta;
+        renderExclusions();
     }
 
     function showAddExclusionModal() {
@@ -260,6 +329,11 @@
     document.addEventListener('DOMContentLoaded', () => {
         loadSources();
         loadExclusions();
+
+        const searchInput = document.getElementById('exclusionSearch');
+        searchInput.addEventListener('input', () => {
+            applyFilters();
+        });
     });
 </script>
 

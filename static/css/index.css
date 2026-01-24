@@ -383,7 +383,6 @@ a:hover {
   }
 }
 
-/* Error State for Stat Card */
 .stat-card.has-errors {
   border-color: var(--color-danger);
 }
@@ -546,4 +545,78 @@ a:hover {
   padding: 0;
   color: var(--color-border);
   margin-top: 2px;
+}
+
+.exclusion-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  gap: 1rem;
+}
+
+.exclusion-search-container {
+  min-width: 250px;
+}
+
+.exclusion-list-empty,
+.exclusion-list-error {
+  text-align: center;
+  padding: 2rem;
+}
+
+.exclusion-list-error {
+  color: var(--color-danger);
+}
+
+.exclusion-item {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  padding: 1rem;
+  gap: 1rem;
+}
+
+.exclusion-item>div {
+  flex: 1;
+  min-width: 0;
+}
+
+.exclusion-delete-btn {
+  margin-left: 0;
+  flex-shrink: 0;
+}
+
+.pagination-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 2.5rem;
+  gap: 1rem;
+}
+
+.pagination-controls .btn {
+  min-width: 40px;
+}
+
+@media (max-width: 768px) {
+  .exclusion-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .exclusion-search-container {
+    width: 100%;
+  }
+
+  .toast-notification {
+    bottom: 20px;
+    top: auto;
+    right: 20px;
+    left: 20px;
+    max-width: none;
+  }
 }

@@ -91,7 +91,8 @@ func (u *Updater) Check() {
 }
 
 func (u *Updater) isNewer(remote, current string) bool {
-	if remote == current {
+
+	if remote == current || current == "unknown" {
 		return false
 	}
 
@@ -105,8 +106,12 @@ func (u *Updater) isNewer(remote, current string) bool {
 
 	for i := 0; i < maxLen; i++ {
 		var rVal, cVal int
-		fmt.Sscanf(rParts[i], "%d", &rVal)
-		fmt.Sscanf(cParts[i], "%d", &cVal)
+		if i < len(rParts) {
+			fmt.Sscanf(rParts[i], "%d", &rVal)
+		}
+		if i < len(cParts) {
+			fmt.Sscanf(cParts[i], "%d", &cVal)
+		}
 
 		if rVal > cVal {
 			return true

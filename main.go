@@ -17,6 +17,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+//go:embed version.json
 var versionFile []byte
 
 type projectVersion struct {
