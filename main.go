@@ -47,6 +47,7 @@ func main() {
 	r.SetTrustedProxies(nil)
 
 	r.Static("/static", "./static")
+	r.StaticFile("/apple-touch-icon.png", "./static/images/apple-touch-icon.png")
 
 	r.LoadHTMLGlob("templates/*.html")
 

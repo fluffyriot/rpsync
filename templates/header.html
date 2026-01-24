@@ -8,7 +8,8 @@
     <link rel="stylesheet" href="/static/css/index.css">
     <link rel="icon" type="image/png" sizes="32x32" href="/static/images/favicon-32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/static/images/favicon-16.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="/static/images/apple-touch-icon.png">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png">
     <link rel="shortcut icon" href="/static/images/favicon.ico">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,6 +18,10 @@
         rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#1e2329">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 </head>
 
 <body>
@@ -59,6 +64,18 @@
                     } else {
                         links.classList.add('active');
                     }
+                });
+            }
+
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('/static/sw.js')
+                        .then((registration) => {
+                            console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                        })
+                        .catch((err) => {
+                            console.log('ServiceWorker registration failed: ', err);
+                        });
                 });
             }
         });
