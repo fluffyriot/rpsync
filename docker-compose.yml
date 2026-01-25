@@ -21,8 +21,6 @@ services:
     env_file: .env
     depends_on:
       - db
-    ports:
-      - "${APP_PORT}:${APP_PORT}"
     volumes:
       - ./outputs:/app/outputs
 

@@ -7,7 +7,10 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
+	"os"
+	"os/signal"
 	"syscall"
 	"time"
 
@@ -65,6 +68,7 @@ func main() {
 	r := gin.Default()
 
 	r.SetTrustedProxies(nil)
+	r.Use(middleware.SecurityHeadersMiddleware())
 
 	r.Static("/static", "./static")
 	r.StaticFile("/apple-touch-icon.png", "./static/images/apple-touch-icon.png")
@@ -296,6 +300,7 @@ func main() {
 
 	authorized.GET("/outputs/*filepath", h.DownloadExportHandler)
 
+	authorized.GET("/user/setup", h.UserSetupViewHandler)
 	authorized.POST("/user/setup", h.UserSetupHandler)
 	authorized.GET("/sources", h.SourcesHandler)
 	authorized.POST("/sources/setup", h.SourcesSetupHandler)
@@ -323,8 +328,29 @@ func main() {
 	authorized.POST("/api/redirects", h.HandleCreateRedirect)
 	authorized.DELETE("/api/redirects/:id", h.HandleDeleteRedirect)
 
-	log.Printf("Server started on http://localhost:%s", cfg.AppPort)
-	if err := r.Run(":" + cfg.AppPort); err != nil {
-		log.Fatal(err)
+	srv := &http.Server{
+		Addr:    ":" + cfg.AppPort,
+		Handler: r,
 	}
+
+	go func() {
+		slog.Info("Server started", "port", cfg.AppPort, "url", "http://localhost:"+cfg.AppPort)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			slog.Error("Server listen failed", "error", err)
+			os.Exit(1)
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	slog.Info("Shutting down server...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		slog.Error("Server forced to shutdown", "error", err)
+	}
+
+	slog.Info("Server exiting")
 }

@@ -17,6 +17,17 @@ func AuthMiddleware(db *database.Queries) gin.HandlerFunc {
 			return
 		}
 
+		users, err := db.GetAllUsers(c.Request.Context())
+		if err == nil && len(users) == 0 {
+			if c.Request.URL.Path != "/user/setup" && !strings.HasPrefix(c.Request.URL.Path, "/static") {
+				c.Redirect(http.StatusFound, "/user/setup")
+				c.Abort()
+				return
+			}
+			c.Next()
+			return
+		}
+
 		session := sessions.Default(c)
 		userID := session.Get("user_id")
 
@@ -28,7 +39,6 @@ func AuthMiddleware(db *database.Queries) gin.HandlerFunc {
 
 		userIdStr, ok := userID.(string)
 		if ok {
-			users, err := db.GetAllUsers(c.Request.Context())
 			if err == nil {
 				var currentUser *database.User
 				targetUuid, _ := uuid.Parse(userIdStr)
@@ -61,20 +71,12 @@ func isPublicRoute(path string) bool {
 		"/login",
 		"/static",
 		"/health",
-		"/setup",
+		"/health",
 		"/auth",
 	}
 
 	for _, prefix := range publicPrefixes {
 		if strings.HasPrefix(path, prefix) {
-
-			if prefix == "/setup" {
-				if path == "/setup/password" {
-					return false
-				}
-				return true
-			}
-
 			return true
 		}
 	}

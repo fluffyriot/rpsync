@@ -41,6 +41,7 @@ type AppConfig struct {
 	AppPort             string
 	HttpsPort           string
 	ClientIP            string
+	DomainName          string
 	InstagramAPIVersion string
 	OauthEncryptionKey  string
 	TokenEncryptionKey  []byte
@@ -72,6 +73,8 @@ func LoadConfig() (*AppConfig, error) {
 		return nil, errors.New("LOCAL_IP is not set in the .env")
 	}
 
+	cfg.DomainName = os.Getenv("DOMAIN_NAME")
+
 	cfg.InstagramAPIVersion = os.Getenv("INSTAGRAM_API_VERSION")
 	if cfg.InstagramAPIVersion == "" {
 		cfg.InstVerErr = errors.New("INSTAGRAM_API_VERSION not set in .env")
@@ -97,17 +100,27 @@ func LoadConfig() (*AppConfig, error) {
 		cfg.SessionKey = []byte(sessionKey)
 	}
 
+	baseURL := ""
+	if cfg.DomainName != "" {
+		baseURL = fmt.Sprintf("https://%s", cfg.DomainName)
+	} else {
+		baseURL = fmt.Sprintf("https://%s:%s", cfg.ClientIP, cfg.HttpsPort)
+	}
+
 	cfg.FBConfig = authhelp.GenerateFacebookConfig(
 		os.Getenv("FACEBOOK_APP_ID"),
 		os.Getenv("FACEBOOK_APP_SECRET"),
-		cfg.ClientIP,
-		cfg.HttpsPort,
+		baseURL,
 	)
 
 	wConfig := &webauthn.Config{
 		RPDisplayName: "RPSync",
 		RPID:          cfg.ClientIP,
-		RPOrigins:     []string{fmt.Sprintf("https://%s:%s", cfg.ClientIP, cfg.HttpsPort)},
+		RPOrigins:     []string{baseURL},
+	}
+
+	if cfg.DomainName != "" {
+		wConfig.RPID = cfg.DomainName
 	}
 
 	var errW error

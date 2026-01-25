@@ -11,11 +11,11 @@ import (
 	"golang.org/x/oauth2/facebook"
 )
 
-func GenerateFacebookConfig(appID, appSecret, ip, port string) *oauth2.Config {
+func GenerateFacebookConfig(appID, appSecret, baseURL string) *oauth2.Config {
 	facebookOAuthConfig := &oauth2.Config{
 		ClientID:     appID,
 		ClientSecret: appSecret,
-		RedirectURL:  fmt.Sprintf("https://%v:%v/auth/facebook/callback", ip, port),
+		RedirectURL:  fmt.Sprintf("%s/auth/facebook/callback", baseURL),
 		Scopes:       []string{"instagram_basic", "pages_show_list", "instagram_manage_comments", "pages_read_engagement", "instagram_manage_insights"},
 		Endpoint:     facebook.Endpoint,
 	}

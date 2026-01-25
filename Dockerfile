@@ -21,7 +21,7 @@ FROM --platform=$TARGETPLATFORM debian:bookworm
 WORKDIR /app
 
 RUN apt-get update \
- && apt-get install -y bash netcat-openbsd ca-certificates chromium fonts-liberation \
+ && apt-get install -y bash netcat-openbsd ca-certificates chromium fonts-liberation gosu \
  && rm -rf /var/lib/apt/lists/* \
  && mkdir -p /app/outputs \
  && mkdir -p /app/certs
@@ -36,5 +36,9 @@ COPY docker/entrypoint.sh .
 RUN chmod +x entrypoint.sh
 
 ENV PATH="/usr/local/bin:${PATH}"
+
+RUN groupadd -r appuser && useradd -r -g appuser -u 1000 appuser
+
+RUN chown -R appuser:appuser /app
 
 ENTRYPOINT ["./entrypoint.sh"]

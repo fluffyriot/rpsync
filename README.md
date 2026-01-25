@@ -133,6 +133,10 @@ FACEBOOK_APP_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 * **LOCAL_IP**
   The local IP address used to access the application.
 
+* **DOMAIN_NAME**
+  (Optional) The public domain name where the application is hosted (e.g., `example.com`).
+  If set, this will be used for OAuth callbacks and Passkey origins instead of `LOCAL_IP`.
+
 * **TOKEN_ENCRYPTION_KEY**
   Used to encrypt tokens stored in the database.
 
@@ -223,10 +227,28 @@ Create `Caddyfile.template`:
 
 ### 2. Generate the Caddyfile
 
+**Option A: Local Development (Self-Signed)**
+
 ```bash
 export $(grep -v '^#' .env | xargs)
+export SITE_ADDRESS=":${HTTPS_PORT}"
+export TLS_CONFIG="tls /certs/server.crt /certs/server.key"
 envsubst < Caddyfile.template > Caddyfile
 ```
+
+**Option B: Cloud Deployment (Automatic SSL)**
+
+Replace `your-domain.com` with your actual domain. Ensure your DNS points to this server's IP.
+
+```bash
+export $(grep -v '^#' .env | xargs)
+export SITE_ADDRESS="your-domain.com"
+# remove 'tls internal' line below to use real Let's Encrypt production CA
+export TLS_CONFIG="tls internal" 
+envsubst < Caddyfile.template > Caddyfile
+```
+
+> **Note**: For production, remove `tls internal` to get a valid public certificate. `tls internal` is good for testing or if you are behind another proxy (like Cloudflare).
 
 ### 3. Generate a Self-Signed Certificate
 
