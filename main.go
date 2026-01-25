@@ -98,6 +98,7 @@ func main() {
 	)
 
 	r.GET("/", h.RootHandler)
+	r.POST("/logs/dismiss", h.DismissLogHandler)
 
 	r.GET("/settings/sync", h.SyncSettingsHandler)
 	r.POST("/settings/sync", h.UpdateSyncSettingsHandler)
@@ -139,6 +140,10 @@ func main() {
 	r.GET("/api/exclusions", h.HandleGetExclusions)
 	r.POST("/api/exclusions", h.HandleCreateExclusion)
 	r.DELETE("/api/exclusions/:id", h.HandleDeleteExclusion)
+
+	r.GET("/api/redirects", h.HandleGetRedirects)
+	r.POST("/api/redirects", h.HandleCreateRedirect)
+	r.DELETE("/api/redirects/:id", h.HandleDeleteRedirect)
 
 	log.Printf("Server started on http://localhost:%s", cfg.AppPort)
 	if err := r.Run(":" + cfg.AppPort); err != nil {

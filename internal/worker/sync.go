@@ -96,13 +96,7 @@ func RunSync(db *database.Queries, f *fetcher.Client, p *common.Client, cfg *con
 
 			go func(tid uuid.UUID) {
 				defer targetWG.Done()
-				defer func() {
-					if r := recover(); r != nil {
-						log.Printf("Worker Panic in target sync: %v", r)
-					}
-				}()
-
-				pusher.PullByTarget(tid, db, p, cfg.TokenEncryptionKey)
+				syncTargetInternal(tid, db, p, cfg)
 			}(target.ID)
 		}
 	}
@@ -125,6 +119,7 @@ func syncSourceInternal(sid uuid.UUID, db *database.Queries, f *fetcher.Client, 
 	const maxRetries = 5
 
 	for attempt := 0; attempt <= maxRetries; attempt++ {
+		isLastRetry := attempt == maxRetries
 
 		err := func() error {
 			defer func() {
@@ -133,19 +128,55 @@ func syncSourceInternal(sid uuid.UUID, db *database.Queries, f *fetcher.Client, 
 				}
 			}()
 
-			err := fetcher.SyncBySource(sid, db, f, cfg.InstagramAPIVersion, cfg.TokenEncryptionKey)
+			err := fetcher.SyncBySource(sid, db, f, cfg.InstagramAPIVersion, cfg.TokenEncryptionKey, isLastRetry)
 
 			if err == nil {
 				return nil
 			}
 
-			if attempt == maxRetries {
+			if isLastRetry {
 				log.Printf("Worker Source sync FAILED after %d attempts (source=%s): %v", attempt+1, sid, err)
 				return err
 			}
 
 			delay := backoffWithJitter(attempt)
 			log.Printf("Worker Source sync error (source=%s attempt=%d). Retrying in %s: %v", sid, attempt+1, delay, err)
+			time.Sleep(delay)
+			return err
+		}()
+
+		if err == nil {
+			return
+		}
+	}
+}
+
+func syncTargetInternal(tid uuid.UUID, db *database.Queries, p *common.Client, cfg *config.AppConfig) {
+	const maxRetries = 5
+
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		isLastRetry := attempt == maxRetries
+
+		err := func() error {
+			defer func() {
+				if r := recover(); r != nil {
+					log.Printf("Worker Panic in target sync (target=%s attempt=%d): %v", tid, attempt+1, r)
+				}
+			}()
+
+			err := pusher.PullByTarget(tid, db, p, cfg.TokenEncryptionKey, isLastRetry)
+
+			if err == nil {
+				return nil
+			}
+
+			if isLastRetry {
+				log.Printf("Worker Target sync FAILED after %d attempts (target=%s): %v", attempt+1, tid, err)
+				return err
+			}
+
+			delay := backoffWithJitter(attempt)
+			log.Printf("Worker Target sync error (target=%s attempt=%d). Retrying in %s: %v", tid, attempt+1, delay, err)
 			time.Sleep(delay)
 			return err
 		}()

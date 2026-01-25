@@ -40,6 +40,7 @@
     <div class="stat-icon"><i data-lucide="alert-circle" style="width: 24px; height: 24px;"></i></div>
     <div class="stat-value">{{.sync_errors_30d}}</div>
     <div class="stat-label">Sync Errors (Last 30 days)</div>
+    <a href="#recent-logs" class="stat-link">View Errors &rarr;</a>
   </div>
 
   <div class="stat-card">
@@ -107,7 +108,7 @@
   </div>
 </div>
 
-<div class="card">
+<div class="card" id="recent-logs">
   <div class="card-header">Recent Sync Errors</div>
   {{if not .recent_logs}}
   <div class="text-center" style="padding: 2rem; color: var(--color-text-muted);">
@@ -146,7 +147,16 @@
             {{end}}
           </td>
           <td style="padding: 0.75rem; color: var(--color-danger);">
-            {{.Message}}
+            <div class="flex justify-between items-start gap-2">
+              <span>{{.Message}}</span>
+              <form method="POST" action="/logs/dismiss" style="margin: 0;">
+                <input type="hidden" name="id" value="{{.ID}}">
+                <button type="submit" class="btn btn-sm btn-ghost btn-icon" title="Dismiss"
+                  style="padding: 2px; height: auto;">
+                  <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+                </button>
+              </form>
+            </div>
           </td>
         </tr>
         {{end}}

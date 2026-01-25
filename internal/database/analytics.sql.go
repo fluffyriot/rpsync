@@ -14,17 +14,28 @@ import (
 )
 
 const addAnalyticsPageStatToTarget = `-- name: AddAnalyticsPageStatToTarget :one
-INSERT INTO analytics_page_stats_on_target (id, synced_at, stat_id, target_id, target_record_id)
+INSERT INTO
+    analytics_page_stats_on_target (
+        id,
+        synced_at,
+        stat_id,
+        target_id,
+        target_record_id
+    )
 VALUES ($1, $2, $3, $4, $5)
-ON CONFLICT (stat_id, target_id) DO UPDATE
-SET synced_at = $2, target_record_id = $5
-RETURNING id, synced_at, stat_id, target_id, target_record_id
+ON CONFLICT (stat_id, target_id) DO
+UPDATE
+SET
+    synced_at = $2,
+    target_record_id = $5
+RETURNING
+    id, synced_at, stat_id, target_id, target_record_id
 `
 
 type AddAnalyticsPageStatToTargetParams struct {
 	ID             uuid.UUID
 	SyncedAt       time.Time
-	StatID         uuid.UUID
+	StatID         uuid.NullUUID
 	TargetID       uuid.UUID
 	TargetRecordID string
 }
@@ -49,17 +60,28 @@ func (q *Queries) AddAnalyticsPageStatToTarget(ctx context.Context, arg AddAnaly
 }
 
 const addAnalyticsSiteStatToTarget = `-- name: AddAnalyticsSiteStatToTarget :one
-INSERT INTO analytics_site_stats_on_target (id, synced_at, stat_id, target_id, target_record_id)
+INSERT INTO
+    analytics_site_stats_on_target (
+        id,
+        synced_at,
+        stat_id,
+        target_id,
+        target_record_id
+    )
 VALUES ($1, $2, $3, $4, $5)
-ON CONFLICT (stat_id, target_id) DO UPDATE
-SET synced_at = $2, target_record_id = $5
-RETURNING id, synced_at, stat_id, target_id, target_record_id
+ON CONFLICT (stat_id, target_id) DO
+UPDATE
+SET
+    synced_at = $2,
+    target_record_id = $5
+RETURNING
+    id, synced_at, stat_id, target_id, target_record_id
 `
 
 type AddAnalyticsSiteStatToTargetParams struct {
 	ID             uuid.UUID
 	SyncedAt       time.Time
-	StatID         uuid.UUID
+	StatID         uuid.NullUUID
 	TargetID       uuid.UUID
 	TargetRecordID string
 }
@@ -84,9 +106,12 @@ func (q *Queries) AddAnalyticsSiteStatToTarget(ctx context.Context, arg AddAnaly
 }
 
 const checkCountOfAnalyticsPageStatsForUser = `-- name: CheckCountOfAnalyticsPageStatsForUser :one
-SELECT COUNT(*) FROM analytics_page_stats s
-join sources src on s.source_id = src.id
-where src.user_id = $1
+SELECT COUNT(*)
+FROM
+    analytics_page_stats s
+    join sources src on s.source_id = src.id
+where
+    src.user_id = $1
 `
 
 func (q *Queries) CheckCountOfAnalyticsPageStatsForUser(ctx context.Context, userID uuid.UUID) (int64, error) {
@@ -97,9 +122,12 @@ func (q *Queries) CheckCountOfAnalyticsPageStatsForUser(ctx context.Context, use
 }
 
 const checkCountOfAnalyticsSiteStatsForUser = `-- name: CheckCountOfAnalyticsSiteStatsForUser :one
-SELECT COUNT(*) FROM analytics_site_stats s
-join sources src on s.source_id = src.id
-where src.user_id = $1
+SELECT COUNT(*)
+FROM
+    analytics_site_stats s
+    join sources src on s.source_id = src.id
+where
+    src.user_id = $1
 `
 
 func (q *Queries) CheckCountOfAnalyticsSiteStatsForUser(ctx context.Context, userID uuid.UUID) (int64, error) {
@@ -110,11 +138,21 @@ func (q *Queries) CheckCountOfAnalyticsSiteStatsForUser(ctx context.Context, use
 }
 
 const createAnalyticsPageStat = `-- name: CreateAnalyticsPageStat :one
-INSERT INTO analytics_page_stats (id, date, url_path, views, source_id)
+INSERT INTO
+    analytics_page_stats (
+        id,
+        date,
+        url_path,
+        views,
+        source_id
+    )
 VALUES ($1, $2, $3, $4, $5)
-ON CONFLICT (source_id, date, url_path) DO UPDATE
-SET views = $4
-RETURNING id, date, url_path, views, source_id
+ON CONFLICT (source_id, date, url_path) DO
+UPDATE
+SET
+    views = $4
+RETURNING
+    id, date, url_path, views, source_id
 `
 
 type CreateAnalyticsPageStatParams struct {
@@ -145,11 +183,17 @@ func (q *Queries) CreateAnalyticsPageStat(ctx context.Context, arg CreateAnalyti
 }
 
 const createAnalyticsSiteStat = `-- name: CreateAnalyticsSiteStat :one
-INSERT INTO analytics_site_stats (id, date, visitors, avg_session_duration, source_id)
+INSERT INTO
+    analytics_site_stats (
+        id,
+        date,
+        visitors,
+        avg_session_duration,
+        source_id
+    )
 VALUES ($1, $2, $3, $4, $5)
-ON CONFLICT (source_id, date) DO UPDATE
-SET visitors = $3, avg_session_duration = $4
-RETURNING id, date, visitors, avg_session_duration, source_id
+RETURNING
+    id, date, visitors, avg_session_duration, source_id
 `
 
 type CreateAnalyticsSiteStatParams struct {
@@ -179,11 +223,42 @@ func (q *Queries) CreateAnalyticsSiteStat(ctx context.Context, arg CreateAnalyti
 	return i, err
 }
 
+const deleteAnalyticsPageStat = `-- name: DeleteAnalyticsPageStat :exec
+DELETE FROM analytics_page_stats WHERE id = $1
+`
+
+func (q *Queries) DeleteAnalyticsPageStat(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, deleteAnalyticsPageStat, id)
+	return err
+}
+
+const deleteAnalyticsPageStatsByPathAndSource = `-- name: DeleteAnalyticsPageStatsByPathAndSource :exec
+DELETE FROM analytics_page_stats
+WHERE
+    source_id = $1
+    AND url_path = $2
+`
+
+type DeleteAnalyticsPageStatsByPathAndSourceParams struct {
+	SourceID uuid.UUID
+	UrlPath  string
+}
+
+func (q *Queries) DeleteAnalyticsPageStatsByPathAndSource(ctx context.Context, arg DeleteAnalyticsPageStatsByPathAndSourceParams) error {
+	_, err := q.db.ExecContext(ctx, deleteAnalyticsPageStatsByPathAndSource, arg.SourceID, arg.UrlPath)
+	return err
+}
+
 const getAllAnalyticsPageStatsForUser = `-- name: GetAllAnalyticsPageStatsForUser :many
-SELECT s.id, s.date, s.url_path, s.views, s.source_id, src.network as source_network, src.user_name as source_user_name
-FROM analytics_page_stats s
-JOIN sources src ON s.source_id = src.id
-WHERE src.user_id = $1
+SELECT
+    s.id, s.date, s.url_path, s.views, s.source_id,
+    src.network as source_network,
+    src.user_name as source_user_name
+FROM
+    analytics_page_stats s
+    JOIN sources src ON s.source_id = src.id
+WHERE
+    src.user_id = $1
 ORDER BY s.date DESC
 `
 
@@ -229,10 +304,15 @@ func (q *Queries) GetAllAnalyticsPageStatsForUser(ctx context.Context, userID uu
 }
 
 const getAllAnalyticsSiteStatsForUser = `-- name: GetAllAnalyticsSiteStatsForUser :many
-SELECT s.id, s.date, s.visitors, s.avg_session_duration, s.source_id, src.network as source_network, src.user_name as source_user_name
-FROM analytics_site_stats s
-JOIN sources src ON s.source_id = src.id
-WHERE src.user_id = $1
+SELECT
+    s.id, s.date, s.visitors, s.avg_session_duration, s.source_id,
+    src.network as source_network,
+    src.user_name as source_user_name
+FROM
+    analytics_site_stats s
+    JOIN sources src ON s.source_id = src.id
+WHERE
+    src.user_id = $1
 ORDER BY s.date DESC
 `
 
@@ -279,9 +359,12 @@ func (q *Queries) GetAllAnalyticsSiteStatsForUser(ctx context.Context, userID uu
 
 const getAllPageStatsWithTargetInfo = `-- name: GetAllPageStatsWithTargetInfo :many
 SELECT s.id, s.date, s.url_path, s.views, s.source_id, map.target_record_id
-FROM analytics_page_stats s
-LEFT JOIN analytics_page_stats_on_target map ON s.id = map.stat_id AND map.target_id = $1
-WHERE s.source_id = $2
+FROM
+    analytics_page_stats s
+    LEFT JOIN analytics_page_stats_on_target map ON s.id = map.stat_id
+    AND map.target_id = $1
+WHERE
+    s.source_id = $2
 `
 
 type GetAllPageStatsWithTargetInfoParams struct {
@@ -330,9 +413,12 @@ func (q *Queries) GetAllPageStatsWithTargetInfo(ctx context.Context, arg GetAllP
 
 const getAllSiteStatsWithTargetInfo = `-- name: GetAllSiteStatsWithTargetInfo :many
 SELECT s.id, s.date, s.visitors, s.avg_session_duration, s.source_id, map.target_record_id
-FROM analytics_site_stats s
-LEFT JOIN analytics_site_stats_on_target map ON s.id = map.stat_id AND map.target_id = $1
-WHERE s.source_id = $2
+FROM
+    analytics_site_stats s
+    LEFT JOIN analytics_site_stats_on_target map ON s.id = map.stat_id
+    AND map.target_id = $1
+WHERE
+    s.source_id = $2
 `
 
 type GetAllSiteStatsWithTargetInfoParams struct {
@@ -380,8 +466,10 @@ func (q *Queries) GetAllSiteStatsWithTargetInfo(ctx context.Context, arg GetAllS
 }
 
 const getAnalyticsPageStatsBySource = `-- name: GetAnalyticsPageStatsBySource :many
-SELECT id, date, url_path, views, source_id FROM analytics_page_stats
-WHERE source_id = $1
+SELECT id, date, url_path, views, source_id
+FROM analytics_page_stats
+WHERE
+    source_id = $1
 ORDER BY date DESC
 `
 
@@ -415,8 +503,10 @@ func (q *Queries) GetAnalyticsPageStatsBySource(ctx context.Context, sourceID uu
 }
 
 const getAnalyticsSiteStatsBySource = `-- name: GetAnalyticsSiteStatsBySource :many
-SELECT id, date, visitors, avg_session_duration, source_id FROM analytics_site_stats
-WHERE source_id = $1
+SELECT id, date, visitors, avg_session_duration, source_id
+FROM analytics_site_stats
+WHERE
+    source_id = $1
 ORDER BY date DESC
 `
 
@@ -450,8 +540,12 @@ func (q *Queries) GetAnalyticsSiteStatsBySource(ctx context.Context, sourceID uu
 }
 
 const getAnalyticsSiteStatsBySourceAndRange = `-- name: GetAnalyticsSiteStatsBySourceAndRange :many
-SELECT id, date, visitors, avg_session_duration, source_id FROM analytics_site_stats
-WHERE source_id = $1 AND date >= $2 AND date <= $3
+SELECT id, date, visitors, avg_session_duration, source_id
+FROM analytics_site_stats
+WHERE
+    source_id = $1
+    AND date >= $2
+    AND date <= $3
 ORDER BY date DESC
 `
 
@@ -491,10 +585,14 @@ func (q *Queries) GetAnalyticsSiteStatsBySourceAndRange(ctx context.Context, arg
 }
 
 const getUnsyncedPageStatsForTarget = `-- name: GetUnsyncedPageStatsForTarget :many
-SELECT s.id, s.date, s.url_path, s.views, s.source_id 
-FROM analytics_page_stats s
-LEFT JOIN analytics_page_stats_on_target map ON s.id = map.stat_id AND map.target_id = $1
-WHERE map.id IS NULL AND s.source_id = $2
+SELECT s.id, s.date, s.url_path, s.views, s.source_id
+FROM
+    analytics_page_stats s
+    LEFT JOIN analytics_page_stats_on_target map ON s.id = map.stat_id
+    AND map.target_id = $1
+WHERE
+    map.id IS NULL
+    AND s.source_id = $2
 `
 
 type GetUnsyncedPageStatsForTargetParams struct {
@@ -532,10 +630,14 @@ func (q *Queries) GetUnsyncedPageStatsForTarget(ctx context.Context, arg GetUnsy
 }
 
 const getUnsyncedSiteStatsForTarget = `-- name: GetUnsyncedSiteStatsForTarget :many
-SELECT s.id, s.date, s.visitors, s.avg_session_duration, s.source_id 
-FROM analytics_site_stats s
-LEFT JOIN analytics_site_stats_on_target map ON s.id = map.stat_id AND map.target_id = $1
-WHERE map.id IS NULL AND s.source_id = $2
+SELECT s.id, s.date, s.visitors, s.avg_session_duration, s.source_id
+FROM
+    analytics_site_stats s
+    LEFT JOIN analytics_site_stats_on_target map ON s.id = map.stat_id
+    AND map.target_id = $1
+WHERE
+    map.id IS NULL
+    AND s.source_id = $2
 `
 
 type GetUnsyncedSiteStatsForTargetParams struct {
@@ -570,4 +672,18 @@ func (q *Queries) GetUnsyncedSiteStatsForTarget(ctx context.Context, arg GetUnsy
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateAnalyticsPageStatPath = `-- name: UpdateAnalyticsPageStatPath :exec
+UPDATE analytics_page_stats SET url_path = $2 WHERE id = $1
+`
+
+type UpdateAnalyticsPageStatPathParams struct {
+	ID      uuid.UUID
+	UrlPath string
+}
+
+func (q *Queries) UpdateAnalyticsPageStatPath(ctx context.Context, arg UpdateAnalyticsPageStatPathParams) error {
+	_, err := q.db.ExecContext(ctx, updateAnalyticsPageStatPath, arg.ID, arg.UrlPath)
+	return err
 }

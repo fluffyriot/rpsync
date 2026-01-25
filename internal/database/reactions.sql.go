@@ -180,6 +180,16 @@ INSERT INTO
         views
     )
 VALUES ($1, $2, $3, $4, $5, $6)
+ON CONFLICT (
+    post_id,
+    (CAST(synced_at AS DATE))
+) DO
+UPDATE
+SET
+    likes = EXCLUDED.likes,
+    reposts = EXCLUDED.reposts,
+    views = EXCLUDED.views,
+    synced_at = EXCLUDED.synced_at
 RETURNING
     id, synced_at, post_id, likes, reposts, views
 `

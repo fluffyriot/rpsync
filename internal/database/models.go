@@ -22,7 +22,7 @@ type AnalyticsPageStat struct {
 type AnalyticsPageStatsOnTarget struct {
 	ID             uuid.UUID
 	SyncedAt       time.Time
-	StatID         uuid.UUID
+	StatID         uuid.NullUUID
 	TargetID       uuid.UUID
 	TargetRecordID string
 }
@@ -38,7 +38,7 @@ type AnalyticsSiteStat struct {
 type AnalyticsSiteStatsOnTarget struct {
 	ID             uuid.UUID
 	SyncedAt       time.Time
-	StatID         uuid.UUID
+	StatID         uuid.NullUUID
 	TargetID       uuid.UUID
 	TargetRecordID string
 }
@@ -72,11 +72,12 @@ type Export struct {
 }
 
 type Log struct {
-	ID        uuid.UUID
-	CreatedAt time.Time
-	SourceID  uuid.NullUUID
-	TargetID  uuid.NullUUID
-	Message   string
+	ID          uuid.UUID
+	CreatedAt   time.Time
+	SourceID    uuid.NullUUID
+	TargetID    uuid.NullUUID
+	Message     string
+	IsDismissed bool
 }
 
 type Post struct {
@@ -106,6 +107,14 @@ type PostsReactionsHistory struct {
 	Likes    sql.NullInt32
 	Reposts  sql.NullInt32
 	Views    sql.NullInt32
+}
+
+type Redirect struct {
+	ID        uuid.UUID
+	SourceID  uuid.UUID
+	FromPath  string
+	ToPath    string
+	CreatedAt time.Time
 }
 
 type Source struct {

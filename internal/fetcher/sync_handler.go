@@ -14,6 +14,7 @@ func executeSync(
 	dbQueries *database.Queries,
 	sourceID uuid.UUID,
 	syncFunc func() error,
+	isLastRetry bool,
 ) error {
 	_, err := dbQueries.UpdateSourceSyncStatusById(ctx, database.UpdateSourceSyncStatusByIdParams{
 		ID:         sourceID,
@@ -31,12 +32,14 @@ func executeSync(
 			StatusReason: sql.NullString{String: err.Error(), Valid: true},
 			LastSynced:   sql.NullTime{Time: time.Now(), Valid: true},
 		})
-		_, _ = dbQueries.CreateLog(ctx, database.CreateLogParams{
-			ID:        uuid.New(),
-			CreatedAt: time.Now(),
-			SourceID:  uuid.NullUUID{UUID: sourceID, Valid: true},
-			Message:   err.Error(),
-		})
+		if isLastRetry {
+			_, _ = dbQueries.CreateLog(ctx, database.CreateLogParams{
+				ID:        uuid.New(),
+				CreatedAt: time.Now(),
+				SourceID:  uuid.NullUUID{UUID: sourceID, Valid: true},
+				Message:   err.Error(),
+			})
+		}
 		return err
 	}
 	_, err = dbQueries.UpdateSourceSyncStatusById(ctx, database.UpdateSourceSyncStatusByIdParams{
@@ -49,7 +52,7 @@ func executeSync(
 	return err
 }
 
-func SyncBySource(sid uuid.UUID, dbQueries *database.Queries, c *Client, ver string, encryptionKey []byte) error {
+func SyncBySource(sid uuid.UUID, dbQueries *database.Queries, c *Client, ver string, encryptionKey []byte, isLastRetry bool) error {
 
 	source, err := dbQueries.GetSourceById(context.Background(), sid)
 	if err != nil {
@@ -88,5 +91,5 @@ func SyncBySource(sid uuid.UUID, dbQueries *database.Queries, c *Client, ver str
 		default:
 			return nil
 		}
-	})
+	}, isLastRetry)
 }

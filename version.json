@@ -1,6 +1,6 @@
 {
-    "latest": "0.15",
-    "releasedAt": "2026-01-24",
-    "url": "https://github.com/fluffyriot/rpsync/releases/tag/v.0.15",
-    "shortDescription": "Bug fixes and new features"
+    "latest": "0.16",
+    "releasedAt": "2026-01-25",
+    "url": "https://github.com/fluffyriot/rpsync/releases/tag/v.0.16",
+    "shortDescription": "Handling page stats redirects, improved logger, retries on targets sync and more..."
 }

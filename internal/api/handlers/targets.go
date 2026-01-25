@@ -194,7 +194,7 @@ func (h *Handler) SyncTargetHandler(c *gin.Context) {
 				log.Printf("panic in background sync: %v", r)
 			}
 		}()
-		pusher.PullByTarget(tid, h.DB, h.Puller, h.Config.TokenEncryptionKey)
+		pusher.PullByTarget(tid, h.DB, h.Puller, h.Config.TokenEncryptionKey, true)
 	}(targetID)
 
 	c.Redirect(http.StatusSeeOther, "/targets")

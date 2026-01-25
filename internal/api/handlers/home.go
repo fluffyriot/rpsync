@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 func (h *Handler) RootHandler(c *gin.Context) {
@@ -96,4 +97,22 @@ func (h *Handler) RootHandler(c *gin.Context) {
 		"sync_period":             user.SyncPeriod,
 		"title":                   "Dashboard",
 	}))
+}
+
+func (h *Handler) DismissLogHandler(c *gin.Context) {
+	idStr := c.PostForm("id")
+	if idStr == "" {
+		c.Redirect(http.StatusFound, "/")
+		return
+	}
+
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		c.Redirect(http.StatusFound, "/")
+		return
+	}
+
+	_ = h.DB.DismissLog(c.Request.Context(), id)
+
+	c.Redirect(http.StatusFound, "/#recent-logs")
 }

@@ -17,6 +17,23 @@ import (
 func FetchGoogleAnalyticsStats(dbQueries *database.Queries, sourceID uuid.UUID, encryptionKey []byte) error {
 	ctx := context.Background()
 
+	statsCheck, err := dbQueries.CheckCountOfAnalyticsSiteStatsForUser(ctx, sourceID)
+	if err != nil {
+		log.Printf("Error checking existing stats: %v", err)
+	}
+
+	startDate := "7daysAgo"
+	if statsCheck == 0 {
+		startDate = "730daysAgo"
+	}
+	endDate := "today"
+
+	return FetchGoogleAnalyticsStatsWithRange(dbQueries, sourceID, encryptionKey, startDate, endDate)
+}
+
+func FetchGoogleAnalyticsStatsWithRange(dbQueries *database.Queries, sourceID uuid.UUID, encryptionKey []byte, startDate, endDate string) error {
+	ctx := context.Background()
+
 	source, err := dbQueries.GetSourceById(ctx, sourceID)
 	if err != nil {
 		return fmt.Errorf("failed to get source: %w", err)
@@ -40,17 +57,6 @@ func FetchGoogleAnalyticsStats(dbQueries *database.Queries, sourceID uuid.UUID, 
 	if err != nil {
 		return fmt.Errorf("failed to create analytics client: %w", err)
 	}
-
-	statsCheck, err := dbQueries.CheckCountOfAnalyticsSiteStatsForUser(ctx, sourceID)
-	if err != nil {
-		log.Printf("Error checking existing stats: %v", err)
-	}
-
-	startDate := "7daysAgo"
-	if statsCheck == 0 {
-		startDate = "730daysAgo"
-	}
-	endDate := "today"
 
 	if err := fetchAndSaveSiteStats(ctx, client, dbQueries, sourceID, propertyID, startDate, endDate); err != nil {
 		return fmt.Errorf("failed to fetch site stats: %w", err)
@@ -138,6 +144,21 @@ func fetchAndSavePageStats(ctx context.Context, svc *analyticsdata.Service, db *
 		return err
 	}
 
+	redirects, err := db.GetRedirectsForSource(ctx, sourceID)
+	if err != nil {
+		log.Printf("Warning: failed to fetch redirects for source %s: %v", sourceID, err)
+	}
+	redirectMap := make(map[string]string)
+	for _, r := range redirects {
+		redirectMap[r.FromPath] = r.ToPath
+	}
+
+	type PageStatKey struct {
+		Date time.Time
+		Path string
+	}
+	consolidatedStats := make(map[PageStatKey]int32)
+
 	for _, row := range resp.Rows {
 		if len(row.DimensionValues) < 2 || len(row.MetricValues) < 1 {
 			continue
@@ -156,15 +177,24 @@ func fetchAndSavePageStats(ctx context.Context, svc *analyticsdata.Service, db *
 		var viewsInt int
 		fmt.Sscanf(views, "%d", &viewsInt)
 
+		if toPath, ok := redirectMap[pagePath]; ok {
+			pagePath = toPath
+		}
+
+		key := PageStatKey{Date: parsedDate, Path: pagePath}
+		consolidatedStats[key] += int32(viewsInt)
+	}
+
+	for key, views := range consolidatedStats {
 		_, err = db.CreateAnalyticsPageStat(ctx, database.CreateAnalyticsPageStatParams{
 			ID:       uuid.New(),
-			Date:     parsedDate,
-			UrlPath:  pagePath,
-			Views:    int32(viewsInt),
+			Date:     key.Date,
+			UrlPath:  key.Path,
+			Views:    views,
 			SourceID: sourceID,
 		})
 		if err != nil {
-			log.Printf("Error saving page stat for %s %s: %v", dateStr, pagePath, err)
+			log.Printf("Error saving page stat for %s %s: %v", key.Date.Format("2006-01-02"), key.Path, err)
 		}
 	}
 	return nil

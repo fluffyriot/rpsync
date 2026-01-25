@@ -34,7 +34,7 @@ func RemoveByTarget(tid, sid uuid.UUID, dbQueries *database.Queries, c *common.C
 	return nil
 }
 
-func PullByTarget(tid uuid.UUID, dbQueries *database.Queries, c *common.Client, encryptionKey []byte) error {
+func PullByTarget(tid uuid.UUID, dbQueries *database.Queries, c *common.Client, encryptionKey []byte, isLastRetry bool) error {
 
 	target, err := dbQueries.GetTargetById(context.Background(), tid)
 	if err != nil {
@@ -131,12 +131,14 @@ func PullByTarget(tid uuid.UUID, dbQueries *database.Queries, c *common.Client, 
 	if finalErr != nil {
 		status = "Failed"
 		reason = sql.NullString{String: finalErr.Error(), Valid: true}
-		_, _ = dbQueries.CreateLog(context.Background(), database.CreateLogParams{
-			ID:        uuid.New(),
-			CreatedAt: time.Now(),
-			TargetID:  uuid.NullUUID{UUID: target.ID, Valid: true},
-			Message:   finalErr.Error(),
-		})
+		if isLastRetry {
+			_, _ = dbQueries.CreateLog(context.Background(), database.CreateLogParams{
+				ID:        uuid.New(),
+				CreatedAt: time.Now(),
+				TargetID:  uuid.NullUUID{UUID: target.ID, Valid: true},
+				Message:   finalErr.Error(),
+			})
+		}
 	}
 
 	_, err = dbQueries.UpdateTargetSyncStatusById(context.Background(), database.UpdateTargetSyncStatusByIdParams{
