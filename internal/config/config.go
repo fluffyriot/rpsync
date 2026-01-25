@@ -11,6 +11,7 @@ import (
 
 	"github.com/fluffyriot/rpsync/internal/authhelp"
 	"github.com/fluffyriot/rpsync/internal/database"
+	"github.com/go-webauthn/webauthn/webauthn"
 	"github.com/google/uuid"
 	"github.com/pressly/goose/v3"
 	"golang.org/x/oauth2"
@@ -48,6 +49,8 @@ type AppConfig struct {
 	KeyB64Err2          error
 	InstVerErr          error
 	KeyB64Err1          error
+	SessionKey          []byte
+	WebAuthn            *webauthn.WebAuthn
 }
 
 func LoadConfig() (*AppConfig, error) {
@@ -86,6 +89,13 @@ func LoadConfig() (*AppConfig, error) {
 		}
 	}
 
+	sessionKey := os.Getenv("SESSION_KEY")
+	if sessionKey == "" {
+		return nil, errors.New("SESSION_KEY not set in .env")
+	} else {
+		cfg.SessionKey = []byte(sessionKey)
+	}
+
 	cfg.FBConfig = authhelp.GenerateFacebookConfig(
 		os.Getenv("FACEBOOK_APP_ID"),
 		os.Getenv("FACEBOOK_APP_SECRET"),
@@ -93,40 +103,62 @@ func LoadConfig() (*AppConfig, error) {
 		cfg.HttpsPort,
 	)
 
+	wConfig := &webauthn.Config{
+		RPDisplayName: "RPSync",
+		RPID:          cfg.ClientIP,
+		RPOrigins:     []string{fmt.Sprintf("https://%s:%s", cfg.ClientIP, cfg.HttpsPort)},
+	}
+
+	var errW error
+	cfg.WebAuthn, errW = webauthn.New(wConfig)
+	if errW != nil {
+		fmt.Printf("Warning: Failed to initialize WebAuthn: %v. Passkeys will be disabled.\n", errW)
+	}
+
 	return cfg, nil
 }
 
-func LoadDatabase() (*database.Queries, error) {
+func LoadDatabase() (*database.Queries, *sql.DB, error) {
 
 	dbName := os.Getenv("POSTGRES_DB")
 	dbUserName := os.Getenv("POSTGRES_USER")
 	dbPassword := os.Getenv("POSTGRES_PASSWORD")
 
 	if dbName == "" || dbUserName == "" || dbPassword == "" {
-		return nil, fmt.Errorf("Failed to load the environment configuration.")
+		return nil, nil, fmt.Errorf("Failed to load the environment configuration.")
 	}
 
-	connectDbUrl := fmt.Sprintf("postgres://%v:%v@db:5432/%v?sslmode=disable", dbUserName, dbPassword, dbName)
+	dbHost := os.Getenv("POSTGRES_HOST")
+	if dbHost == "" {
+		dbHost = "db"
+	}
+
+	dbSslMode := os.Getenv("POSTGRES_SSLMODE")
+	if dbSslMode == "" {
+		dbSslMode = "disable"
+	}
+
+	connectDbUrl := fmt.Sprintf("postgres://%v:%v@%v:5432/%v?sslmode=%v", dbUserName, dbPassword, dbHost, dbName, dbSslMode)
 
 	db, err := sql.Open("postgres", connectDbUrl)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to connect to the DB. Error: %v", err)
+		return nil, nil, fmt.Errorf("Failed to connect to the DB. Error: %v", err)
 	}
 
 	migrationsDir := "./sql/schema"
 	if err := goose.Up(db, migrationsDir); err != nil {
-		return nil, fmt.Errorf("failed to run migrations: %v", err)
+		return nil, nil, fmt.Errorf("failed to run migrations: %v", err)
 	}
 
 	version, err := goose.EnsureDBVersion(db)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get DB version: %v", err)
+		return nil, nil, fmt.Errorf("failed to get DB version: %v", err)
 	}
 	fmt.Printf("Migrations applied successfully. Current DB version: %d\n", version)
 
 	dbQueries := database.New(db)
 
-	return dbQueries, nil
+	return dbQueries, db, nil
 }
 
 func CreateUserFromForm(dbQueries *database.Queries, userName string) (name, id string, e error) {

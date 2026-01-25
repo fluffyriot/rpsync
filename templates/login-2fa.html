@@ -1,0 +1,21 @@
+{{ template "header.html" . }}
+<div class="container auth-container">
+    <div class="card auth-card">
+        <h3 class="card-header">Two-Factor Authentication</h3>
+        <div class="card-body">
+            <p>Please enter the code from your authenticator app.</p>
+            <form method="POST" action="/login/2fa">
+                <div class="form-group">
+                    <label class="form-label">6-digit Code</label>
+                    <input class="form-input" type="text" name="code" placeholder="123456" required autocomplete="off"
+                        autofocus pattern="[0-9]{6}" title="Please enter a 6-digit code">
+                </div>
+                <button class="btn btn-primary input-block" style="width: 100%;" type="submit">Verify</button>
+                {{ if .error }}
+                <div class="alert alert-danger u-margin-top-small">{{ .error }}</div>
+                {{ end }}
+            </form>
+        </div>
+    </div>
+</div>
+{{ template "footer.html" . }}

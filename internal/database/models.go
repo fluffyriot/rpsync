@@ -199,4 +199,19 @@ type User struct {
 	UpdatedAt        time.Time
 	SyncPeriod       string
 	EnabledOnStartup bool
+	PasswordHash     sql.NullString
+	TotpSecret       sql.NullString
+	TotpEnabled      sql.NullBool
+}
+
+type WebauthnCredential struct {
+	ID              uuid.UUID
+	UserID          uuid.UUID
+	CredentialID    []byte
+	PublicKey       []byte
+	AttestationType string
+	Aaguid          uuid.NullUUID
+	SignCount       sql.NullInt64
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 }

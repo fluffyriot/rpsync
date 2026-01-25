@@ -1,6 +1,6 @@
 {
-    "latest": "0.16",
-    "releasedAt": "2026-01-25",
-    "url": "https://github.com/fluffyriot/rpsync/releases/tag/v.0.16",
-    "shortDescription": "Handling page stats redirects, improved logger, retries on targets sync and more..."
+    "latest": "0.17",
+    "releasedAt": "2026-01-26",
+    "url": "https://github.com/fluffyriot/rpsync/releases/tag/v.0.17",
+    "shortDescription": "Security update. Password protection, 2FA and passkeys support."
 }

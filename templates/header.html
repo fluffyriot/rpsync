@@ -34,6 +34,7 @@
                 <img src="/static/images/logo.svg" alt="Logo" class="navbar-logo">
             </a>
 
+            {{ if not .is_auth_page }}
             <button class="btn btn-ghost btn-icon menu-toggle" id="menu-toggle" style="display: none;">
                 <i data-lucide="menu"></i>
             </button>
@@ -49,6 +50,7 @@
                 <a href="/settings/sync" class="text-muted nav-link"
                     style="text-decoration:none; font-weight: 500;">Settings</a>
             </div>
+            {{ end }}
         </div>
     </nav>
 

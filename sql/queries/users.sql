@@ -23,6 +23,27 @@ WHERE
 RETURNING
     *;
 
+-- name: UpdateUserPassword :one
+UPDATE users
+SET
+    password_hash = $2,
+    updated_at = NOW()
+WHERE
+    id = $1
+RETURNING
+    *;
+
+-- name: UpdateUserTOTP :one
+UPDATE users
+SET
+    totp_secret = $2,
+    totp_enabled = $3,
+    updated_at = NOW()
+WHERE
+    id = $1
+RETURNING
+    *;
+
 -- name: EmptyUsers :exec
 DELETE FROM users;
 

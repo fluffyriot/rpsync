@@ -7,6 +7,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
@@ -24,7 +25,7 @@ INSERT INTO
     )
 VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING
-    id, username, created_at, updated_at, sync_period, enabled_on_startup
+    id, username, created_at, updated_at, sync_period, enabled_on_startup, password_hash, totp_secret, totp_enabled
 `
 
 type CreateUserParams struct {
@@ -53,6 +54,9 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.UpdatedAt,
 		&i.SyncPeriod,
 		&i.EnabledOnStartup,
+		&i.PasswordHash,
+		&i.TotpSecret,
+		&i.TotpEnabled,
 	)
 	return i, err
 }
@@ -67,7 +71,7 @@ func (q *Queries) EmptyUsers(ctx context.Context) error {
 }
 
 const getAllUsers = `-- name: GetAllUsers :many
-SELECT id, username, created_at, updated_at, sync_period, enabled_on_startup FROM users
+SELECT id, username, created_at, updated_at, sync_period, enabled_on_startup, password_hash, totp_secret, totp_enabled FROM users
 `
 
 func (q *Queries) GetAllUsers(ctx context.Context) ([]User, error) {
@@ -86,6 +90,9 @@ func (q *Queries) GetAllUsers(ctx context.Context) ([]User, error) {
 			&i.UpdatedAt,
 			&i.SyncPeriod,
 			&i.EnabledOnStartup,
+			&i.PasswordHash,
+			&i.TotpSecret,
+			&i.TotpEnabled,
 		); err != nil {
 			return nil, err
 		}
@@ -100,6 +107,39 @@ func (q *Queries) GetAllUsers(ctx context.Context) ([]User, error) {
 	return items, nil
 }
 
+const updateUserPassword = `-- name: UpdateUserPassword :one
+UPDATE users
+SET
+    password_hash = $2,
+    updated_at = NOW()
+WHERE
+    id = $1
+RETURNING
+    id, username, created_at, updated_at, sync_period, enabled_on_startup, password_hash, totp_secret, totp_enabled
+`
+
+type UpdateUserPasswordParams struct {
+	ID           uuid.UUID
+	PasswordHash sql.NullString
+}
+
+func (q *Queries) UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, updateUserPassword, arg.ID, arg.PasswordHash)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.SyncPeriod,
+		&i.EnabledOnStartup,
+		&i.PasswordHash,
+		&i.TotpSecret,
+		&i.TotpEnabled,
+	)
+	return i, err
+}
+
 const updateUserSyncSettings = `-- name: UpdateUserSyncSettings :one
 UPDATE users
 SET
@@ -109,7 +149,7 @@ SET
 WHERE
     id = $1
 RETURNING
-    id, username, created_at, updated_at, sync_period, enabled_on_startup
+    id, username, created_at, updated_at, sync_period, enabled_on_startup, password_hash, totp_secret, totp_enabled
 `
 
 type UpdateUserSyncSettingsParams struct {
@@ -128,6 +168,44 @@ func (q *Queries) UpdateUserSyncSettings(ctx context.Context, arg UpdateUserSync
 		&i.UpdatedAt,
 		&i.SyncPeriod,
 		&i.EnabledOnStartup,
+		&i.PasswordHash,
+		&i.TotpSecret,
+		&i.TotpEnabled,
+	)
+	return i, err
+}
+
+const updateUserTOTP = `-- name: UpdateUserTOTP :one
+UPDATE users
+SET
+    totp_secret = $2,
+    totp_enabled = $3,
+    updated_at = NOW()
+WHERE
+    id = $1
+RETURNING
+    id, username, created_at, updated_at, sync_period, enabled_on_startup, password_hash, totp_secret, totp_enabled
+`
+
+type UpdateUserTOTPParams struct {
+	ID          uuid.UUID
+	TotpSecret  sql.NullString
+	TotpEnabled sql.NullBool
+}
+
+func (q *Queries) UpdateUserTOTP(ctx context.Context, arg UpdateUserTOTPParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, updateUserTOTP, arg.ID, arg.TotpSecret, arg.TotpEnabled)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.SyncPeriod,
+		&i.EnabledOnStartup,
+		&i.PasswordHash,
+		&i.TotpSecret,
+		&i.TotpEnabled,
 	)
 	return i, err
 }

@@ -88,6 +88,47 @@
         </div>
     </div>
 </div>
+</div>
+
+<div class="card" style="margin-top: 1.5rem;">
+    <div class="card-header">Account Security</div>
+    <div style="padding: 1.5rem;">
+        <p class="text-muted" style="margin-bottom: 1rem;">
+            Manage your account security settings.
+        </p>
+        <div class="flex gap-2" style="flex-wrap: wrap;">
+            {{ if .is_2fa_enabled }}
+            <button class="btn btn-secondary" disabled
+                style="opacity: 1; cursor: default; border-color: var(--color-success);">
+                <i data-lucide="check-circle" style="color: var(--color-success)"></i> 2FA Enabled
+            </button>
+            {{ else }}
+            <a href="/settings/2fa/setup" class="btn btn-primary">
+                <i data-lucide="shield-check"></i> Setup Two-Factor Authentication
+            </a>
+            {{ end }}
+
+            <div style="position: relative; display: inline-block;">
+                {{ if .is_passkey_supported }}
+                <button class="btn btn-secondary" onclick="registerPasskey()">
+                    <i data-lucide="key"></i> Register Passkey
+                </button>
+                {{ else }}
+                <button class="btn btn-secondary" disabled
+                    title="{{ if not .is_secure_context }}Passkeys require HTTPS connection{{ else }}Passkeys require a domain name (not an IP address){{ end }}">
+                    <i data-lucide="key"></i> Register Passkey (Unavailable)
+                </button>
+                {{ end }}
+            </div>
+
+            <form method="POST" action="/logout" style="margin-left: auto;">
+                <button type="submit" class="btn btn-danger">
+                    <i data-lucide="log-out"></i> Logout
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
 
 <div class="card" style="margin-top: 1.5rem;">
     <div class="card-header">Post Exclusions</div>
@@ -612,6 +653,71 @@
             applyRedirectFilters();
         });
     });
+
+    function bufferDecode(value) {
+        return Uint8Array.from(atob(value.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
+    }
+
+    function bufferEncode(value) {
+        return btoa(String.fromCharCode.apply(null, new Uint8Array(value)))
+            .replace(/\+/g, "-")
+            .replace(/\//g, "_")
+            .replace(/=/g, "");
+    }
+
+    async function registerPasskey() {
+        try {
+            const beginResp = await fetch('/settings/passkey/register/begin', {
+                method: 'POST'
+            });
+            if (!beginResp.ok) {
+                const err = await beginResp.json();
+                throw new Error(err.error || 'Failed to start registration');
+            }
+            const options = await beginResp.json();
+
+            options.publicKey.challenge = bufferDecode(options.publicKey.challenge);
+            options.publicKey.user.id = bufferDecode(options.publicKey.user.id);
+            if (options.publicKey.excludeCredentials) {
+                for (let cred of options.publicKey.excludeCredentials) {
+                    cred.id = bufferDecode(cred.id);
+                }
+            }
+
+            const credential = await navigator.credentials.create({
+                publicKey: options.publicKey
+            });
+            const response = {
+                id: credential.id,
+                rawId: bufferEncode(credential.rawId),
+                type: credential.type,
+                response: {
+                    attestationObject: bufferEncode(credential.response.attestationObject),
+                    clientDataJSON: bufferEncode(credential.response.clientDataJSON),
+                },
+            };
+
+            const finishResp = await fetch('/settings/passkey/register/finish', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(response),
+            });
+
+            if (!finishResp.ok) {
+                const err = await finishResp.json();
+                throw new Error(err.error || 'Failed to finish registration');
+            }
+
+            alert("Passkey registered successfully!");
+
+        } catch (e) {
+            console.error(e);
+            alert("Error registering passkey: " + e.message);
+        }
+    }
+
 </script>
 
 {{ template "footer.html" . }}

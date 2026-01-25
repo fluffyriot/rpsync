@@ -47,11 +47,19 @@ func (h *Handler) SyncSettingsHandler(c *gin.Context) {
 	}
 	user := users[0]
 
+	isSecure := c.Request.TLS != nil || c.Request.Header.Get("X-Forwarded-Proto") == "https"
+	if h.Config.ClientIP == "localhost" {
+		isSecure = true
+	}
+
 	c.HTML(http.StatusOK, "sync-settings.html", h.CommonData(gin.H{
-		"sync_period":        user.SyncPeriod,
-		"enabled_on_startup": user.EnabledOnStartup,
-		"worker_running":     h.Worker.IsActive(),
-		"title":              "Sync Settings",
+		"sync_period":            user.SyncPeriod,
+		"enabled_on_startup":     user.EnabledOnStartup,
+		"worker_running":         h.Worker.IsActive(),
+		"title":                  "Sync Settings",
+		"is_2fa_enabled":         user.TotpEnabled.Bool,
+		"is_webauthn_configured": h.Config.WebAuthn != nil,
+		"is_secure_context":      isSecure,
 	}))
 }
 

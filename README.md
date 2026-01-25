@@ -87,6 +87,7 @@ POSTGRES_USER=local-user-ctd
 POSTGRES_PASSWORD=password123
 POSTGRES_PORT=5435
 POSTGRES_HOST=db
+POSTGRES_SSLMODE=disable
 
 APP_PORT=22347
 HTTP_PORT=8081
@@ -96,6 +97,7 @@ INSTAGRAM_API_VERSION=24.0
 LOCAL_IP=XXX.XXX.XXX.XXX
 TOKEN_ENCRYPTION_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 OAUTH_ENCRYPTION_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+SESSION_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 FACEBOOK_APP_ID=xxxxxxxxxxxxxxxx
 FACEBOOK_APP_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
@@ -103,11 +105,17 @@ FACEBOOK_APP_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 ### Environment Variable Reference
 
-* **POSTGRES_***
+* **POSTGRES_**
   Database configuration. Change `POSTGRES_PASSWORD` to a secure value. Other values can remain unchanged.
 
 * **POSTGRES_PORT**
   External port used by PostgreSQL in Docker.
+
+* **POSTGRES_HOST**
+  Hostname of the database. Defaults to `db` (docker service name).
+
+* **POSTGRES_SSLMODE**
+  SSL connection mode. Defaults to `disable` for local development. Use `require` or `verify-full` for production/cloud deployments.
 
 * **APP_PORT**
   Internal HTTP port used by the application container.
@@ -127,7 +135,10 @@ FACEBOOK_APP_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 * **OAUTH_ENCRYPTION_KEY**
   Used to encrypt OAuth URLs during Facebook login.
 
-  Generate both encryption keys with:
+* **SESSION_KEY**
+  Used to sign session cookies.
+
+  Generate each encryption key with:
 
   ```bash
   openssl rand -base64 32
@@ -338,6 +349,44 @@ This application was created to provide creators with a simple, privacy‑respec
 The current release is **alpha** and focuses on manual workflows. Support for additional platforms and automation is planned.
 
 ---
+
+## Security & User Management
+
+### Password Policy
+The application enforces strong passwords. Passwords must meet the following criteria:
+*   Minimum 8 characters
+*   At least one uppercase letter
+*   At least one lowercase letter
+*   At least one number
+*   At least one special character
+
+### CLI User Management
+Administrator tasks can be performed via the command line if you have shell access to the container/server.
+
+**Reset Password:**
+```bash
+./rpsync --reset-password --username <username>
+```
+
+**Reset 2FA (Emergency Lockout):**
+If you lose your 2FA device, you can disable 2FA for a user:
+```bash
+./rpsync --reset-2fa --username <username>
+```
+
+### Two-Factor Authentication (TOTP)
+Enhance your account security by enabling 2FA.
+1.  Navigate to **Settings**.
+2.  Click **Setup Two-Factor Authentication**.
+3.  Scan the QR code with your preferred authenticator app (Google Authenticator, Authy, etc.).
+4.  Enter the verification code to activate.
+
+### Passkeys
+You can use biometric authentication (TouchID, FaceID, Windows Hello) or hardware keys (YubiKey) to log in.
+*   **Requirement**: Passkeys only work when the site is served over **HTTPS** (or `localhost`). If you access the site via HTTP IP address, the "Register Passkey" button will be disabled.
+
+---
+
 
 ## Contributing
 

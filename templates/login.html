@@ -1,0 +1,126 @@
+{{ template "header.html" . }}
+<div class="container auth-container">
+    <div class="card auth-card">
+        <h3 class="card-header">Login</h3>
+        <div class="card-body">
+            <form method="POST" action="/login">
+                <div class="form-group">
+                    <label class="form-label">Username</label>
+                    <input class="form-input" type="text" name="username" id="username" required
+                        autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <input class="form-input" type="password" name="password" required autocomplete="current-password">
+                </div>
+                <div class="flex gap-2" style="margin-top: 1.5rem;">
+                    <button class="btn btn-primary" style="flex: 1;" type="submit">Login</button>
+                    <button class="btn btn-secondary" style="flex: 1;" onclick="loginPasskey()" type="button"
+                        id="btn-passkey" disabled>
+                        <i data-lucide="key"></i> Passkey
+                    </button>
+                </div>
+                {{ if .error }}
+                <div class="alert alert-danger u-margin-top-small">{{ .error }}</div>
+                {{ end }}
+            </form>
+
+            <div class="login-secondary-actions" style="margin-top: 1rem; text-align: center;">
+                <p class="text-muted" style="font-size: 0.85rem;">
+                    <a href="https://github.com/fluffyriot/rpsync#cli-user-management" target="_blank"
+                        style="color: var(--color-text-muted); text-decoration: underline;">Forgot Password?</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function bufferDecode(value) {
+        return Uint8Array.from(atob(value.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
+    }
+
+    function bufferEncode(value) {
+        return btoa(String.fromCharCode.apply(null, new Uint8Array(value)))
+            .replace(/\+/g, "-")
+            .replace(/\//g, "_")
+            .replace(/=/g, "");
+    }
+
+    async function loginPasskey() {
+        const username = document.querySelector('input[name="username"]').value;
+        if (!username) {
+            alert("Please enter your username first.");
+            return;
+        }
+
+        try {
+            const beginResp = await fetch(`/login/passkey/begin?username=${encodeURIComponent(username)}`, {
+                method: 'GET'
+            });
+            if (!beginResp.ok) {
+                const err = await beginResp.json();
+                throw new Error(err.error || 'Failed to start login');
+            }
+            const options = await beginResp.json();
+
+            options.publicKey.challenge = bufferDecode(options.publicKey.challenge);
+            if (options.publicKey.allowCredentials) {
+                for (let cred of options.publicKey.allowCredentials) {
+                    cred.id = bufferDecode(cred.id);
+                }
+            }
+
+            const credential = await navigator.credentials.get({
+                publicKey: options.publicKey
+            });
+            const response = {
+                id: credential.id,
+                rawId: bufferEncode(credential.rawId),
+                type: credential.type,
+                response: {
+                    authenticatorData: bufferEncode(credential.response.authenticatorData),
+                    clientDataJSON: bufferEncode(credential.response.clientDataJSON),
+                    signature: bufferEncode(credential.response.signature),
+                    userHandle: credential.response.userHandle ? bufferEncode(credential.response.userHandle) : null,
+                },
+            };
+
+            const finishResp = await fetch('/login/passkey/finish', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(response),
+            });
+
+            if (!finishResp.ok) {
+                const err = await finishResp.json();
+                throw new Error(err.error || 'Failed to finish login');
+            }
+
+            window.location.href = '/';
+
+        } catch (e) {
+            console.error(e);
+            alert("Error logging in: " + e.message);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const usernameInput = document.getElementById('username');
+        const passkeyBtn = document.getElementById('btn-passkey');
+
+        function togglePasskeyBtn() {
+            if (usernameInput.value.trim().length > 0) {
+                passkeyBtn.disabled = false;
+            } else {
+                passkeyBtn.disabled = true;
+            }
+        }
+
+        usernameInput.addEventListener('input', togglePasskeyBtn);
+        togglePasskeyBtn();
+    });
+</script>
+{{ template "footer.html" . }}
