@@ -83,7 +83,7 @@ func syncNocoAnalyticsSiteStats(dbQueries *database.Queries, c *common.Client, e
 				_, err = dbQueries.AddAnalyticsSiteStatToTarget(context.Background(), database.AddAnalyticsSiteStatToTargetParams{
 					ID:             uuid.New(),
 					SyncedAt:       time.Now(),
-					StatID:         originalStat.ID,
+					StatID:         uuid.NullUUID{UUID: originalStat.ID, Valid: true},
 					TargetID:       target.ID,
 					TargetRecordID: fmt.Sprintf("%.0f", id),
 				})
@@ -161,14 +161,35 @@ func syncNocoAnalyticsPageStats(dbQueries *database.Queries, c *common.Client, e
 		return err
 	}
 
+	mappings, err := dbQueries.GetPageStatsOnTarget(context.Background(), target.ID)
+	if err != nil {
+		return err
+	}
+	mappingMap := make(map[string]database.AnalyticsPageStatsOnTarget)
+	for _, m := range mappings {
+		if m.StatID.Valid {
+			mappingMap[m.StatID.UUID.String()] = m
+		}
+	}
+
 	for _, source := range sources {
-		unsyncedStats, err := dbQueries.GetUnsyncedPageStatsForTarget(context.Background(), database.GetUnsyncedPageStatsForTargetParams{
+		localStats, err := dbQueries.GetAllPageStatsWithTargetInfo(context.Background(), database.GetAllPageStatsWithTargetInfoParams{
 			TargetID: target.ID,
 			SourceID: source.ID,
 		})
-
 		if err != nil {
 			return err
+		}
+
+		var createStats []database.GetAllPageStatsWithTargetInfoRow
+		var updateStats []database.GetAllPageStatsWithTargetInfoRow
+
+		for _, stat := range localStats {
+			if !stat.TargetRecordID.Valid {
+				createStats = append(createStats, stat)
+			} else {
+				updateStats = append(updateStats, stat)
+			}
 		}
 
 		sourceMapping, err := dbQueries.GetTargetSourceBySource(context.Background(), database.GetTargetSourceBySourceParams{
@@ -180,9 +201,9 @@ func syncNocoAnalyticsPageStats(dbQueries *database.Queries, c *common.Client, e
 		}
 
 		var records []NocoTableRecord
-		var currentBatch []database.AnalyticsPageStat
+		var currentBatch []database.GetAllPageStatsWithTargetInfoRow
 
-		flush := func() error {
+		flushCreate := func() error {
 			if len(records) == 0 {
 				return nil
 			}
@@ -208,7 +229,7 @@ func syncNocoAnalyticsPageStats(dbQueries *database.Queries, c *common.Client, e
 				_, err = dbQueries.AddAnalyticsPageStatToTarget(context.Background(), database.AddAnalyticsPageStatToTargetParams{
 					ID:             uuid.New(),
 					SyncedAt:       time.Now(),
-					StatID:         originalStat.ID,
+					StatID:         uuid.NullUUID{UUID: originalStat.ID, Valid: true},
 					TargetID:       target.ID,
 					TargetRecordID: fmt.Sprintf("%.0f", id),
 				})
@@ -230,7 +251,7 @@ func syncNocoAnalyticsPageStats(dbQueries *database.Queries, c *common.Client, e
 			return nil
 		}
 
-		for _, stat := range unsyncedStats {
+		for _, stat := range createStats {
 			fieldMap := NocoRecordFields{
 				ID:       stat.ID.String(),
 				Date:     stat.Date,
@@ -241,23 +262,91 @@ func syncNocoAnalyticsPageStats(dbQueries *database.Queries, c *common.Client, e
 			records = append(records, NocoTableRecord{
 				Fields: fieldMap,
 			})
-			currentBatch = append(currentBatch, database.AnalyticsPageStat{
-				ID:       stat.ID,
-				Date:     stat.Date,
-				UrlPath:  stat.UrlPath,
-				Views:    stat.Views,
-				SourceID: stat.SourceID,
-			})
+			currentBatch = append(currentBatch, stat)
 
 			if len(records) == batchSize {
-				if err := flush(); err != nil {
+				if err := flushCreate(); err != nil {
 					return err
 				}
 			}
 		}
-		if err := flush(); err != nil {
+		if err := flushCreate(); err != nil {
+			return err
+		}
+
+		var updateRecords []NocoTableRecord
+
+		flushUpdate := func() error {
+			if len(updateRecords) == 0 {
+				return nil
+			}
+			if err := updateNocoRecords(c, dbQueries, encryptionKey, target, tableMapping.TargetTableCode.String, updateRecords); err != nil {
+				return err
+			}
+			updateRecords = updateRecords[:0]
+			return nil
+		}
+
+		for _, stat := range updateStats {
+			targetIDVal, _ := strconv.Atoi(stat.TargetRecordID.String)
+			fieldMap := NocoRecordFields{
+				ID:       stat.ID.String(),
+				Date:     stat.Date,
+				PagePath: stat.UrlPath,
+				Views:    stat.Views,
+			}
+			updateRecords = append(updateRecords, NocoTableRecord{
+				Id:     int32(targetIDVal),
+				Fields: fieldMap,
+			})
+			if len(updateRecords) == batchSize {
+				if err := flushUpdate(); err != nil {
+					return err
+				}
+			}
+		}
+		if err := flushUpdate(); err != nil {
 			return err
 		}
 	}
+
+	var deleteMappings []database.AnalyticsPageStatsOnTarget
+	for _, m := range mappings {
+		if !m.StatID.Valid {
+			deleteMappings = append(deleteMappings, m)
+		}
+	}
+
+	var deleteRecords []NocoDeleteRecord
+	flushDelete := func() error {
+		if len(deleteRecords) == 0 {
+			return nil
+		}
+		if err := deleteNocoRecords(c, dbQueries, encryptionKey, target, tableMapping.TargetTableCode.String, deleteRecords); err != nil {
+			return err
+		}
+		deleteRecords = deleteRecords[:0]
+		return nil
+	}
+
+	for _, m := range deleteMappings {
+		targetIDVal, _ := strconv.Atoi(m.TargetRecordID)
+		deleteRecords = append(deleteRecords, NocoDeleteRecord{
+			ID: int32(targetIDVal),
+		})
+
+		if len(deleteRecords) == batchSize {
+			if err := flushDelete(); err != nil {
+				return err
+			}
+		}
+		if err := dbQueries.DeleteAnalyticsPageStatOnTarget(context.Background(), m.ID); err != nil {
+			log.Printf("Warning: failed to delete mapping %s: %v", m.ID, err)
+		}
+	}
+	if err := flushDelete(); err != nil {
+		return err
+	}
+
 	return nil
 }

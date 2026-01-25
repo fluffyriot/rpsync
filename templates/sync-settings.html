@@ -125,6 +125,42 @@
     </div>
 </div>
 
+<div class="card" style="margin-top: 1.5rem;">
+    <div class="card-header">Page Redirects</div>
+
+    <div style="padding: 1.5rem;">
+        <p class="text-muted" style="margin-bottom: 1rem;">
+            Configure page path redirects. Stats for the "From Path" will be merged into the "To Path".
+        </p>
+
+        <div class="exclusion-controls">
+            <button type="button" class="btn btn-primary" onclick="showAddRedirectModal()">
+                <i data-lucide="plus"></i> Add Redirect
+            </button>
+
+            <div class="exclusion-search-container">
+                <input type="text" id="redirectSearch" class="form-select" placeholder="Search by Path...">
+            </div>
+        </div>
+
+        <div id="redirects-list">
+            <p class="text-muted exclusion-list-empty">Loading redirects...</p>
+        </div>
+
+        <div id="redirect-pagination-controls" class="pagination-controls" style="display: none;">
+            <button id="prevRedirectBtn" class="btn btn-secondary btn-icon" onclick="changeRedirectPage(-1)" disabled
+                title="Previous Page">
+                <i data-lucide="chevron-left"></i>
+            </button>
+            <span id="redirectPageInfo" class="text-muted" style="font-weight: 500;">Page 1 of 1</span>
+            <button id="nextRedirectBtn" class="btn btn-secondary btn-icon" onclick="changeRedirectPage(1)" disabled
+                title="Next Page">
+                <i data-lucide="chevron-right"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
 <div id="addExclusionModal"
     style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
     <div class="card" style="width: 90%; max-width: 500px; margin: 2rem;">
@@ -161,12 +197,60 @@
     </div>
 </div>
 
+<div id="addRedirectModal"
+    style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div class="card" style="width: 90%; max-width: 500px; margin: 2rem;">
+        <div class="card-header">Add Page Redirect</div>
+        <div style="padding: 1.5rem;">
+            <form id="addRedirectForm" onsubmit="handleAddRedirect(event)">
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label for="redirect_source_id"
+                        style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Source</label>
+                    <select name="source_id" id="redirect_source_id" class="form-select" required style="width: 100%;">
+                        <option value="">Select a source...</option>
+                    </select>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label for="redirect_from_path"
+                        style="display: block; margin-bottom: 0.5rem; font-weight: 500;">From Path</label>
+                    <input type="text" name="from_path" id="redirect_from_path" class="form-select" required
+                        style="width: 100%;" placeholder="e.g. /old-page">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label for="redirect_to_path" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">To
+                        Path</label>
+                    <input type="text" name="to_path" id="redirect_to_path" class="form-select" required
+                        style="width: 100%;" placeholder="e.g. /new-page">
+                    <p class="text-muted" style="margin-top: 0.5rem; font-size: 0.875rem;">
+                        Note: Stats will be merged. This action deletes the old path stats.
+                    </p>
+                </div>
+
+                <div class="flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i data-lucide="save"></i> Add Redirect
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="hideAddRedirectModal()">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script>
     let allSources = [];
     let allExclusions = [];
     let filteredExclusions = [];
     let currentPage = 1;
     const itemsPerPage = 5;
+
+    let allRedirects = [];
+    let filteredRedirects = [];
+    let currentRedirectPage = 1;
 
     async function loadSources() {
         try {
@@ -175,13 +259,46 @@
             allSources = await response.json();
 
             const select = document.getElementById('exclusion_source_id');
+            const redirectSelect = document.getElementById('redirect_source_id');
+
             select.innerHTML = '<option value="">Select a source...</option>';
+            redirectSelect.innerHTML = '<option value="">Select a source...</option>';
+
+            let exclusionCount = 0;
+            let redirectCount = 0;
+            let lastExclusionId = "";
+            let lastRedirectId = "";
+
             allSources.forEach(source => {
-                const option = document.createElement('option');
-                option.value = source.ID;
-                option.textContent = `${source.Network} - ${source.UserName}`;
-                select.appendChild(option);
+                if (source.Network !== 'Google Analytics') {
+                    const option = document.createElement('option');
+                    option.value = source.ID;
+                    option.textContent = `${source.Network} - ${source.UserName}`;
+                    select.appendChild(option);
+                    exclusionCount++;
+                    lastExclusionId = source.ID;
+                }
+
+                if (source.Network === 'Google Analytics') {
+                    const option = document.createElement('option');
+                    option.value = source.ID;
+                    option.textContent = `${source.Network} - ${source.UserName}`;
+                    redirectSelect.appendChild(option);
+                    redirectCount++;
+                    lastRedirectId = source.ID;
+                }
             });
+
+            if (exclusionCount === 1) {
+                select.value = lastExclusionId;
+            }
+            if (redirectCount === 1) {
+                redirectSelect.value = lastRedirectId;
+            }
+
+            loadExclusions();
+            loadRedirects();
+
         } catch (error) {
             console.error('Error loading sources:', error);
         }
@@ -200,6 +317,24 @@
         }
     }
 
+    async function loadRedirects() {
+        try {
+            allRedirects = [];
+            for (const source of allSources) {
+                const response = await fetch(`/api/redirects?source_id=${source.ID}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    allRedirects = allRedirects.concat(data);
+                }
+            }
+            applyRedirectFilters();
+
+        } catch (error) {
+            console.error('Error loading redirects:', error);
+            document.getElementById('redirects-list').innerHTML = '<p class="exclusion-list-error">Error loading redirects</p>';
+        }
+    }
+
     function applyFilters() {
         const query = document.getElementById('exclusionSearch').value.toLowerCase();
 
@@ -213,6 +348,21 @@
 
         currentPage = 1;
         renderExclusions();
+    }
+
+    function applyRedirectFilters() {
+        const query = document.getElementById('redirectSearch').value.toLowerCase();
+
+        if (query) {
+            filteredRedirects = allRedirects.filter(r =>
+                r.from_path.toLowerCase().includes(query) || r.to_path.toLowerCase().includes(query)
+            );
+        } else {
+            filteredRedirects = [...allRedirects];
+        }
+
+        currentRedirectPage = 1;
+        renderRedirects();
     }
 
     function renderExclusions() {
@@ -245,6 +395,41 @@
         lucide.createIcons();
     }
 
+    function renderRedirects() {
+        const container = document.getElementById('redirects-list');
+        const paginationContainer = document.getElementById('redirect-pagination-controls');
+
+        if (filteredRedirects.length === 0) {
+            container.innerHTML = '<p class="text-muted exclusion-list-empty">No redirects found</p>';
+            paginationContainer.style.display = 'none';
+            return;
+        }
+
+        const startIndex = (currentRedirectPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        const pageItems = filteredRedirects.slice(startIndex, endIndex);
+
+        container.innerHTML = pageItems.map(r => `
+            <div class="card exclusion-item">
+                <div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <strong>${r.from_path}</strong>
+                        <i data-lucide="arrow-right" style="width: 16px;"></i>
+                        <strong>${r.to_path}</strong>
+                    </div>
+                    <span class="text-muted" style="font-size: 0.875rem;">${r.network} - ${r.user_name}</span>
+                </div>
+                <button class="btn btn-danger exclusion-delete-btn" onclick="deleteRedirect('${r.id}')">
+                    <i data-lucide="trash-2"></i>
+                </button>
+            </div>
+        `).join('');
+
+        renderRedirectPagination();
+        lucide.createIcons();
+    }
+
+
     function renderPagination() {
         const paginationContainer = document.getElementById('pagination-controls');
         const totalPages = Math.ceil(filteredExclusions.length / itemsPerPage);
@@ -261,9 +446,30 @@
         document.getElementById('nextBtn').disabled = currentPage === totalPages;
     }
 
+    function renderRedirectPagination() {
+        const paginationContainer = document.getElementById('redirect-pagination-controls');
+        const totalPages = Math.ceil(filteredRedirects.length / itemsPerPage);
+
+        if (totalPages <= 1) {
+            paginationContainer.style.display = 'none';
+            return;
+        }
+
+        paginationContainer.style.display = 'flex';
+
+        document.getElementById('redirectPageInfo').textContent = `Page ${currentRedirectPage} of ${totalPages}`;
+        document.getElementById('prevRedirectBtn').disabled = currentRedirectPage === 1;
+        document.getElementById('nextRedirectBtn').disabled = currentRedirectPage === totalPages;
+    }
+
     function changePage(delta) {
         currentPage += delta;
         renderExclusions();
+    }
+
+    function changeRedirectPage(delta) {
+        currentRedirectPage += delta;
+        renderRedirects();
     }
 
     function showAddExclusionModal() {
@@ -273,6 +479,15 @@
     function hideAddExclusionModal() {
         document.getElementById('addExclusionModal').style.display = 'none';
         document.getElementById('addExclusionForm').reset();
+    }
+
+    function showAddRedirectModal() {
+        document.getElementById('addRedirectModal').style.display = 'flex';
+    }
+
+    function hideAddRedirectModal() {
+        document.getElementById('addRedirectModal').style.display = 'none';
+        document.getElementById('addRedirectForm').reset();
     }
 
     async function handleAddExclusion(event) {
@@ -304,6 +519,42 @@
         }
     }
 
+    async function handleAddRedirect(event) {
+        event.preventDefault();
+
+        const formData = new FormData(event.target);
+        const data = {
+            source_id: formData.get('source_id'),
+            from_path: formData.get('from_path'),
+            to_path: formData.get('to_path')
+        };
+
+        // Basic validation
+        if (data.from_path === data.to_path) {
+            alert("From and To paths must be different.");
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/redirects', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to add redirect');
+            }
+
+            hideAddRedirectModal();
+            await loadRedirects();
+            alert('Redirect added successfully! Stats merging started in background.');
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
+
     async function deleteExclusion(id) {
         if (!confirm('Are you sure you want to delete this exclusion? The post may be re-synced in future fetches.')) {
             return;
@@ -326,13 +577,39 @@
         }
     }
 
+    async function deleteRedirect(id) {
+        if (!confirm('Are you sure you want to delete this redirect? This will trigger a Safe Restore (stats will be cleared and re-fetched from GA).')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/redirects/${id}`, {
+                method: 'DELETE'
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to delete redirect');
+            }
+
+            await loadRedirects();
+            alert('Redirect deleted successfully! Safe restore started in background.');
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
         loadSources();
-        loadExclusions();
 
         const searchInput = document.getElementById('exclusionSearch');
         searchInput.addEventListener('input', () => {
             applyFilters();
+        });
+
+        const redirectSearchInput = document.getElementById('redirectSearch');
+        redirectSearchInput.addEventListener('input', () => {
+            applyRedirectFilters();
         });
     });
 </script>

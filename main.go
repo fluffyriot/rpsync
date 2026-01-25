@@ -141,6 +141,10 @@ func main() {
 	r.POST("/api/exclusions", h.HandleCreateExclusion)
 	r.DELETE("/api/exclusions/:id", h.HandleDeleteExclusion)
 
+	r.GET("/api/redirects", h.HandleGetRedirects)
+	r.POST("/api/redirects", h.HandleCreateRedirect)
+	r.DELETE("/api/redirects/:id", h.HandleDeleteRedirect)
+
 	log.Printf("Server started on http://localhost:%s", cfg.AppPort)
 	if err := r.Run(":" + cfg.AppPort); err != nil {
 		log.Fatal(err)
