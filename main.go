@@ -98,6 +98,7 @@ func main() {
 	)
 
 	r.GET("/", h.RootHandler)
+	r.POST("/logs/dismiss", h.DismissLogHandler)
 
 	r.GET("/settings/sync", h.SyncSettingsHandler)
 	r.POST("/settings/sync", h.UpdateSyncSettingsHandler)

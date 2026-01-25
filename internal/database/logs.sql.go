@@ -24,7 +24,7 @@ INSERT INTO
     )
 VALUES ($1, $2, $3, $4, $5)
 RETURNING
-    id, created_at, source_id, target_id, message
+    id, created_at, source_id, target_id, message, is_dismissed
 `
 
 type CreateLogParams struct {
@@ -50,8 +50,18 @@ func (q *Queries) CreateLog(ctx context.Context, arg CreateLogParams) (Log, erro
 		&i.SourceID,
 		&i.TargetID,
 		&i.Message,
+		&i.IsDismissed,
 	)
 	return i, err
+}
+
+const dismissLog = `-- name: DismissLog :exec
+UPDATE logs SET is_dismissed = TRUE WHERE id = $1
+`
+
+func (q *Queries) DismissLog(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, dismissLog, id)
+	return err
 }
 
 const getRecentLogs = `-- name: GetRecentLogs :many
@@ -66,9 +76,11 @@ FROM
     logs l
     LEFT JOIN sources s ON l.source_id = s.id
     LEFT JOIN targets t ON l.target_id = t.id
-WHERE
-    s.user_id = $1
-    OR t.user_id = $1
+WHERE (
+        s.user_id = $1
+        OR t.user_id = $1
+    )
+    AND l.is_dismissed = FALSE
 ORDER BY l.created_at DESC
 LIMIT 20
 `
@@ -123,6 +135,7 @@ WHERE (
         OR t.user_id = $1
     )
     AND l.created_at > NOW() - INTERVAL '30 days'
+    AND l.is_dismissed = FALSE
 `
 
 func (q *Queries) GetSyncErrorsCountLast30Days(ctx context.Context, userID uuid.UUID) (int64, error) {

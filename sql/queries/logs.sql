@@ -23,11 +23,16 @@ FROM
     logs l
     LEFT JOIN sources s ON l.source_id = s.id
     LEFT JOIN targets t ON l.target_id = t.id
-WHERE
-    s.user_id = $1
-    OR t.user_id = $1
+WHERE (
+        s.user_id = $1
+        OR t.user_id = $1
+    )
+    AND l.is_dismissed = FALSE
 ORDER BY l.created_at DESC
 LIMIT 20;
+
+-- name: DismissLog :exec
+UPDATE logs SET is_dismissed = TRUE WHERE id = $1;
 
 -- name: GetSyncErrorsCountLast30Days :one
 SELECT COUNT(*)
@@ -39,4 +44,5 @@ WHERE (
         s.user_id = $1
         OR t.user_id = $1
     )
-    AND l.created_at > NOW() - INTERVAL '30 days';
+    AND l.created_at > NOW() - INTERVAL '30 days'
+    AND l.is_dismissed = FALSE;

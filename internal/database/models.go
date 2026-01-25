@@ -72,11 +72,12 @@ type Export struct {
 }
 
 type Log struct {
-	ID        uuid.UUID
-	CreatedAt time.Time
-	SourceID  uuid.NullUUID
-	TargetID  uuid.NullUUID
-	Message   string
+	ID          uuid.UUID
+	CreatedAt   time.Time
+	SourceID    uuid.NullUUID
+	TargetID    uuid.NullUUID
+	Message     string
+	IsDismissed bool
 }
 
 type Post struct {
