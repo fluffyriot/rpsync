@@ -17,7 +17,7 @@ import (
 func FetchGoogleAnalyticsStats(dbQueries *database.Queries, sourceID uuid.UUID, encryptionKey []byte) error {
 	ctx := context.Background()
 
-	statsCheck, err := dbQueries.CheckCountOfAnalyticsSiteStatsForUser(ctx, sourceID)
+	statsCheck, err := dbQueries.CountAnalyticsSiteStatsBySource(ctx, sourceID)
 	if err != nil {
 		log.Printf("Error checking existing stats: %v", err)
 	}

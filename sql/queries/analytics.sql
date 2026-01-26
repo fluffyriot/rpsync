@@ -8,6 +8,11 @@ INSERT INTO
         source_id
     )
 VALUES ($1, $2, $3, $4, $5)
+ON CONFLICT (source_id, date) DO
+UPDATE
+SET
+    visitors = EXCLUDED.visitors,
+    avg_session_duration = EXCLUDED.avg_session_duration
 RETURNING
     *;
 
@@ -57,6 +62,9 @@ FROM
     join sources src on s.source_id = src.id
 where
     src.user_id = $1;
+
+-- name: CountAnalyticsSiteStatsBySource :one
+SELECT COUNT(*) FROM analytics_site_stats WHERE source_id = $1;
 
 -- name: GetAnalyticsSiteStatsBySourceAndRange :many
 SELECT *

@@ -137,6 +137,17 @@ func (q *Queries) CheckCountOfAnalyticsSiteStatsForUser(ctx context.Context, use
 	return count, err
 }
 
+const countAnalyticsSiteStatsBySource = `-- name: CountAnalyticsSiteStatsBySource :one
+SELECT COUNT(*) FROM analytics_site_stats WHERE source_id = $1
+`
+
+func (q *Queries) CountAnalyticsSiteStatsBySource(ctx context.Context, sourceID uuid.UUID) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countAnalyticsSiteStatsBySource, sourceID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createAnalyticsPageStat = `-- name: CreateAnalyticsPageStat :one
 INSERT INTO
     analytics_page_stats (
@@ -192,6 +203,11 @@ INSERT INTO
         source_id
     )
 VALUES ($1, $2, $3, $4, $5)
+ON CONFLICT (source_id, date) DO
+UPDATE
+SET
+    visitors = EXCLUDED.visitors,
+    avg_session_duration = EXCLUDED.avg_session_duration
 RETURNING
     id, date, visitors, avg_session_duration, source_id
 `
