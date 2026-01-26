@@ -37,9 +37,9 @@ RUN chmod +x entrypoint.sh
 
 ENV PATH="/usr/local/bin:${PATH}"
 
-RUN groupadd -r appuser && useradd -r -g appuser -u 1000 appuser
+RUN groupadd -r appuser && useradd -r -g appuser -u 1000 -m -d /home/appuser appuser
 
-RUN chown -R appuser:appuser /app
+RUN chown -R appuser:appuser /app /home/appuser
 
 USER appuser
 

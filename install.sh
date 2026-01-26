@@ -168,7 +168,51 @@ if [ "$DEPLOY_TYPE" == "1" ]; then
     TLS_CONFIG="tls /certs/server.crt /certs/server.key"
 else
     SITE_ADDRESS="${DOMAIN_NAME}"
-    TLS_CONFIG="tls internal"
+    
+    echo -e "\n${YELLOW}TLS Configuration${NC}"
+
+    if [[ "$DOMAIN_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+         echo -e "${YELLOW}Detected IP address ($DOMAIN_NAME) instead of a domain.${NC}"
+         echo -e "${RED}Let's Encrypt does not support public IP addresses easily.${NC}"
+         echo -e "Forcing Self-Signed Certificate mode to avoid errors."
+         ENABLE_LETS_ENCRYPT="n"
+    else
+        echo "Do you want to obtain a valid public certificate via Let's Encrypt?"
+        echo " (Requires a valid domain pointing to this IP and ports 80/443 open)"
+        read -p "Enable Let's Encrypt? (Y/n - default is Internal/Self-Signed for safety): " ENABLE_LETS_ENCRYPT
+        ENABLE_LETS_ENCRYPT=${ENABLE_LETS_ENCRYPT:-n}
+    fi
+
+    if [[ "$ENABLE_LETS_ENCRYPT" =~ ^[Yy]$ ]]; then
+         TLS_CONFIG="" 
+         
+         read -p "Enter your email for Let's Encrypt registration (optional, press Enter to skip): " LE_EMAIL
+         if [ ! -z "$LE_EMAIL" ]; then
+             TLS_CONFIG="tls ${LE_EMAIL}"
+         fi
+         
+         echo -e "${GREEN}Configured for Let's Encrypt.${NC}"
+    else
+         echo "Generating self-signed certificate for ${DOMAIN_NAME}..."
+         
+         if [[ "$DOMAIN_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+             SAN_EXT="-addext subjectAltName=IP:${DOMAIN_NAME}"
+         else
+             SAN_EXT="-addext subjectAltName=DNS:${DOMAIN_NAME}"
+         fi
+
+         openssl req -x509 -nodes -days 365 \
+           -newkey rsa:2048 \
+           -keyout certs/server.key \
+           -out certs/server.crt \
+           -subj "/CN=${DOMAIN_NAME}" \
+           $SAN_EXT >/dev/null 2>&1
+
+         TLS_CONFIG="tls /certs/server.crt /certs/server.key"
+         echo -e "${YELLOW}Configured for Self-Signed Certificate.${NC}"
+         echo -e "Note: Your browser will warn you about the certificate (ERR_CERT_AUTHORITY_INVALID), which is expected."
+    fi
+    
     echo -e "${YELLOW}Note: For public domains using non-standard ports, Let's Encrypt validation may require DNS-01 challenge or port forwarding.${NC}"
 fi
 
@@ -185,6 +229,66 @@ ${SITE_ADDRESS} {
 }
 EOF
 echo -e "${GREEN}Caddyfile created.${NC}"
+
+echo -e "\n${YELLOW}Checking Docker Compose configuration...${NC}"
+
+if [ ! -f "docker-compose.yml" ] && [ ! -f "docker-compose.yaml" ]; then
+    echo "docker-compose.yml not found. Generating default configuration..."
+    cat > docker-compose.yml <<EOF
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    container_name: rpsync_db
+    environment:
+      POSTGRES_USER: \${POSTGRES_USER}
+      POSTGRES_PASSWORD: \${POSTGRES_PASSWORD}
+      POSTGRES_DB: \${POSTGRES_DB}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "\${POSTGRES_PORT}:5432"
+
+  app:
+    image: fluffyriot/rpsync:dev
+    restart: unless-stopped
+    container_name: rpsync_app
+    env_file: .env
+    environment:
+       HOME: /home/appuser
+    depends_on:
+      - db
+    volumes:
+      - ./outputs:/app/outputs
+
+  caddy:
+    image: caddy:latest
+    container_name: rpsync_caddy
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./certs:/certs
+    ports:
+      - "\${HTTP_PORT}:80"
+      - "\${HTTPS_PORT}:443"
+    depends_on:
+      - app
+
+volumes:
+  db_data:
+EOF
+    echo -e "${GREEN}docker-compose.yml generated.${NC}"
+else
+    echo -e "${GREEN}docker-compose.yml found.${NC}"
+fi
+
+echo -e "\n${YELLOW}Setting up permissions...${NC}"
+mkdir -p outputs
+chmod 777 outputs
+echo -e "${GREEN}Permissions set for outputs directory.${NC}"
 
 echo -e "\n${YELLOW}Ready to start!${NC}"
 read -p "Do you want to start the application now? (Y/n): " START_DOCKER
