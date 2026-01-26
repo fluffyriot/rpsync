@@ -144,7 +144,7 @@ func FetchTelegramPosts(dbQueries *database.Queries, encryptionKey []byte, sid u
 				ids = append(ids, &tg.InputMessageID{ID: startID + i})
 			}
 
-			var resp interface{}
+			var resp any
 			retries := 0
 			for {
 				resp, err = client.API().ChannelsGetMessages(ctx, &tg.ChannelsGetMessagesRequest{

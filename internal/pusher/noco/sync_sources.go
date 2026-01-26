@@ -78,7 +78,7 @@ func syncNocoSources(c *common.Client, dbQueries *database.Queries, encryptionKe
 				continue
 			}
 
-			fields, ok := rec["fields"].(map[string]interface{})
+			fields, ok := rec["fields"].(map[string]any)
 			if !ok {
 				continue
 			}

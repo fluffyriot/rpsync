@@ -117,7 +117,7 @@ func SyncNoco(dbQueries *database.Queries, c *common.Client, encryptionKey []byt
 				continue
 			}
 
-			fields, ok := rec["fields"].(map[string]interface{})
+			fields, ok := rec["fields"].(map[string]any)
 			if !ok {
 				continue
 			}

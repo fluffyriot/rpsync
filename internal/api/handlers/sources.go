@@ -75,7 +75,7 @@ func (h *Handler) HandleGetSourcesAPI(c *gin.Context) {
 	}
 
 	if len(users) == 0 {
-		c.JSON(http.StatusOK, []interface{}{})
+		c.JSON(http.StatusOK, []any{})
 		return
 	}
 

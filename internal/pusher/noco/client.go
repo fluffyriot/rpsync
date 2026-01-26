@@ -52,7 +52,7 @@ func createNocoTable(c *common.Client, dbQueries *database.Queries, encryptionKe
 	return &result, nil
 }
 
-func createNocoRecords(c *common.Client, dbQueries *database.Queries, encryptionKey []byte, target database.Target, tableId string, records []NocoTableRecord) ([]map[string]interface{}, error) {
+func createNocoRecords(c *common.Client, dbQueries *database.Queries, encryptionKey []byte, target database.Target, tableId string, records []NocoTableRecord) ([]map[string]any, error) {
 
 	url := target.HostUrl.String +
 		"/api/v3/data/" +
@@ -91,18 +91,18 @@ func createNocoRecords(c *common.Client, dbQueries *database.Queries, encryption
 		return nil, fmt.Errorf("read response body: %w", err)
 	}
 
-	var wrapper map[string]interface{}
+	var wrapper map[string]any
 	if err := json.Unmarshal(bodyBytes, &wrapper); err == nil {
 		if recordsVal, ok := wrapper["records"]; ok {
 			recordsBytes, _ := json.Marshal(recordsVal)
-			var records []map[string]interface{}
+			var records []map[string]any
 			if err := json.Unmarshal(recordsBytes, &records); err == nil {
 				return records, nil
 			}
 		}
 	}
 
-	var result []map[string]interface{}
+	var result []map[string]any
 	if err := json.Unmarshal(bodyBytes, &result); err == nil {
 		return result, nil
 	}

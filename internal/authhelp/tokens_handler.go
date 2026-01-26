@@ -61,7 +61,7 @@ func insertToken(
 	ctx context.Context,
 	db *database.Queries,
 	accessToken, pid string,
-	sourceAppData map[string]interface{},
+	sourceAppData map[string]any,
 	encryptionKey []byte,
 	params database.CreateTokenParams,
 ) error {
@@ -102,7 +102,7 @@ func InsertSourceToken(
 	db *database.Queries,
 	sid uuid.UUID,
 	accessToken, pid string,
-	sourceAppData map[string]interface{},
+	sourceAppData map[string]any,
 	encryptionKey []byte,
 ) error {
 
@@ -155,7 +155,7 @@ func GetSourceToken(
 	db *database.Queries,
 	encryptionKey []byte,
 	sid uuid.UUID,
-) (accessToken, profileID string, sourceAppData map[string]interface{}, tokenID uuid.UUID, err error) {
+) (accessToken, profileID string, sourceAppData map[string]any, tokenID uuid.UUID, err error) {
 
 	dbToken, err := db.GetTokenBySource(ctx, uuid.NullUUID{UUID: sid, Valid: true})
 	if err != nil {

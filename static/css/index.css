@@ -442,10 +442,6 @@ a:hover {
     border-bottom: none;
   }
 
-  .navbar-title {
-    display: none;
-  }
-
   .source-item {
     flex-direction: column;
     align-items: flex-start;
@@ -462,11 +458,6 @@ a:hover {
 
   .source-info {
     width: 100%;
-  }
-
-  .flex-responsive {
-    flex-direction: column !important;
-    align-items: stretch !important;
   }
 
   .grid-responsive {

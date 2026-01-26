@@ -116,7 +116,7 @@ func (h *Handler) FacebookCallbackHandler(c *gin.Context) {
 		return
 	}
 
-	sourceAppData := map[string]interface{}{
+	sourceAppData := map[string]any{
 		"app_id":     appID.(string),
 		"app_secret": appSecret.(string),
 	}

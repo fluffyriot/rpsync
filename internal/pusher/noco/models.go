@@ -59,11 +59,11 @@ type NocoColumnTypeRelation struct {
 
 // NocoColumn represents a column definition in a NocoDB table
 type NocoColumn struct {
-	Title       string      `json:"title"`
-	Type        string      `json:"type"`
-	Description string      `json:"description,omitempty"`
-	Unique      bool        `json:"unique,omitempty"`
-	Options     interface{} `json:"options,omitempty"`
+	Title       string `json:"title"`
+	Type        string `json:"type"`
+	Description string `json:"description,omitempty"`
+	Unique      bool   `json:"unique,omitempty"`
+	Options     any    `json:"options,omitempty"`
 }
 
 // NocoTable represents a table definition for creation
