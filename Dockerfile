@@ -21,7 +21,7 @@ FROM --platform=$TARGETPLATFORM debian:bookworm
 WORKDIR /app
 
 RUN apt-get update \
- && apt-get install -y bash netcat-openbsd ca-certificates chromium fonts-liberation gosu \
+ && apt-get install -y bash netcat-openbsd ca-certificates chromium fonts-liberation util-linux \
  && rm -rf /var/lib/apt/lists/* \
  && mkdir -p /app/outputs \
  && mkdir -p /app/certs
@@ -40,5 +40,7 @@ ENV PATH="/usr/local/bin:${PATH}"
 RUN groupadd -r appuser && useradd -r -g appuser -u 1000 appuser
 
 RUN chown -R appuser:appuser /app
+
+USER appuser
 
 ENTRYPOINT ["./entrypoint.sh"]

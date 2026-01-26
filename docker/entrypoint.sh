@@ -8,7 +8,5 @@ until nc -z "$POSTGRES_HOST" "5432"; do
 done
 echo "Postgres is up!"
 
-chown -R appuser:appuser /app/outputs
-
 echo "Starting app..."
-exec gosu appuser ./rpsync
+exec ./rpsync
