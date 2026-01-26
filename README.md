@@ -38,6 +38,8 @@ This app is intended to run in Docker and has both x64 and arm builds. It is int
 ## Table of Contents
 
 * [Start Guide](#start-guide)
+* [Quick Start - Automated Installation](#quick-start-automated-installation)
+* [Manual Installation](#manual-installation)
 * [Environment Configuration](#environment-configuration)
 * [Docker Setup](#docker-setup)
 * [HTTPS and Certificates](#https-and-certificates)
@@ -53,29 +55,33 @@ This app is intended to run in Docker and has both x64 and arm builds. It is int
 ## Start Guide
 
 ### Prerequisites
+*   Docker
+*   Docker Compose
+*   OpenSSL (usually pre-installed on Linux/WSL)
+*   For Windows: [Install WSL](https://learn.microsoft.com/en-us/windows/wsl/install) first.
 
-* For Windows, [install WSL](https://learn.microsoft.com/en-us/windows/wsl/install) first.
-* Docker
-* Docker Compose
+## Quick Start - Automated Installation
+1.  **Clone or Download** this repository.
+2.  Run the installation script:
 
-## Migration to Decoupled Auth
+    ```bash
+    ./install.sh
+    ```
 
-To migrate existing Instagram sources to the new decoupled authentication system (where separate App ID/Secret are used per source), run the following SQL query in your database:
+    The script will guide you through:
+    *   IP Address/Domain configuration
+    *   Generates secure keys for encryption
+    *   Creates a `.env` file
+    *   Sets up the Web Server (Caddy) and HTTPS certificates
+    *   Starts the application
 
-```sql
-UPDATE tokens
-SET source_app_data = '{"app_id": "YOUR_LEGACY_APP_ID", "app_secret": "YOUR_LEGACY_APP_SECRET"}'::jsonb
-WHERE source_id IN (SELECT id FROM sources WHERE network = 'Instagram') AND source_app_data = '{}'::jsonb;
-```
+3.  Access the application at the URL provided by the script (e.g., `https://192.168.1.50:8443`).
 
-Replace `YOUR_LEGACY_APP_ID` and `YOUR_LEGACY_APP_SECRET` with the values you previously used in your `.env` file.
+> **Note**: If you chose a Local installation with self-signed certificates, your browser will show a security warning. This is normal for local-only tools; you can safely click "Advanced" -> "Proceed".
 
-### Verify your installation:
+---
 
-```bash
-docker --version
-docker compose version
-```
+## Manual Installation
 
 ### 1. Create a Working Directory
 
@@ -84,12 +90,7 @@ mkdir rpsync
 cd rpsync
 ```
 
-> **IMPORTANT**
-> If you plan to sync Instagram data, complete the [Instagram Sync Setup](#setup-for-instagram-sync) section first.
-
----
-
-## Environment Configuration
+### 2. Environment Configuration
 
 Create a `.env` file in the project root using the template below:
 
@@ -106,8 +107,8 @@ HTTP_PORT=8081
 HTTPS_PORT=8443
 GIN_MODE=release
 
-INSTAGRAM_API_VERSION=24.0
 LOCAL_IP=XXX.XXX.XXX.XXX
+DOMAIN_NAME=example.com
 TOKEN_ENCRYPTION_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 OAUTH_ENCRYPTION_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 SESSION_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
@@ -125,13 +126,13 @@ SESSION_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
   Hostname of the database. Defaults to `db` (docker service name).
 
 * **POSTGRES_SSLMODE**
-  SSL connection mode. Defaults to `disable` for local development. Use `require` or `verify-full` for production/cloud deployments.
+  SSL connection mode. Defaults to `disable`.
 
 * **APP_PORT**
   Internal HTTP port used by the application container.
 
 * **HTTP_PORT / HTTPS_PORT**
-  Ports exposed by Caddy. Ensure these do not conflict with other services on your machine.
+  Ports exposed by Caddy. Ensure these do not conflict with other services on your machine. For cloud deployments, use `80` and `443`.
 
 * **INSTAGRAM_API_VERSION**
   Facebook Graph API version. Version `24.0` is tested; other versions may cause issues.
@@ -166,7 +167,7 @@ SESSION_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 ---
 
-## Docker Setup
+### 3. Docker Setup
 
 Create a `docker-compose.yml` file in the project root. No changes are required.
 
@@ -192,8 +193,6 @@ services:
     env_file: .env
     depends_on:
       - db
-    ports:
-      - "${APP_PORT}:${APP_PORT}"
     volumes:
       - ./outputs:/app/outputs
 
@@ -213,11 +212,9 @@ volumes:
   db_data:
 ```
 
----
+### 4. HTTPS and Certificates
 
-## HTTPS and Certificates
-
-### 1. Create a Caddyfile Template
+### Create a Caddyfile Template
 
 Create `Caddyfile.template`:
 
@@ -228,13 +225,13 @@ Create `Caddyfile.template`:
 }
 
 # HTTPS site with self-signed certificate
-:${HTTPS_PORT} {
-    tls /certs/server.crt /certs/server.key
+${SITE_ADDRESS} {
+    ${TLS_CONFIG}
     reverse_proxy app:${APP_PORT}
 }
 ```
 
-### 2. Generate the Caddyfile
+### Generate the Caddyfile
 
 **Option A: Local Development (Self-Signed)**
 
@@ -252,12 +249,8 @@ Replace `your-domain.com` with your actual domain. Ensure your DNS points to thi
 ```bash
 export $(grep -v '^#' .env | xargs)
 export SITE_ADDRESS="your-domain.com"
-# remove 'tls internal' line below to use real Let's Encrypt production CA
-export TLS_CONFIG="tls internal" 
 envsubst < Caddyfile.template > Caddyfile
 ```
-
-> **Note**: For production, remove `tls internal` to get a valid public certificate. `tls internal` is good for testing or if you are behind another proxy (like Cloudflare).
 
 ### 3. Generate a Self-Signed Certificate
 
@@ -274,31 +267,12 @@ sudo openssl req -x509 -nodes -days 365 \
 echo "Self-signed certificate generated for ${IP}"
 ```
 
----
+### 5. Running
 
-## Running the Application
-
-1. Pull the required Docker images:
-
-   ```bash
-   docker compose pull
-   ```
-
-2. Start the stack:
-
-   ```bash
-   docker compose up -d
-   ```
-
-3. Open your browser and navigate to:
-
-   ```
-   https://LOCAL_IP:HTTPS_PORT
-   ```
-
-   Replace `LOCAL_IP` and `HTTPS_PORT` with the values from your `.env` file.
-
----
+```bash
+docker compose up -d
+```
+</details>
 
 ## Usage
 
@@ -335,7 +309,7 @@ Instagram data synchronization requires additional setup via Meta (Facebook) Dev
 
 3. In the App Dashboard, navigate to **Settings → Basic**.
 
-4. Copy the **App ID** and **App Secret** into your `.env` file.
+4. Copy the **App ID** and **App Secret** and save them for later to use in "Add source" process during the setup.
 
 5. Open **Facebook Login for Business**.
 
@@ -359,7 +333,7 @@ Instagram data synchronization requires additional setup via Meta (Facebook) Dev
 
 10. Click **Generate Token**, select your Page and Instagram account.
 
-11. Copy and save the numeric Instagram Page ID displayed.
+11. Copy and save the numeric Instagram Page ID displayed for later to use in "Add source" process during the setup..
 
 ---
 
