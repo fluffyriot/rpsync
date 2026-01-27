@@ -13,6 +13,23 @@
 *   **Data Ownership**: Export seamlessly to NocoDB or CSV.
 *   **Free & Open Source**: No subscriptions, no hidden fees.
 
+## Supported Platforms
+
+Fetch:
+*   Instagram
+*   TikTok
+*   Youtube
+*   Bluesky
+*   Mastodon
+*   Telegram
+*   BadPups.com
+*   Murrtube.net
+*   Google Analytics
+
+Push:
+*   NocoDB
+*   CSV
+
 ---
 
 ## Getting Started
