@@ -155,10 +155,6 @@ docker compose up -d
 ```
 </details>
 
----
-
-## Configuration
-
 ### Environment Variables
 | Variable | Description |
 | :--- | :--- |
@@ -200,13 +196,13 @@ Run these commands inside the container or via `docker exec`:
 *   **Reset 2FA**: `./rpsync --reset-2fa --username <username>`
 
 ### Authentication Features
-*   **Password Policy**: Min 8 chars, uppercase, lowercase, number, special char.
+*   **Password Policy**: Min 8 characters, must contain uppercase, lowercase, number, and special character.
 *   **2FA (TOTP)**: Enable in Settings using Google Authenticator / Authy.
-*   **Passkeys**: Biometric login (TouchID/FaceID). *Note: Requires HTTPS (or localhost).*
+*   **Passkeys**: Biometric login (TouchID/FaceID). *Note: Requires public domain deployment.*
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Please open an issue or submit a PR on GitHub.
 
