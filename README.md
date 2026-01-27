@@ -28,7 +28,7 @@ The easiest way to get up and running.
 
 1.  **Run the install script:**
     ```bash
-    curl -o install.sh https://raw.githubusercontent.com/fluffyriot/rpsync/refs/heads/main/install.sh && sudo chmod +x install.sh && sudo ./install.sh
+    curl -o install.sh https://raw.githubusercontent.com/fluffyriot/rpsync/refs/heads/main/install.sh && sudo chmod +x install.sh && ./install.sh
     ```
 2.  **Follow the prompts** to configure:
     *   Deployment Type (Local vs. Public)
