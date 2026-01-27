@@ -1,6 +1,6 @@
 {
     "latest": "0.17",
-    "releasedAt": "2026-01-26",
-    "url": "https://github.com/fluffyriot/rpsync/releases/tag/v.0.17",
-    "shortDescription": "Security update. Password protection, 2FA and passkeys support."
+    "releasedAt": "2026-01-27",
+    "url": "https://github.com/fluffyriot/rpsync/releases/tag/v0.17",
+    "shortDescription": "YouTube support, security updates, one-click install and more!"
 }

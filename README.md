@@ -4,96 +4,54 @@
 
 ---
 
-Collect and track your online presence statistics in a local database that runs entirely on your machine.
+**RPSync** is your personal, privacy-first command center for social media analytics. Run this application locally to collect, visualize, and own your statistics from Instagram, TikTok, Youtube, Bluesky, and more.
 
-**RPSync** is your personal, privacy-first command center for social media analytics. Stop relying on fragmented, invasive, and expensive third-party tools. Run this application locally to collect, visualize, and own your data forever.
+## Key Features
 
-**Key Benefits:**
-*   **100% Local & Private**: Your data never leaves your machine unless you say so.
-*   **Unified Analytics**: View statistics from Instagram, TikTok, Bluesky, Mastodon, and more in one beautiful dashboard.
-*   **Data Ownership**: Seamlessly export your data to NocoDB and CSV for external analysis.
-*   **No Subscriptions**: Free and open-source.
-
-This app is intended to run in Docker and has both x64 and arm builds. It is intended to run on Debian-like systems and has been tested on Windows using WSL2 Ubuntu and Raspberry Pi running on Raspbian.
-
-## Features
-
-### Data Collection (Sources)
-*   **Instagram**: Syncs public creator/business pages (requires Facebook Page connection).
-*   **TikTok**: Advanced scraping via TikTok Creator Studio.
-*   **Telegram**: Tracks your public channels
-*   **Other Platforms**: Bluesky, Mastodon, Murrtube.net, BadPups.com, Google Analytics
-
-### Data Management (Targets)
-*   **NocoDB Integration**: Automatically syncs your posts and sources to NocoDB for Airtable-like management.
-*   **CSV Exports**: Easy variable data export for offline analysis.
-
-### Important Notes
-*   **Instagram Sync**: Requires a Facebook App and a Facebook Page connected to the Instagram account. [Setup Guide](#setup-for-instagram-sync)
-*   **TikTok Sync**: Uses TikTok Creator Studio page. Ensure you have access to it.
-*   **Telegram Sync**: Requires App creation and Bot setup. [Setup Guide](#setup-for-telegram-sync)
+*   **100% Local & Private**: Your data stays on your machine.
+*   **Unified Dashboard**: Quickly Visualize your posts on the simple dashboard.
+*   **Data Ownership**: Export seamlessly to NocoDB or CSV.
+*   **Free & Open Source**: No subscriptions, no hidden fees.
 
 ---
 
-## Table of Contents
-
-* [Start Guide](#start-guide)
-* [Quick Start - Automated Installation](#quick-start-automated-installation)
-* [Manual Installation](#manual-installation)
-* [Environment Configuration](#environment-configuration)
-* [Docker Setup](#docker-setup)
-* [HTTPS and Certificates](#https-and-certificates)
-* [Running the Application](#running-the-application)
-* [Usage](#usage)
-* [Instagram Sync Setup](#setup-for-instagram-sync)
-* [Telegram Sync Setup](#setup-for-telegram-sync)
-* [Motivation](#motivation)
-* [Contributing](#contributing)
-
----
-
-## Start Guide
+## Getting Started
 
 ### Prerequisites
-*   Docker
-*   Docker Compose
-*   OpenSSL (usually pre-installed on Linux/WSL)
-*   For Windows: [Install WSL](https://learn.microsoft.com/en-us/windows/wsl/install) first.
+*   Docker & Docker Compose
+*   OpenSSL (Pre-installed on most Linux/WSL systems)
+*   **Windows Users**: Install [WSL2](https://learn.microsoft.com/en-us/windows/wsl/install) first.
 
-## Quick Start - Automated Installation
-1.  **Clone or Download** this repository.
-2.  Run the installation script:
+### Option 1: Automated Installation (Recommended)
 
+The easiest way to get up and running.
+
+1.  **Run the install script:**
     ```bash
-    ./install.sh
+    curl -o install.sh https://raw.githubusercontent.com/fluffyriot/rpsync/refs/heads/main/install.sh && chmod +x install.sh && ./install.sh
     ```
+2.  **Follow the prompts** to configure:
+    *   Deployment Type (Local vs. Public)
+    *   IP Address / Domain
+    *   Secure Keys (Auto-generated)
+    *   Web Server (Caddy) & HTTPS
 
-    The script will guide you through:
-    *   IP Address/Domain configuration
-    *   Generates secure keys for encryption
-    *   Creates a `.env` file
-    *   Sets up the Web Server (Caddy) and HTTPS certificates
-    *   Starts the application
+3.  **Access the App**: Open the URL provided at the end of the script (e.g., `https://192.168.1.50:8443`).
 
-3.  Access the application at the URL provided by the script (e.g., `https://192.168.1.50:8443`).
+> **Note**: For local installations with self-signed certificates, accept the browser security warning ("Advanced" -> "Proceed").
 
-> **Note**: If you chose a Local installation with self-signed certificates, your browser will show a security warning. This is normal for local-only tools; you can safely click "Advanced" -> "Proceed".
+### Option 2: Manual Installation
 
----
+<details>
+<summary>Click to expand manual setup instructions</summary>
 
-## Manual Installation
-
-### 1. Create a Working Directory
-
+#### 1. Setup Directory
 ```bash
-mkdir rpsync
-cd rpsync
+mkdir rpsync && cd rpsync
 ```
 
-### 2. Environment Configuration
-
-Create a `.env` file in the project root using the template below:
-
+#### 2. Environment Configuration
+Create a `.env` file:
 ```env
 POSTGRES_DB=rpsync-db
 POSTGRES_USER=local-user-ctd
@@ -107,77 +65,22 @@ HTTP_PORT=8081
 HTTPS_PORT=8443
 GIN_MODE=release
 
-LOCAL_IP=XXX.XXX.XXX.XXX
-DOMAIN_NAME=example.com
-TOKEN_ENCRYPTION_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-OAUTH_ENCRYPTION_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-SESSION_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+LOCAL_IP=
+DOMAIN_NAME=
+TOKEN_ENCRYPTION_KEY= # generate with: openssl rand -base64 32
+OAUTH_ENCRYPTION_KEY= # generate with: openssl rand -base64 32
+SESSION_KEY=          # generate with: openssl rand -base64 32
 ```
 
-### Environment Variable Reference
-
-* **POSTGRES_**
-  Database configuration. Change `POSTGRES_PASSWORD` to a secure value. Other values can remain unchanged.
-
-* **POSTGRES_PORT**
-  External port used by PostgreSQL in Docker.
-
-* **POSTGRES_HOST**
-  Hostname of the database. Defaults to `db` (docker service name).
-
-* **POSTGRES_SSLMODE**
-  SSL connection mode. Defaults to `disable`.
-
-* **APP_PORT**
-  Internal HTTP port used by the application container.
-
-* **HTTP_PORT / HTTPS_PORT**
-  Ports exposed by Caddy. Ensure these do not conflict with other services on your machine. For cloud deployments, use `80` and `443`.
-
-* **INSTAGRAM_API_VERSION**
-  Facebook Graph API version. Version `24.0` is tested; other versions may cause issues.
-
-* **GIN_MODE**
-  Sets the Gin framework mode. Options are `debug` (default) or `release`. Use `release` for production to suppress debug logs.
-
-* **LOCAL_IP**
-  The local IP address used to access the application.
-
-* **DOMAIN_NAME**
-  (Optional) The public domain name where the application is hosted (e.g., `example.com`).
-  If set, this will be used for OAuth callbacks and Passkey origins instead of `LOCAL_IP`.
-
-* **TOKEN_ENCRYPTION_KEY**
-  Used to encrypt tokens stored in the database.
-
-* **OAUTH_ENCRYPTION_KEY**
-  Used to encrypt OAuth URLs during Facebook login.
-
-* **SESSION_KEY**
-  Used to sign session cookies.
-
-  Generate each encryption key with:
-
-  ```bash
-  openssl rand -base64 32
-  ```
-
-* **FACEBOOK_APP_ID / FACEBOOK_APP_SECRET**
-  Required for Instagram synchronization. See [Instagram Sync Setup](#setup-for-instagram-sync).
-
----
-
-### 3. Docker Setup
-
-Create a `docker-compose.yml` file in the project root. No changes are required.
-
+#### 3. Docker Compose
+Create `docker-compose.yml`:
 ```yaml
 version: "3.9"
-
 services:
   db:
     image: postgres:16-alpine
     restart: unless-stopped
+    container_name: rpsync_db
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -190,21 +93,28 @@ services:
   app:
     image: fluffyriot/rpsync:latest
     restart: unless-stopped
+    container_name: rpsync_app
     env_file: .env
+    environment:
+       HOME: /home/appuser
     depends_on:
       - db
     volumes:
       - ./outputs:/app/outputs
+    # ports:
+    #   - "${APP_PORT}:${APP_PORT}" # Uncomment for local access
 
   caddy:
     image: caddy:latest
+    container_name: rpsync_caddy
     restart: unless-stopped
+    env_file: .env
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - ./certs:/certs
     ports:
-      - "${HTTPS_PORT}:${HTTPS_PORT}"
       - "${HTTP_PORT}:80"
+      - "${HTTPS_PORT}:443"
     depends_on:
       - app
 
@@ -212,194 +122,90 @@ volumes:
   db_data:
 ```
 
-### 4. HTTPS and Certificates
+#### 4. HTTPS (Caddyfile)
+Create a `Caddyfile`. Replace variables with actual values.
 
-### Create a Caddyfile Template
-
-Create `Caddyfile.template`:
-
-```caddyfile
-# Redirect HTTP to HTTPS
+**For Local (Self-Signed):**
+1. Generate certs: `openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout certs/server.key -out certs/server.crt -subj "/CN=${LOCAL_IP}"`
+2. Caddyfile content:
+```
 :${HTTP_PORT} {
     redir https://{host}:${HTTPS_PORT}{uri} permanent
 }
-
-# HTTPS site with self-signed certificate
-${SITE_ADDRESS} {
-    ${TLS_CONFIG}
+:${HTTPS_PORT} {
+    tls /certs/server.crt /certs/server.key
     reverse_proxy app:${APP_PORT}
 }
 ```
 
-### Generate the Caddyfile
-
-**Option A: Local Development (Self-Signed)**
-
-```bash
-export $(grep -v '^#' .env | xargs)
-export SITE_ADDRESS=":${HTTPS_PORT}"
-export TLS_CONFIG="tls /certs/server.crt /certs/server.key"
-envsubst < Caddyfile.template > Caddyfile
+**For Public (Let's Encrypt):**
+```
+:${HTTP_PORT} {
+    redir https://{host}:${HTTPS_PORT}{uri} permanent
+}
+${DOMAIN_NAME} {
+    tls your-email@example.com
+    reverse_proxy app:${APP_PORT}
+}
 ```
 
-**Option B: Cloud Deployment (Automatic SSL)**
-
-Replace `your-domain.com` with your actual domain. Ensure your DNS points to this server's IP.
-
-```bash
-export $(grep -v '^#' .env | xargs)
-export SITE_ADDRESS="your-domain.com"
-envsubst < Caddyfile.template > Caddyfile
-```
-
-### 3. Generate a Self-Signed Certificate
-
-```bash
-IP=${LOCAL_IP:-127.0.0.1}
-mkdir -p certs
-sudo openssl req -x509 -nodes -days 365 \
-  -newkey rsa:2048 \
-  -keyout certs/server.key \
-  -out certs/server.crt \
-  -subj "/CN=${IP}" \
-  -addext "subjectAltName=IP:${IP}"
-
-echo "Self-signed certificate generated for ${IP}"
-```
-
-### 5. Running
-
+#### 5. Run it
 ```bash
 docker compose up -d
 ```
 </details>
 
-## Usage
+---
 
-All features are available through the web UI.
+## Configuration
 
-Instagram data synchronization requires additional setup via Meta (Facebook) Developer tools.
+### Environment Variables
+| Variable | Description |
+| :--- | :--- |
+| `POSTGRES_...` | Database configuration. Ensure it matches `docker-compose.yml`. |
+| `APP_PORT` | Internal app port (default `22347`). |
+| `HTTP_PORT` / `HTTPS_PORT` | Caddy external ports. Use `80`/`443` for public deployment. |
+| `LOCAL_IP` | Required for local self-signed certificates. |
+| `DOMAIN_NAME` | Required for public deployment (Let's Encrypt). |
+| `*_KEY` | Security keys. Generate using `openssl rand -base64 32`. |
 
 ---
 
-## Setup for Instagram Sync
+## Platform Setup
 
-> **Important**
-> Your Instagram account must:
->
-> * Be a **Business** or **Creator** account
-> * Be **connected to a Facebook Page**
->
-> Reference:
->
-> * [https://help.instagram.com/1980623166138346/](https://help.instagram.com/1980623166138346/)
-> * [https://www.facebook.com/help/instagram/790156881117411](https://www.facebook.com/help/instagram/790156881117411)
+### Instagram Sync
+Requires a Facebook Page linked to an Instagram Business/Creator account.
 
-### Steps
+1.  **Create App**: Go to [Meta for Developers](https://developers.facebook.com/apps/), create an app ("Manage everything on your Page").
+2.  **Settings**: Get **App ID** and **App Secret**.
+3.  **Facebook Login**: Add Valid OAuth Redirect URI: `https://YOUR_IP:PORT_OR_DOMAIN/auth/facebook/callback`.
+4.  **Permissions**: Enable `pages_show_list`, `instagram_basic`, `instagram_manage_insights`, `instagram_manage_comments`.
 
-1. Go to **Meta for Developers** and create an account:
-   [https://developers.facebook.com/apps/](https://developers.facebook.com/apps/)
-
-2. Create a new app.
-
-   * Select:
-
-     * *Manage Messaging and content on Instagram*
-     * *Manage everything on your Page*
-
-3. In the App Dashboard, navigate to **Settings → Basic**.
-
-4. Copy the **App ID** and **App Secret** and save them for later to use in "Add source" process during the setup.
-
-5. Open **Facebook Login for Business**.
-
-   * Under **Client OAuth Settings**, add the following to **Valid OAuth Redirect URIs**:
-
-     ```
-     https://LOCAL_IP:HTTPS_PORT/auth/facebook/callback
-     ```
-
-6. Go to **Use Cases**, edit the **Instagram** use case.
-
-7. Under **API setup with Facebook Login**, add permissions in the **Manage content** section.
-
-8. In **Permissions and Features**, enable:
-
-   * Manage insights
-   * Manage comments
-
-9. Open **Graph Explorer**:
-   [https://developers.facebook.com/tools/explorer/](https://developers.facebook.com/tools/explorer/)
-
-10. Click **Generate Token**, select your Page and Instagram account.
-
-11. Copy and save the numeric Instagram Page ID displayed for later to use in "Add source" process during the setup..
+### Telegram Sync
+1.  **Create App**: Go to [my.telegram.org](https://my.telegram.org/apps) to get **API ID** and **API Hash**.
+2.  **Create Bot**: Talk to [@BotFather](https://t.me/BotFather) to get a **Bot Token**.
 
 ---
 
-## Setup for Telegram Sync
+## Security & Administration
 
-### Steps
+### User Management (CLI)
+Run these commands inside the container or via `docker exec`:
 
-1. Head to [https://my.telegram.org/apps](https://my.telegram.org/apps) and create an app.
+*   **Reset Password**: `./rpsync --reset-password --username <username>`
+*   **Reset 2FA**: `./rpsync --reset-2fa --username <username>`
 
-2. Copy the **API ID** and **API Hash** and save it for later to use in "Add source" process during the setup.
-
-3. In the Telegram App, navigate to [**Botfather**](https://t.me/BotFather) and create a new bot.
-
-4. Copy the **Bot Token** and save it for later to use in "Add source" process during the setup.
-
----
-
-## Motivation
-
-This application was created to provide creators with a simple, privacy‑respecting way to analyze their social media presence.
-
-The current release is **alpha** and focuses on manual workflows. Support for additional platforms and automation is planned.
+### Authentication Features
+*   **Password Policy**: Min 8 chars, uppercase, lowercase, number, special char.
+*   **2FA (TOTP)**: Enable in Settings using Google Authenticator / Authy.
+*   **Passkeys**: Biometric login (TouchID/FaceID). *Note: Requires HTTPS (or localhost).*
 
 ---
 
-## Security & User Management
+## 🤝 Contributing
 
-### Password Policy
-The application enforces strong passwords. Passwords must meet the following criteria:
-*   Minimum 8 characters
-*   At least one uppercase letter
-*   At least one lowercase letter
-*   At least one number
-*   At least one special character
+Contributions are welcome! Please open an issue or submit a PR on GitHub.
 
-### CLI User Management
-Administrator tasks can be performed via the command line if you have shell access to the container/server.
+*   **Issues**: Report bugs or request features.
+*   **Pull Requests**: Submit improvements.
 
-**Reset Password:**
-```bash
-./rpsync --reset-password --username <username>
-```
-
-**Reset 2FA (Emergency Lockout):**
-If you lose your 2FA device, you can disable 2FA for a user:
-```bash
-./rpsync --reset-2fa --username <username>
-```
-
-### Two-Factor Authentication (TOTP)
-Enhance your account security by enabling 2FA.
-1.  Navigate to **Settings**.
-2.  Click **Setup Two-Factor Authentication**.
-3.  Scan the QR code with your preferred authenticator app (Google Authenticator, Authy, etc.).
-4.  Enter the verification code to activate.
-
-### Passkeys
-You can use biometric authentication (TouchID, FaceID, Windows Hello) or hardware keys (YubiKey) to log in.
-*   **Requirement**: Passkeys only work when the site is served over **HTTPS** (or `localhost`). If you access the site via HTTP IP address, the "Register Passkey" button will be disabled.
-
----
-
-
-## Contributing
-
-Contributions are welcome.
-
-* Submit feature requests or bugs via GitHub Issues
-* Open pull requests for improvements or new features

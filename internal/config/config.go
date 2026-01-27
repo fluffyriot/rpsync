@@ -152,6 +152,10 @@ func LoadDatabase() (*database.Queries, *sql.DB, error) {
 		return nil, nil, fmt.Errorf("Failed to connect to the DB. Error: %v", err)
 	}
 
+	db.SetMaxOpenConns(25)
+	db.SetMaxIdleConns(25)
+	db.SetConnMaxLifetime(5 * time.Minute)
+
 	migrationsDir := "./sql/schema"
 	if err := goose.Up(db, migrationsDir); err != nil {
 		return nil, nil, fmt.Errorf("failed to run migrations: %v", err)

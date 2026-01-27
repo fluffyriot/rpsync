@@ -7,10 +7,10 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m'
 
-echo -e "${GREEN}Welcome to the RPSync Installer!${NC}"
+echo -e "${GREEN} Welcome to the RPSync Installer! ${NC}"
 echo "-----------------------------------"
 
-echo -e "\n${YELLOW}Checking dependencies...${NC}"
+echo -e "\n${YELLOW} Checking dependencies... ${NC}"
 
 command_exists() {
     command -v "$1" >/dev/null 2>&1
@@ -29,13 +29,13 @@ install_package() {
     elif command_exists apk; then
         sudo apk add "$PACKAGE"
     else
-        echo -e "${RED}Error: Package manager not found. Please install $PACKAGE manually.${NC}"
+        echo -e "${RED} Error: Package manager not found. Please install $PACKAGE manually. ${NC}"
         return 1
     fi
 }
 
 if ! command_exists docker; then
-    echo -e "${YELLOW}Docker is not installed.${NC}"
+    echo -e "${YELLOW} Docker is not installed. ${NC}"
     read -p "Would you like to install Docker automatically? (y/N): " INSTALL_DOCKER
     if [[ "$INSTALL_DOCKER" =~ ^[Yy]$ ]]; then
         echo "Installing Docker..."
@@ -44,49 +44,50 @@ if ! command_exists docker; then
         rm get-docker.sh
         echo "Adding current user to docker group..."
         sudo usermod -aG docker $USER
-        echo -e "${YELLOW}NOTE: You may need to log out and back in for Docker group changes to take effect.${NC}"
+        echo -e "${YELLOW} NOTE: You may need to log out and back in for Docker group changes to take effect. ${NC}"
     else
-        echo -e "${RED}Docker is required. Please install it manually.${NC}"
+        echo -e "${RED} Docker is required. Please install it manually. ${NC}"
         exit 1
     fi
 fi
 
 if ! command_exists openssl; then
-    echo -e "${YELLOW}OpenSSL is not installed.${NC}"
+    echo -e "${YELLOW} OpenSSL is not installed. ${NC}"
     read -p "Would you like to install OpenSSL automatically? (y/N): " INSTALL_OPENSSL
     if [[ "$INSTALL_OPENSSL" =~ ^[Yy]$ ]]; then
         install_package openssl
     else
-        echo -e "${RED}OpenSSL is required. Please install it manually.${NC}"
+        echo -e "${RED} OpenSSL is required. Please install it manually. ${NC}"
         exit 1
     fi
 fi
 
-echo -e "${GREEN}Dependencies checked.${NC}"
+echo -e "${GREEN} Dependencies checked. ${NC}"
 
-echo -e "\n${YELLOW}Configuration Setup${NC}"
+echo -e "\n${YELLOW} Configuration Setup ${NC}"
 
 DEFAULT_IP=$(hostname -I | awk '{print $1}')
 if [ -z "$DEFAULT_IP" ]; then
     DEFAULT_IP="127.0.0.1"
 fi
 
-read -p "Enter the Local IP Address [${DEFAULT_IP}]: " LOCAL_IP
+read -p "Local IP Address. Press Enter to confirm default or type a new one [${DEFAULT_IP}]: " LOCAL_IP
 LOCAL_IP=${LOCAL_IP:-$DEFAULT_IP}
 
 echo -e "\nSelect deployment type:"
-echo "1) Local (Self-Signed Certificates, for home networks)"
-echo "2) Public (Let's Encrypt / Public Domain / Public IP)"
+echo "1) Local (Self-Signed Certificates, for local networks)"
+echo "2) Public (Requires Public Domain Name)"
 read -p "Choose [1]: " DEPLOY_TYPE
 DEPLOY_TYPE=${DEPLOY_TYPE:-1}
 
 DOMAIN_NAME=""
 if [ "$DEPLOY_TYPE" == "2" ]; then
-    read -p "Enter your Public Domain Name (leave empty to use IP ${LOCAL_IP}): " DOMAIN_NAME
-    if [ -z "$DOMAIN_NAME" ]; then
-        echo -e "${YELLOW}No domain provided. Using IP address: ${LOCAL_IP}${NC}"
-        DOMAIN_NAME=${LOCAL_IP}
-    fi
+    while [ -z "$DOMAIN_NAME" ]; do
+        read -p "Enter your Public Domain Name: " DOMAIN_NAME
+        if [ -z "$DOMAIN_NAME" ]; then
+            echo -e "${RED} Error: Public Domain Name is required for Public deployment. ${NC}"
+        fi
+    done
 fi
 
 if [ "$DEPLOY_TYPE" == "2" ]; then
@@ -99,28 +100,22 @@ else
     DEFAULT_PG_PORT=5435
 fi
 
-read -p "Enter HTTP Port [${DEFAULT_HTTP_PORT}]: " HTTP_PORT
+DEFAULT_APP_PORT=22347
+read -p "App Port. Press Enter to confirm default or type a new one [${DEFAULT_APP_PORT}]: " APP_PORT
+APP_PORT=${APP_PORT:-$DEFAULT_APP_PORT}
+
+read -p "HTTP Port. Press Enter to confirm default or type a new one [${DEFAULT_HTTP_PORT}]: " HTTP_PORT
 HTTP_PORT=${HTTP_PORT:-$DEFAULT_HTTP_PORT}
 
-read -p "Enter HTTPS Port [${DEFAULT_HTTPS_PORT}]: " HTTPS_PORT
+read -p "HTTPS Port. Press Enter to confirm default or type a new one [${DEFAULT_HTTPS_PORT}]: " HTTPS_PORT
 HTTPS_PORT=${HTTPS_PORT:-$DEFAULT_HTTPS_PORT}
 
-read -p "Enter Database Port [${DEFAULT_PG_PORT}]: " POSTGRES_PORT
+read -p "Database Port. Press Enter to confirm default or type a new one [${DEFAULT_PG_PORT}]: " POSTGRES_PORT
 POSTGRES_PORT=${POSTGRES_PORT:-$DEFAULT_PG_PORT}
 
-echo -e "\n${YELLOW}Generating .env file...${NC}"
+echo -e "\n${YELLOW} Generating .env file... ${NC}"
 
-if [ -f .env ]; then
-    read -p ".env file already exists. Overwrite? (y/N): " OVERWRITE_ENV
-    if [[ "$OVERWRITE_ENV" =~ ^[Yy]$ ]]; then
-        GENERATE_ENV=true
-    else
-        GENERATE_ENV=false
-        echo "Skipping .env generation."
-    fi
-else
-    GENERATE_ENV=true
-fi
+GENERATE_ENV=true
 
 if [ "$GENERATE_ENV" = true ]; then
     TOKEN_KEY=$(openssl rand -base64 32)
@@ -136,7 +131,7 @@ POSTGRES_PORT=${POSTGRES_PORT}
 POSTGRES_HOST=db
 POSTGRES_SSLMODE=disable
 
-APP_PORT=22347
+APP_PORT=${APP_PORT}
 HTTP_PORT=${HTTP_PORT}
 HTTPS_PORT=${HTTPS_PORT}
 GIN_MODE=release
@@ -148,10 +143,10 @@ TOKEN_ENCRYPTION_KEY=${TOKEN_KEY}
 OAUTH_ENCRYPTION_KEY=${OAUTH_KEY}
 SESSION_KEY=${SESSION_KEY}
 EOF
-    echo -e "${GREEN}.env file created.${NC}"
+    echo -e "${GREEN} .env file created. ${NC}"
 fi
 
-echo -e "\n${YELLOW}Setting up Web Server (Caddy)...${NC}"
+echo -e "\n${YELLOW} Setting up Web Server (Caddy)... ${NC}"
 
 mkdir -p certs
 
@@ -169,51 +164,22 @@ if [ "$DEPLOY_TYPE" == "1" ]; then
 else
     SITE_ADDRESS="${DOMAIN_NAME}"
     
-    echo -e "\n${YELLOW}TLS Configuration${NC}"
+    echo -e "\n${YELLOW} TLS Configuration (Let's Encrypt) ${NC}"
 
-    if [[ "$DOMAIN_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-         echo -e "${YELLOW}Detected IP address ($DOMAIN_NAME) instead of a domain.${NC}"
-         echo -e "${RED}Let's Encrypt does not support public IP addresses easily.${NC}"
-         echo -e "Forcing Self-Signed Certificate mode to avoid errors."
-         ENABLE_LETS_ENCRYPT="n"
-    else
-        echo "Do you want to obtain a valid public certificate via Let's Encrypt?"
-        echo " (Requires a valid domain pointing to this IP and ports 80/443 open)"
-        read -p "Enable Let's Encrypt? (Y/n - default is Internal/Self-Signed for safety): " ENABLE_LETS_ENCRYPT
-        ENABLE_LETS_ENCRYPT=${ENABLE_LETS_ENCRYPT:-n}
-    fi
-
-    if [[ "$ENABLE_LETS_ENCRYPT" =~ ^[Yy]$ ]]; then
-         TLS_CONFIG="" 
-         
-         read -p "Enter your email for Let's Encrypt registration (optional, press Enter to skip): " LE_EMAIL
-         if [ ! -z "$LE_EMAIL" ]; then
-             TLS_CONFIG="tls ${LE_EMAIL}"
-         fi
-         
-         echo -e "${GREEN}Configured for Let's Encrypt.${NC}"
-    else
-         echo "Generating self-signed certificate for ${DOMAIN_NAME}..."
-         
-         if [[ "$DOMAIN_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-             SAN_EXT="-addext subjectAltName=IP:${DOMAIN_NAME}"
-         else
-             SAN_EXT="-addext subjectAltName=DNS:${DOMAIN_NAME}"
-         fi
-
-         openssl req -x509 -nodes -days 365 \
-           -newkey rsa:2048 \
-           -keyout certs/server.key \
-           -out certs/server.crt \
-           -subj "/CN=${DOMAIN_NAME}" \
-           $SAN_EXT >/dev/null 2>&1
-
-         TLS_CONFIG="tls /certs/server.crt /certs/server.key"
-         echo -e "${YELLOW}Configured for Self-Signed Certificate.${NC}"
-         echo -e "Note: Your browser will warn you about the certificate (ERR_CERT_AUTHORITY_INVALID), which is expected."
-    fi
+    TLS_CONFIG="" 
+     
+    LE_EMAIL=""
+    while [ -z "$LE_EMAIL" ]; do
+        read -p "Enter your email for Let's Encrypt registration: " LE_EMAIL
+        if [ -z "$LE_EMAIL" ]; then
+            echo -e "${RED} Error: Email is required for Let's Encrypt registration. ${NC}"
+        fi
+    done
+    TLS_CONFIG="tls ${LE_EMAIL}"
+     
+    echo -e "${GREEN} Configured for Let's Encrypt. ${NC}"
     
-    echo -e "${YELLOW}Note: For public domains using non-standard ports, Let's Encrypt validation may require DNS-01 challenge or port forwarding.${NC}"
+    echo -e "${YELLOW} Note: For public domains using non-standard ports, Let's Encrypt validation may require DNS-01 challenge or port forwarding. ${NC}"
 fi
 
 cat > Caddyfile <<EOF
@@ -225,16 +191,20 @@ cat > Caddyfile <<EOF
 # HTTPS site
 ${SITE_ADDRESS} {
     ${TLS_CONFIG}
-    reverse_proxy app:22347
+    reverse_proxy app:${APP_PORT}
 }
 EOF
-echo -e "${GREEN}Caddyfile created.${NC}"
+echo -e "${GREEN} Caddyfile created. ${NC}"
 
-echo -e "\n${YELLOW}Checking Docker Compose configuration...${NC}"
+echo -e "\n${YELLOW} Generating Docker Compose configuration... ${NC}"
 
-if [ ! -f "docker-compose.yml" ] && [ ! -f "docker-compose.yaml" ]; then
-    echo "docker-compose.yml not found. Generating default configuration..."
-    cat > docker-compose.yml <<EOF
+APP_PORTS_CONFIG=""
+if [ "$DEPLOY_TYPE" == "1" ]; then
+    APP_PORTS_CONFIG="    ports:
+      - \"\${APP_PORT}:\${APP_PORT}\""
+fi
+
+cat > docker-compose.yml <<EOF
 version: "3.9"
 
 services:
@@ -252,7 +222,7 @@ services:
       - "\${POSTGRES_PORT}:5432"
 
   app:
-    image: fluffyriot/rpsync:dev
+    image: fluffyriot/rpsync:latest
     restart: unless-stopped
     container_name: rpsync_app
     env_file: .env
@@ -262,6 +232,7 @@ services:
       - db
     volumes:
       - ./outputs:/app/outputs
+${APP_PORTS_CONFIG}
 
   caddy:
     image: caddy:latest
@@ -280,17 +251,15 @@ services:
 volumes:
   db_data:
 EOF
-    echo -e "${GREEN}docker-compose.yml generated.${NC}"
-else
-    echo -e "${GREEN}docker-compose.yml found.${NC}"
-fi
 
-echo -e "\n${YELLOW}Setting up permissions...${NC}"
+echo -e "${GREEN} docker-compose.yml generated. ${NC}"
+
+echo -e "\n${YELLOW} Setting up permissions... ${NC}"
 mkdir -p outputs
 chmod 777 outputs
-echo -e "${GREEN}Permissions set for outputs directory.${NC}"
+echo -e "${GREEN} Permissions set for outputs directory. ${NC}"
 
-echo -e "\n${YELLOW}Ready to start!${NC}"
+echo -e "\n${YELLOW} Ready to start! ${NC}"
 read -p "Do you want to start the application now? (Y/n): " START_DOCKER
 START_DOCKER=${START_DOCKER:-Y}
 
@@ -308,4 +277,4 @@ else
     echo "You can start the application later by running: docker compose up -d"
 fi
 
-echo -e "\n${GREEN}Installation Complete!${NC}"
+echo -e "\n${GREEN} Installation Complete! ${NC}"
