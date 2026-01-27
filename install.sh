@@ -255,7 +255,7 @@ echo -e "${GREEN} docker-compose.yml generated. ${NC}"
 
 echo -e "\n${YELLOW} Setting up permissions... ${NC}"
 mkdir -p outputs
-chmod 777 outputs
+sudo chmod 777 outputs
 echo -e "${GREEN} Permissions set for outputs directory. ${NC}"
 
 echo -e "\n${YELLOW} Ready to start! ${NC}"
