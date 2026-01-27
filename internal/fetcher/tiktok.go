@@ -340,6 +340,28 @@ func FetchTikTokPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, sou
 		chromedp.Navigate(url),
 		chromedp.Sleep(5*time.Second),
 		chromedp.ActionFunc(func(ctx context.Context) error {
+			var currentURL string
+			if err := chromedp.Location(&currentURL).Do(ctx); err != nil {
+				return err
+			}
+			if strings.Contains(currentURL, "login") || strings.Contains(currentURL, "signup") {
+				return fmt.Errorf("session expired: redirected to login page")
+			}
+
+			var loginElementExists bool
+			ctxTimeout, cancel := context.WithTimeout(ctx, 2*time.Second)
+			defer cancel()
+			_ = chromedp.Run(ctxTimeout,
+				chromedp.WaitVisible(`div[data-e2e="login-modal"]`, chromedp.ByQuery),
+			)
+
+			if err := chromedp.Evaluate(`document.querySelector('div[data-e2e="login-modal"]') !== null`, &loginElementExists).Do(ctx); err != nil {
+
+			}
+			if loginElementExists {
+				return fmt.Errorf("session expired: login modal detected")
+			}
+
 			var previousPostCount int
 			sameCountIterations := 0
 			maxScrolls := 50

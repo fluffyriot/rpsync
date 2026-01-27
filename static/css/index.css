@@ -663,3 +663,58 @@ a:hover {
   width: 100%;
   max-width: 400px;
 }
+
+.dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.dropdown-content {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  margin-top: 0.25rem;
+  background-color: var(--color-bg-surface);
+  min-width: 160px;
+  box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.2);
+  z-index: 50;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 0.25rem 0;
+}
+
+.dropdown-item {
+  display: flex !important;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 1rem;
+  text-align: left;
+  background: none;
+  border: none;
+  color: var(--color-text-main);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+
+.dropdown-item:hover {
+  background-color: var(--color-bg-surface-hover);
+}
+
+.dropdown-content form {
+  margin: 0;
+}
+
+.btn-icon svg,
+.dropdown-item svg {
+  width: 20px;
+  height: 20px;
+  stroke-width: 2;
+}
+
+.dropdown-item svg {
+  width: 16px;
+  height: 16px;
+}

@@ -143,7 +143,6 @@
                     </div>
 
                     <div class="source-actions">
-
                         <form method="POST" action="/sources/sync" onsubmit="return submitWithConfirm(this);">
                             <input type="hidden" name="source_id" value="{{.ID}}">
                             <button type="submit" class="btn btn-secondary btn-icon" {{if not .IsActive}}disabled{{end}}
@@ -170,20 +169,35 @@
                         {{end}}
 
                         {{if eq .Network "TikTok"}}
-                        <form method="GET" action="/sources/cookies/export">
-                            <input type="hidden" name="source_id" value="{{.ID}}">
-                            <button type="submit" class="btn btn-secondary btn-icon" title="Export Cookies">
-                                <i data-lucide="download"></i>
+                        <div class="dropdown">
+                            <button type="button" class="btn btn-secondary btn-icon" title="Manage Cookies"
+                                onclick="toggleDropdown('dd_{{.ID}}')">
+                                <i data-lucide="key-round"></i>
                             </button>
-                        </form>
-
-                        <form method="POST" action="/sources/cookies/import" enctype="multipart/form-data" style="display:inline;">
-                            <input type="hidden" name="source_id" value="{{.ID}}">
-                            <input type="file" name="cookie_file" id="cookie_file_{{.ID}}" style="display:none;" onchange="this.form.submit()">
-                            <button type="button" class="btn btn-secondary btn-icon" title="Import Cookies" onclick="document.getElementById('cookie_file_{{.ID}}').click()">
-                                <i data-lucide="upload"></i>
-                            </button>
-                        </form>
+                            <div id="dd_{{.ID}}" class="dropdown-content hidden">
+                                <form method="GET" action="/sources/cookies/export">
+                                    <input type="hidden" name="source_id" value="{{.ID}}">
+                                    <button type="submit" class="dropdown-item">
+                                        <i data-lucide="download"></i> Export Cookies
+                                    </button>
+                                </form>
+                                <form method="POST" action="/sources/cookies/import" enctype="multipart/form-data">
+                                    <input type="hidden" name="source_id" value="{{.ID}}">
+                                    <input type="file" name="cookie_file" id="cookie_file_{{.ID}}" class="hidden"
+                                        onchange="this.form.submit()">
+                                    <button type="button" class="dropdown-item"
+                                        onclick="document.getElementById('cookie_file_{{.ID}}').click()">
+                                        <i data-lucide="upload"></i> Import Cookies
+                                    </button>
+                                </form>
+                                <form method="GET" action="/auth/tiktok/login">
+                                    <input type="hidden" name="username" value="{{.UserName}}">
+                                    <button type="submit" class="dropdown-item text-danger">
+                                        <i data-lucide="refresh-cw"></i> Renew Session
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
                         {{end}}
 
                         {{if eq .Network "Instagram"}}
@@ -281,6 +295,25 @@
 
         networkSelect.addEventListener("change", updateVisibility);
     });
+
+    function toggleDropdown(id) {
+        document.querySelectorAll('.dropdown-content').forEach(d => {
+            if (d.id !== id) d.classList.add('hidden');
+        });
+
+        const dropdown = document.getElementById(id);
+        if (dropdown) {
+            dropdown.classList.toggle('hidden');
+        }
+    }
+
+    window.onclick = function (event) {
+        if (!event.target.closest('.dropdown')) {
+            document.querySelectorAll('.dropdown-content').forEach(d => {
+                d.classList.add('hidden');
+            });
+        }
+    }
 </script>
 
 {{ template "footer.html" . }}
