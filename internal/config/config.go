@@ -119,7 +119,7 @@ func LoadConfig() (*AppConfig, error) {
 
 	cfg.GinMode = os.Getenv("GIN_MODE")
 	if cfg.GinMode == "" {
-		cfg.GinMode = "debug"
+		cfg.GinMode = "release"
 	}
 
 	return cfg, nil

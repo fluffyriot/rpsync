@@ -63,7 +63,7 @@ POSTGRES_SSLMODE=disable
 APP_PORT=22347
 HTTP_PORT=8081
 HTTPS_PORT=8443
-GIN_MODE=release
+GIN_MODE=debug
 
 LOCAL_IP=
 DOMAIN_NAME=
@@ -167,6 +167,7 @@ docker compose up -d
 | `HTTP_PORT` / `HTTPS_PORT` | Caddy external ports. Use `80`/`443` for public deployment. |
 | `LOCAL_IP` | Required for local self-signed certificates. |
 | `DOMAIN_NAME` | Required for public deployment (Let's Encrypt). |
+| `GIN_MODE` | Set to `debug` for detailed server logs, `release` for production. |
 | `*_KEY` | Security keys. Generate using `openssl rand -base64 32`. |
 
 ---
