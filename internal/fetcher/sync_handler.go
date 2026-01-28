@@ -91,6 +91,9 @@ func SyncBySource(sid uuid.UUID, dbQueries *database.Queries, c *Client, ver str
 		case "YouTube":
 			return FetchYouTubePosts(dbQueries, source.ID, encryptionKey)
 
+		case "FurTrack":
+			return FetchFurTrackPosts(dbQueries, c, source.UserID, source.ID)
+
 		default:
 			return nil
 		}
