@@ -214,7 +214,7 @@
         Chart.defaults.borderColor = '#333';
 
         const colorMap = {
-          "Website Visitors": "#4ade80",
+          "Website Visitors": "#10b981",
           "Page Views": "#60a5fa"
         };
 
@@ -311,7 +311,19 @@
         Chart.defaults.color = '#a0a0a0';
         Chart.defaults.borderColor = '#333';
 
-        data.forEach(source => {
+        const palette = [
+          '#60A5FA', '#F97316', '#10B981', '#EF4444',
+          '#A855F7', '#F59E0B', '#14B8A6', '#EC4899',
+          '#22C55E', '#6366F1'
+        ];
+
+        data.sort((a, b) => {
+          const nameA = (a.network + a.username).toLowerCase();
+          const nameB = (b.network + b.username).toLowerCase();
+          return nameA.localeCompare(nameB);
+        });
+
+        data.forEach((source, index) => {
           const points = source.points || [];
           const dataPoints = points.map(p => {
             const dateStr = p.date;
@@ -322,13 +334,7 @@
             };
           });
 
-          let hash = 0;
-          const str = source.network + source.username;
-          for (let i = 0; i < str.length; i++) {
-            hash = str.charCodeAt(i) + ((hash << 5) - hash);
-          }
-          const c = (hash & 0x00FFFFFF).toString(16).toUpperCase();
-          const color = '#' + "00000".substring(0, 6 - c.length) + c;
+          const color = palette[index % palette.length];
 
           datasets.push({
             label: `${source.network} (${source.username})`,

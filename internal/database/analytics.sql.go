@@ -600,6 +600,163 @@ func (q *Queries) GetAnalyticsSiteStatsBySourceAndRange(ctx context.Context, arg
 	return items, nil
 }
 
+const getMonthlyEngagementStats = `-- name: GetMonthlyEngagementStats :many
+WITH
+    LatestStats AS (
+        SELECT prh.post_id, prh.likes, prh.reposts
+        FROM
+            posts_reactions_history prh
+            JOIN (
+                SELECT post_id, MAX(synced_at) as max_sync
+                FROM posts_reactions_history
+                GROUP BY
+                    post_id
+            ) latest ON prh.post_id = latest.post_id
+            AND prh.synced_at = latest.max_sync
+    )
+SELECT
+    s.id,
+    s.network,
+    s.user_name,
+    TO_CHAR(p.created_at, 'YYYY-MM') as year_month,
+    COALESCE(SUM(ls.likes), 0)::bigint as total_likes,
+    COALESCE(SUM(ls.reposts), 0)::bigint as total_reposts
+FROM
+    posts p
+    JOIN sources s ON p.source_id = s.id
+    JOIN LatestStats ls ON p.id = ls.post_id
+WHERE
+    s.user_id = $1
+    AND p.post_type <> 'repost'
+GROUP BY
+    s.id,
+    s.network,
+    s.user_name,
+    year_month
+ORDER BY year_month ASC
+`
+
+type GetMonthlyEngagementStatsRow struct {
+	ID           uuid.UUID
+	Network      string
+	UserName     string
+	YearMonth    string
+	TotalLikes   int64
+	TotalReposts int64
+}
+
+func (q *Queries) GetMonthlyEngagementStats(ctx context.Context, userID uuid.UUID) ([]GetMonthlyEngagementStatsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getMonthlyEngagementStats, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetMonthlyEngagementStatsRow
+	for rows.Next() {
+		var i GetMonthlyEngagementStatsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Network,
+			&i.UserName,
+			&i.YearMonth,
+			&i.TotalLikes,
+			&i.TotalReposts,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getMonthlyPageViews = `-- name: GetMonthlyPageViews :many
+SELECT TO_CHAR(s.date, 'YYYY-MM') as year_month, COALESCE(SUM(s.views), 0)::bigint as total_views
+FROM
+    analytics_page_stats s
+    JOIN sources src ON s.source_id = src.id
+WHERE
+    src.user_id = $1
+GROUP BY
+    year_month
+ORDER BY year_month ASC
+`
+
+type GetMonthlyPageViewsRow struct {
+	YearMonth  string
+	TotalViews int64
+}
+
+func (q *Queries) GetMonthlyPageViews(ctx context.Context, userID uuid.UUID) ([]GetMonthlyPageViewsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getMonthlyPageViews, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetMonthlyPageViewsRow
+	for rows.Next() {
+		var i GetMonthlyPageViewsRow
+		if err := rows.Scan(&i.YearMonth, &i.TotalViews); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getMonthlySiteVisitors = `-- name: GetMonthlySiteVisitors :many
+SELECT
+    TO_CHAR(s.date, 'YYYY-MM') as year_month,
+    COALESCE(SUM(s.visitors), 0)::bigint as total_visitors
+FROM
+    analytics_site_stats s
+    JOIN sources src ON s.source_id = src.id
+WHERE
+    src.user_id = $1
+GROUP BY
+    year_month
+ORDER BY year_month ASC
+`
+
+type GetMonthlySiteVisitorsRow struct {
+	YearMonth     string
+	TotalVisitors int64
+}
+
+func (q *Queries) GetMonthlySiteVisitors(ctx context.Context, userID uuid.UUID) ([]GetMonthlySiteVisitorsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getMonthlySiteVisitors, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetMonthlySiteVisitorsRow
+	for rows.Next() {
+		var i GetMonthlySiteVisitorsRow
+		if err := rows.Scan(&i.YearMonth, &i.TotalVisitors); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getUnsyncedPageStatsForTarget = `-- name: GetUnsyncedPageStatsForTarget :many
 SELECT s.id, s.date, s.url_path, s.views, s.source_id
 FROM
@@ -677,86 +834,6 @@ func (q *Queries) GetUnsyncedSiteStatsForTarget(ctx context.Context, arg GetUnsy
 			&i.AvgSessionDuration,
 			&i.SourceID,
 		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const getWeeklyPageViews = `-- name: GetWeeklyPageViews :many
-SELECT TO_CHAR(s.date, 'IYYY-IW') as year_week, COALESCE(SUM(s.views), 0)::bigint as total_views
-FROM
-    analytics_page_stats s
-    JOIN sources src ON s.source_id = src.id
-WHERE
-    src.user_id = $1
-GROUP BY
-    year_week
-ORDER BY year_week ASC
-`
-
-type GetWeeklyPageViewsRow struct {
-	YearWeek   string
-	TotalViews int64
-}
-
-func (q *Queries) GetWeeklyPageViews(ctx context.Context, userID uuid.UUID) ([]GetWeeklyPageViewsRow, error) {
-	rows, err := q.db.QueryContext(ctx, getWeeklyPageViews, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []GetWeeklyPageViewsRow
-	for rows.Next() {
-		var i GetWeeklyPageViewsRow
-		if err := rows.Scan(&i.YearWeek, &i.TotalViews); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const getWeeklySiteVisitors = `-- name: GetWeeklySiteVisitors :many
-SELECT TO_CHAR(s.date, 'IYYY-IW') as year_week, COALESCE(SUM(s.visitors), 0)::bigint as total_visitors
-FROM
-    analytics_site_stats s
-    JOIN sources src ON s.source_id = src.id
-WHERE
-    src.user_id = $1
-GROUP BY
-    year_week
-ORDER BY year_week ASC
-`
-
-type GetWeeklySiteVisitorsRow struct {
-	YearWeek      string
-	TotalVisitors int64
-}
-
-func (q *Queries) GetWeeklySiteVisitors(ctx context.Context, userID uuid.UUID) ([]GetWeeklySiteVisitorsRow, error) {
-	rows, err := q.db.QueryContext(ctx, getWeeklySiteVisitors, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []GetWeeklySiteVisitorsRow
-	for rows.Next() {
-		var i GetWeeklySiteVisitorsRow
-		if err := rows.Scan(&i.YearWeek, &i.TotalVisitors); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

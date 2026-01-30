@@ -24,7 +24,7 @@ func (q *Queries) DeleteOldStats(ctx context.Context) error {
 	return err
 }
 
-const getDailyStats = `-- name: GetDailyStats :many
+const getDailyEngagementStats = `-- name: GetDailyEngagementStats :many
 SELECT
     s.id,
     s.network,
@@ -55,7 +55,7 @@ GROUP BY
 ORDER BY s.id, date ASC
 `
 
-type GetDailyStatsRow struct {
+type GetDailyEngagementStatsRow struct {
 	ID           uuid.UUID
 	Network      string
 	UserName     string
@@ -64,95 +64,20 @@ type GetDailyStatsRow struct {
 	TotalReposts int64
 }
 
-func (q *Queries) GetDailyStats(ctx context.Context, userID uuid.UUID) ([]GetDailyStatsRow, error) {
-	rows, err := q.db.QueryContext(ctx, getDailyStats, userID)
+func (q *Queries) GetDailyEngagementStats(ctx context.Context, userID uuid.UUID) ([]GetDailyEngagementStatsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getDailyEngagementStats, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetDailyStatsRow
+	var items []GetDailyEngagementStatsRow
 	for rows.Next() {
-		var i GetDailyStatsRow
+		var i GetDailyEngagementStatsRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Network,
 			&i.UserName,
 			&i.Date,
-			&i.TotalLikes,
-			&i.TotalReposts,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const getWeeklyStats = `-- name: GetWeeklyStats :many
-WITH
-    LatestStats AS (
-        SELECT prh.post_id, prh.likes, prh.reposts
-        FROM
-            posts_reactions_history prh
-            JOIN (
-                SELECT post_id, MAX(synced_at) as max_sync
-                FROM posts_reactions_history
-                GROUP BY
-                    post_id
-            ) latest ON prh.post_id = latest.post_id
-            AND prh.synced_at = latest.max_sync
-    )
-SELECT
-    s.id,
-    s.network,
-    s.user_name,
-    TO_CHAR(p.created_at, 'IYYY-IW') as year_week,
-    COALESCE(SUM(ls.likes), 0)::bigint as total_likes,
-    COALESCE(SUM(ls.reposts), 0)::bigint as total_reposts
-FROM
-    posts p
-    JOIN sources s ON p.source_id = s.id
-    JOIN LatestStats ls ON p.id = ls.post_id
-WHERE
-    s.user_id = $1
-    AND p.post_type <> 'repost'
-GROUP BY
-    s.id,
-    s.network,
-    s.user_name,
-    year_week
-ORDER BY year_week ASC
-`
-
-type GetWeeklyStatsRow struct {
-	ID           uuid.UUID
-	Network      string
-	UserName     string
-	YearWeek     string
-	TotalLikes   int64
-	TotalReposts int64
-}
-
-func (q *Queries) GetWeeklyStats(ctx context.Context, userID uuid.UUID) ([]GetWeeklyStatsRow, error) {
-	rows, err := q.db.QueryContext(ctx, getWeeklyStats, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []GetWeeklyStatsRow
-	for rows.Next() {
-		var i GetWeeklyStatsRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.Network,
-			&i.UserName,
-			&i.YearWeek,
 			&i.TotalLikes,
 			&i.TotalReposts,
 		); err != nil {

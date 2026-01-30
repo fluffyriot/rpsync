@@ -22,7 +22,7 @@ SET
 RETURNING
     *;
 
--- name: GetDailyStats :many
+-- name: GetDailyEngagementStats :many
 SELECT
     s.id,
     s.network,
@@ -51,41 +51,6 @@ GROUP BY
     DATE (prh.synced_at),
     DATE (p.created_at)
 ORDER BY s.id, date ASC;
-
--- name: GetWeeklyStats :many
-WITH
-    LatestStats AS (
-        SELECT prh.post_id, prh.likes, prh.reposts
-        FROM
-            posts_reactions_history prh
-            JOIN (
-                SELECT post_id, MAX(synced_at) as max_sync
-                FROM posts_reactions_history
-                GROUP BY
-                    post_id
-            ) latest ON prh.post_id = latest.post_id
-            AND prh.synced_at = latest.max_sync
-    )
-SELECT
-    s.id,
-    s.network,
-    s.user_name,
-    TO_CHAR(p.created_at, 'IYYY-IW') as year_week,
-    COALESCE(SUM(ls.likes), 0)::bigint as total_likes,
-    COALESCE(SUM(ls.reposts), 0)::bigint as total_reposts
-FROM
-    posts p
-    JOIN sources s ON p.source_id = s.id
-    JOIN LatestStats ls ON p.id = ls.post_id
-WHERE
-    s.user_id = $1
-    AND p.post_type <> 'repost'
-GROUP BY
-    s.id,
-    s.network,
-    s.user_name,
-    year_week
-ORDER BY year_week ASC;
 
 -- name: DeleteOldStats :exec
 DELETE from posts_reactions_history
