@@ -155,16 +155,22 @@ a:hover {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 0.5rem 1rem;
+  padding: 0.5rem 0.75rem;
   font-family: inherit;
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.875rem;
   border-radius: var(--radius-sm);
   border: 1px solid transparent;
   cursor: pointer;
   transition: all 0.2s ease;
   text-decoration: none;
 }
+
+.btn i[data-lucide] {
+  width: 20px;
+  height: 20px;
+}
+
 
 .btn-primary {
   background-color: var(--color-primary);
@@ -311,6 +317,12 @@ a:hover {
   grid-template-columns: 1fr 2fr;
   gap: 1.5rem;
 }
+
+.grid-responsive>div:first-child>.card {
+  position: sticky;
+  top: 1rem;
+}
+
 
 .grid-dashboard {
   display: grid;
@@ -547,6 +559,12 @@ a:hover {
   min-width: 250px;
 }
 
+.exclusion-controls input[type="text"] {
+  margin-bottom: 0;
+  padding: 0.5rem 0.6rem;
+  height: auto;
+}
+
 .exclusion-list-empty,
 .exclusion-list-error {
   text-align: center;
@@ -570,11 +588,6 @@ a:hover {
 .exclusion-item>div {
   flex: 1;
   min-width: 0;
-}
-
-.exclusion-delete-btn {
-  margin-left: 0;
-  flex-shrink: 0;
 }
 
 .pagination-controls {
@@ -715,4 +728,47 @@ a:hover {
 .dropdown-item svg {
   width: 16px;
   height: 16px;
+}
+
+.settings-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.settings-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  color: var(--color-text-muted);
+  text-decoration: none;
+  transition: all 0.2s ease;
+  border-left: 3px solid transparent;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.settings-nav-item:hover {
+  background-color: var(--color-bg-surface-hover);
+  color: var(--color-text-main);
+  text-decoration: none;
+}
+
+.settings-nav-item.active {
+  background-color: var(--color-bg-surface-hover);
+  color: var(--color-primary);
+  border-left-color: var(--color-primary);
+}
+
+.settings-nav-item svg,
+.settings-nav-item i {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.settings-section {
+  scroll-margin-top: 1rem;
 }

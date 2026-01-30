@@ -6,17 +6,18 @@
     </div>
 
     <div class="flex gap-2">
-        <form method="GET" action="/exports">
-            <button class="btn btn-secondary btn-icon" title="Refresh">
-                <i data-lucide="refresh-cw"></i> Refresh
-            </button>
-        </form>
 
         <form method="POST" action="/exports/deleteAll"
             onsubmit="return submitWithConfirm(this, 'Do you want to delete all exports? Files will be completely removed.');">
             <input type="hidden" name="user_id" value="{{.user_id}}">
-            <button type="submit" class="btn btn-danger">
+            <button type="submit" class="btn btn-danger btn-icon">
                 <i data-lucide="trash-2"></i> Delete All
+            </button>
+        </form>
+
+        <form method="GET" action="/exports">
+            <button class="btn btn-secondary btn-icon" title="Refresh">
+                <i data-lucide="refresh-cw"></i> Refresh
             </button>
         </form>
 

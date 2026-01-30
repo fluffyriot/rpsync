@@ -6,198 +6,226 @@
     </div>
 </div>
 
-<div class="card">
-    <div class="card-header">Syncer Configuration</div>
-
-    <form method="POST" action="/settings/sync" style="padding: 1.5rem;">
-
-        <div class="form-group" style="margin-bottom: 1.5rem;">
-            <label for="sync_period" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Sync
-                Period</label>
-            <select name="sync_period" id="sync_period" class="form-select" style="width: 100%; max-width: 300px;">
-                <option value="15m" {{if eq .sync_period "15m" }}selected{{end}}>15 minutes</option>
-                <option value="30m" {{if eq .sync_period "30m" }}selected{{end}}>30 minutes</option>
-                <option value="1h" {{if eq .sync_period "1h" }}selected{{end}}>1 hour</option>
-                <option value="6h" {{if eq .sync_period "6h" }}selected{{end}}>6 hours</option>
-                <option value="12h" {{if eq .sync_period "12h" }}selected{{end}}>12 hours</option>
-                <option value="24h" {{if eq .sync_period "24h" }}selected{{end}}>24 hours</option>
-            </select>
-            <p class="text-muted" style="margin-top: 0.5rem; font-size: 0.875rem;">How often the worker should
-                automatically sync all sources and targets</p>
-        </div>
-
-        <div class="form-group" style="margin-bottom: 1.5rem;">
-            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                <input type="checkbox" name="enabled_on_startup" id="enabled_on_startup" {{if
-                    .enabled_on_startup}}checked{{end}} style="width: 18px; height: 18px; cursor: pointer;">
-                <span style="font-weight: 500;">Enable worker on startup</span>
-            </label>
-            <p class="text-muted" style="margin-top: 0.5rem; margin-left: 1.625rem; font-size: 0.875rem;">
-                When enabled, the worker will automatically start when the application launches
-            </p>
-        </div>
-
-        <div class="flex gap-2">
-            <button type="submit" class="btn btn-primary"
-                onclick="return submitWithConfirm(this, 'System will turn on or restart the worker with your new settings. Do you want to continue?');">
-                <i data-lucide="save"></i> Save Settings
-            </button>
-        </div>
-    </form>
-</div>
-
-<div class="card" style="margin-top: 1.5rem;">
-    <div class="card-header">Manual Control</div>
-
-    <div style="padding: 1.5rem;">
-        <p class="text-muted" style="margin-bottom: 1rem;">
-            Manually control the background worker or reset to default settings.
-        </p>
-
-        <div class="flex gap-2 mobile-equal-width" style="flex-wrap: wrap;">
-            <form method="POST" action="/settings/sync/reset"
-                onsubmit="return submitWithConfirm(this, 'Reset to default settings (30m interval, enabled on startup)?');">
-                <button type="submit" class="btn btn-secondary">
-                    <i data-lucide="rotate-ccw"></i> Reset to Defaults
-                </button>
-            </form>
-
-            {{ if .worker_running }}
-            <form method="POST" action="/settings/sync/stop"
-                onsubmit="return submitWithConfirm(this, 'Stop the background worker?');">
-                <button type="submit" class="btn btn-danger">
-                    <i data-lucide="square"></i> Stop Worker
-                </button>
-            </form>
-            {{ else }}
-            <form method="POST" action="/settings/sync/start">
-                <button type="submit" class="btn btn-primary">
-                    <i data-lucide="play"></i> Start Worker
-                </button>
-            </form>
-            {{ end }}
-
-            <form method="POST" action="/syncAll"
-                onsubmit="return submitWithConfirm(this, 'Do you want to start a full import/export sync now?');">
-                <input type="hidden" name="user_id" value="{{.user_id}}">
-                <button type="submit" class="btn btn-primary" title="Manual Sync">
-                    <i data-lucide="cloud-sync"></i> Manual Sync
-                </button>
-            </form>
-
+<div class="grid-responsive">
+    <div>
+        <div class="card">
+            <div class="card-header">Sections</div>
+            <nav class="settings-nav">
+                <a href="#syncer-config" class="settings-nav-item active" data-section="syncer-config">
+                    <i data-lucide="settings"></i> Configuration
+                </a>
+                <a href="#manual-control" class="settings-nav-item" data-section="manual-control">
+                    <i data-lucide="sliders"></i> Manual Control
+                </a>
+                <a href="#account-security" class="settings-nav-item" data-section="account-security">
+                    <i data-lucide="shield"></i> Account Security
+                </a>
+                <a href="#post-exclusions" class="settings-nav-item" data-section="post-exclusions">
+                    <i data-lucide="file-x"></i> Post Exclusions
+                </a>
+                <a href="#page-redirects" class="settings-nav-item" data-section="page-redirects">
+                    <i data-lucide="corner-down-right"></i> Page Redirects
+                </a>
+            </nav>
         </div>
     </div>
-</div>
-</div>
 
-<div class="card" style="margin-top: 1.5rem;">
-    <div class="card-header">Account Security</div>
-    <div style="padding: 1.5rem;">
-        <p class="text-muted" style="margin-bottom: 1rem;">
-            Manage your account security settings.
-        </p>
-        <div class="flex gap-2" style="flex-wrap: wrap;">
-            {{ if .is_2fa_enabled }}
-            <button class="btn btn-secondary" disabled
-                style="opacity: 1; cursor: default; border-color: var(--color-success);">
-                <i data-lucide="check-circle" style="color: var(--color-success)"></i> 2FA Enabled
-            </button>
-            {{ else }}
-            <a href="/settings/2fa/setup" class="btn btn-primary">
-                <i data-lucide="shield-check"></i> Setup Two-Factor Authentication
-            </a>
-            {{ end }}
+    <div>
+        <div id="syncer-config" class="card settings-section">
+            <div class="card-header">Syncer Configuration</div>
 
-            <div style="position: relative; display: inline-block;">
-                {{ if .is_passkey_supported }}
-                <button class="btn btn-secondary" onclick="registerPasskey()">
-                    <i data-lucide="key"></i> Register Passkey
-                </button>
-                {{ else }}
-                <button class="btn btn-secondary" disabled
-                    title="{{ if not .is_secure_context }}Passkeys require HTTPS connection{{ else }}Passkeys require a domain name (not an IP address){{ end }}">
-                    <i data-lucide="key"></i> Register Passkey (Unavailable)
-                </button>
-                {{ end }}
-            </div>
+            <form method="POST" action="/settings/sync">
 
-            <form method="POST" action="/logout" style="margin-left: auto;">
-                <button type="submit" class="btn btn-danger">
-                    <i data-lucide="log-out"></i> Logout
-                </button>
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label for="sync_period" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Sync
+                        Period</label>
+                    <select name="sync_period" id="sync_period" class="form-select"
+                        style="width: 100%; max-width: 300px;">
+                        <option value="15m" {{if eq .sync_period "15m" }}selected{{end}}>15 minutes</option>
+                        <option value="30m" {{if eq .sync_period "30m" }}selected{{end}}>30 minutes</option>
+                        <option value="1h" {{if eq .sync_period "1h" }}selected{{end}}>1 hour</option>
+                        <option value="6h" {{if eq .sync_period "6h" }}selected{{end}}>6 hours</option>
+                        <option value="12h" {{if eq .sync_period "12h" }}selected{{end}}>12 hours</option>
+                        <option value="24h" {{if eq .sync_period "24h" }}selected{{end}}>24 hours</option>
+                    </select>
+                    <p class="text-muted" style="margin-top: 0.5rem; font-size: 0.875rem;">How often the worker should
+                        automatically sync all sources and targets</p>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" name="enabled_on_startup" id="enabled_on_startup" {{if
+                            .enabled_on_startup}}checked{{end}} style="width: 18px; height: 18px; cursor: pointer;">
+                        <span style="font-weight: 500;">Enable worker on startup</span>
+                    </label>
+                    <p class="text-muted" style="margin-top: 0.5rem; margin-left: 1.625rem; font-size: 0.875rem;">
+                        When enabled, the worker will automatically start when the application launches
+                    </p>
+                </div>
+
+                <div class="flex gap-2">
+                    <button type="submit" class="btn btn-primary"
+                        onclick="return submitWithConfirm(this, 'System will turn on or restart the worker with your new settings. Do you want to continue?');">
+                        <i data-lucide="save"></i> Save Settings
+                    </button>
+
+                    <form method="POST" action="/settings/sync/reset"
+                        onsubmit="return submitWithConfirm(this, 'Reset to default settings (30m interval, enabled on startup)?');">
+                        <button type="submit" class="btn btn-secondary">
+                            <i data-lucide="rotate-ccw"></i> Reset to Defaults
+                        </button>
+                    </form>
+                </div>
             </form>
         </div>
-    </div>
-</div>
 
-<div class="card" style="margin-top: 1.5rem;">
-    <div class="card-header">Post Exclusions</div>
+        <div id="manual-control" class="card settings-section" style="margin-top: 1.5rem;">
+            <div class="card-header">Manual Control</div>
 
-    <div style="padding: 1.5rem;">
-        <p class="text-muted" style="margin-bottom: 1rem;">
-            Exclude specific posts from being synced. Excluded posts will be permanently deleted from the database and
-            will not be re-synced in future fetches.
-        </p>
+            <div>
+                <p class="text-muted" style="margin-bottom: 1rem;">
+                    Manually control the background worker and a syncronizer.
+                </p>
 
-        <div class="exclusion-controls">
-            <button type="button" class="btn btn-primary" onclick="showAddExclusionModal()">
-                <i data-lucide="plus"></i> Add Exclusion
-            </button>
+                <div class="flex gap-2 mobile-equal-width" style="flex-wrap: wrap;">
+                    <form method="POST" action="/syncAll"
+                        onsubmit="return submitWithConfirm(this, 'Do you want to start a full import/export sync now?');">
+                        <input type="hidden" name="user_id" value="{{.user_id}}">
+                        <button type="submit" class="btn btn-primary" title="Manual Sync">
+                            <i data-lucide="cloud-sync"></i> Manual Sync
+                        </button>
+                    </form>
 
-            <div class="exclusion-search-container">
-                <input type="text" id="exclusionSearch" class="form-select" placeholder="Search by ID...">
+                    {{ if .worker_running }}
+                    <form method="POST" action="/settings/sync/stop"
+                        onsubmit="return submitWithConfirm(this, 'Stop the background worker?');">
+                        <button type="submit" class="btn btn-danger">
+                            <i data-lucide="square"></i> Stop Worker
+                        </button>
+                    </form>
+                    {{ else }}
+                    <form method="POST" action="/settings/sync/start">
+                        <button type="submit" class="btn btn-primary">
+                            <i data-lucide="play"></i> Start Worker
+                        </button>
+                    </form>
+                    {{ end }}
+
+                </div>
             </div>
         </div>
 
-        <div id="exclusions-list">
-            <p class="text-muted exclusion-list-empty">Loading exclusions...</p>
-        </div>
+        <div id="account-security" class="card settings-section" style="margin-top: 1.5rem;">
+            <div class="card-header">Account Security</div>
+            <div>
+                <p class="text-muted" style="margin-bottom: 1rem;">
+                    Manage your account security settings.
+                </p>
+                <div class="flex gap-2" style="flex-wrap: wrap;">
+                    {{ if .is_2fa_enabled }}
+                    <button class="btn btn-secondary" disabled
+                        style="opacity: 1; cursor: default; border-color: var(--color-success);">
+                        <i data-lucide="check-circle" style="color: var(--color-success)"></i> 2FA Enabled
+                    </button>
+                    {{ else }}
+                    <a href="/settings/2fa/setup" class="btn btn-primary">
+                        <i data-lucide="shield-check"></i> Setup Two-Factor Authentication
+                    </a>
+                    {{ end }}
 
-        <div id="pagination-controls" class="pagination-controls" style="display: none;">
-            <button id="prevBtn" class="btn btn-secondary btn-icon" onclick="changePage(-1)" disabled
-                title="Previous Page">
-                <i data-lucide="chevron-left"></i>
-            </button>
-            <span id="pageInfo" class="text-muted" style="font-weight: 500;">Page 1 of 1</span>
-            <button id="nextBtn" class="btn btn-secondary btn-icon" onclick="changePage(1)" disabled title="Next Page">
-                <i data-lucide="chevron-right"></i>
-            </button>
-        </div>
-    </div>
-</div>
+                    <div style="position: relative; display: inline-block;">
+                        {{ if .is_passkey_supported }}
+                        <button class="btn btn-secondary" onclick="registerPasskey()">
+                            <i data-lucide="key"></i> Register Passkey
+                        </button>
+                        {{ else }}
+                        <button class="btn btn-secondary" disabled
+                            title="{{ if not .is_secure_context }}Passkeys require HTTPS connection{{ else }}Passkeys require a domain name (not an IP address){{ end }}">
+                            <i data-lucide="key"></i> Register Passkey (Unavailable)
+                        </button>
+                        {{ end }}
+                    </div>
 
-<div class="card" style="margin-top: 1.5rem;">
-    <div class="card-header">Page Redirects</div>
-
-    <div style="padding: 1.5rem;">
-        <p class="text-muted" style="margin-bottom: 1rem;">
-            Configure page path redirects. Stats for the "From Path" will be merged into the "To Path".
-        </p>
-
-        <div class="exclusion-controls">
-            <button type="button" class="btn btn-primary" onclick="showAddRedirectModal()">
-                <i data-lucide="plus"></i> Add Redirect
-            </button>
-
-            <div class="exclusion-search-container">
-                <input type="text" id="redirectSearch" class="form-select" placeholder="Search by Path...">
+                    <form method="POST" action="/logout">
+                        <button type="submit" class="btn btn-danger">
+                            <i data-lucide="log-out"></i> Logout
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
 
-        <div id="redirects-list">
-            <p class="text-muted exclusion-list-empty">Loading redirects...</p>
+        <div id="post-exclusions" class="card settings-section" style="margin-top: 1.5rem;">
+            <div class="card-header">Post Exclusions</div>
+
+            <div>
+                <p class="text-muted" style="margin-bottom: 1rem;">
+                    Exclude specific posts from being synced. Excluded posts will be permanently deleted from the
+                    database and will not be re-synced in future fetches.
+                </p>
+
+                <div class="exclusion-controls">
+                    <button type="button" class="btn btn-primary" onclick="showAddExclusionModal()">
+                        <i data-lucide="plus"></i> Add Exclusion
+                    </button>
+
+                    <div class="exclusion-search-container">
+                        <input type="text" id="exclusionSearch" class="form-select" placeholder="Search by ID...">
+                    </div>
+                </div>
+
+                <div id="exclusions-list">
+                    <p class="text-muted exclusion-list-empty">Loading exclusions...</p>
+                </div>
+
+                <div id="pagination-controls" class="pagination-controls" style="display: none;">
+                    <button id="prevBtn" class="btn btn-secondary btn-icon" onclick="changePage(-1)" disabled
+                        title="Previous Page">
+                        <i data-lucide="chevron-left"></i>
+                    </button>
+                    <span id="pageInfo" class="text-muted" style="font-weight: 500;">Page 1 of 1</span>
+                    <button id="nextBtn" class="btn btn-secondary btn-icon" onclick="changePage(1)" disabled
+                        title="Next Page">
+                        <i data-lucide="chevron-right"></i>
+                    </button>
+                </div>
+            </div>
         </div>
 
-        <div id="redirect-pagination-controls" class="pagination-controls" style="display: none;">
-            <button id="prevRedirectBtn" class="btn btn-secondary btn-icon" onclick="changeRedirectPage(-1)" disabled
-                title="Previous Page">
-                <i data-lucide="chevron-left"></i>
-            </button>
-            <span id="redirectPageInfo" class="text-muted" style="font-weight: 500;">Page 1 of 1</span>
-            <button id="nextRedirectBtn" class="btn btn-secondary btn-icon" onclick="changeRedirectPage(1)" disabled
-                title="Next Page">
-                <i data-lucide="chevron-right"></i>
-            </button>
+        <div id="page-redirects" class="card settings-section" style="margin-top: 1.5rem;">
+            <div class="card-header">Page Redirects</div>
+
+            <div>
+                <p class="text-muted" style="margin-bottom: 1rem;">
+                    Configure page path redirects. Stats for the "From Path" will be merged into the "To Path".
+                </p>
+
+                <div class="exclusion-controls">
+                    <button type="button" class="btn btn-primary" onclick="showAddRedirectModal()">
+                        <i data-lucide="plus"></i> Add Redirect
+                    </button>
+
+                    <div class="exclusion-search-container">
+                        <input type="text" id="redirectSearch" class="form-select" placeholder="Search by Path...">
+                    </div>
+                </div>
+
+                <div id="redirects-list">
+                    <p class="text-muted exclusion-list-empty">Loading redirects...</p>
+                </div>
+
+                <div id="redirect-pagination-controls" class="pagination-controls" style="display: none;">
+                    <button id="prevRedirectBtn" class="btn btn-secondary btn-icon" onclick="changeRedirectPage(-1)"
+                        disabled title="Previous Page">
+                        <i data-lucide="chevron-left"></i>
+                    </button>
+                    <span id="redirectPageInfo" class="text-muted" style="font-weight: 500;">Page 1 of 1</span>
+                    <button id="nextRedirectBtn" class="btn btn-secondary btn-icon" onclick="changeRedirectPage(1)"
+                        disabled title="Next Page">
+                        <i data-lucide="chevron-right"></i>
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -206,7 +234,7 @@
     style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
     <div class="card" style="width: 90%; max-width: 500px; margin: 2rem;">
         <div class="card-header">Add Post Exclusion</div>
-        <div style="padding: 1.5rem;">
+        <div>
             <form id="addExclusionForm" onsubmit="handleAddExclusion(event)">
                 <div class="form-group" style="margin-bottom: 1rem;">
                     <label for="exclusion_source_id"
@@ -242,7 +270,7 @@
     style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
     <div class="card" style="width: 90%; max-width: 500px; margin: 2rem;">
         <div class="card-header">Add Page Redirect</div>
-        <div style="padding: 1.5rem;">
+        <div>
             <form id="addRedirectForm" onsubmit="handleAddRedirect(event)">
                 <div class="form-group" style="margin-bottom: 1rem;">
                     <label for="redirect_source_id"
@@ -281,6 +309,53 @@
         </div>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const navItems = document.querySelectorAll('.settings-nav-item');
+        const sections = document.querySelectorAll('.settings-section');
+
+        navItems.forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+
+                navItems.forEach(nav => nav.classList.remove('active'));
+
+                item.classList.add('active');
+                const sectionId = item.getAttribute('data-section');
+                const section = document.getElementById(sectionId);
+
+                if (section) {
+                    section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
+
+        const observerOptions = {
+            root: null,
+            rootMargin: '-20% 0px -70% 0px',
+            threshold: 0
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const sectionId = entry.target.id;
+                    navItems.forEach(nav => {
+                        if (nav.getAttribute('data-section') === sectionId) {
+                            navItems.forEach(n => n.classList.remove('active'));
+                            nav.classList.add('active');
+                        }
+                    });
+                }
+            });
+        }, observerOptions);
+
+        sections.forEach(section => observer.observe(section));
+
+        lucide.createIcons();
+    });
+</script>
 
 <script>
     let allSources = [];
@@ -426,7 +501,7 @@
                     <strong>${excl.network_internal_id}</strong><br>
                     <span class="text-muted" style="font-size: 0.875rem;">${excl.network} - ${excl.user_name}</span>
                 </div>
-                <button class="btn btn-danger exclusion-delete-btn" onclick="deleteExclusion('${excl.id}')">
+                <button class="btn btn-danger btn-icon" onclick="deleteExclusion('${excl.id}')" title="Delete">
                     <i data-lucide="trash-2"></i>
                 </button>
             </div>
@@ -460,7 +535,7 @@
                     </div>
                     <span class="text-muted" style="font-size: 0.875rem;">${r.network} - ${r.user_name}</span>
                 </div>
-                <button class="btn btn-danger exclusion-delete-btn" onclick="deleteRedirect('${r.id}')">
+                <button class="btn btn-danger btn-icon" onclick="deleteRedirect('${r.id}')" title="Delete">
                     <i data-lucide="trash-2"></i>
                 </button>
             </div>
