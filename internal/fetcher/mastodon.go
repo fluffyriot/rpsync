@@ -198,18 +198,11 @@ func FetchMastodonPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, s
 				continue
 			}
 
-			var intId uuid.UUID
-
-			post, err := dbQueries.GetPostByNetworkAndId(context.Background(), database.GetPostByNetworkAndIdParams{
-				NetworkInternalID: postId,
-				Network:           "Mastodon",
-			})
-
-			var postDb database.CreatePostParams
-			var postReactions database.SyncReactionsParams
+			var createdAt time.Time
+			var postType, author, content string
 
 			if item.Reblog != nil {
-				content := stripHTMLToText(item.Reblog.Content)
+				content = stripHTMLToText(item.Reblog.Content)
 
 				u, errU := url.Parse(item.Reblog.Account.Uri)
 				if errU != nil {
@@ -219,39 +212,11 @@ func FetchMastodonPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, s
 				username := path.Base(u.Path)
 				domain := u.Host
 
-				postDb = database.CreatePostParams{
-					ID:                uuid.New(),
-					CreatedAt:         item.Reblog.CreatedAt,
-					LastSyncedAt:      time.Now(),
-					SourceID:          sourceId,
-					IsArchived:        false,
-					Author:            fmt.Sprintf("%s@%s", username, domain),
-					PostType:          "repost",
-					NetworkInternalID: postId,
-					Content: sql.NullString{
-						String: content,
-						Valid:  true,
-					},
-				}
-
-				postReactions = database.SyncReactionsParams{
-					ID:       uuid.New(),
-					SyncedAt: time.Now(),
-					Likes: sql.NullInt32{
-						Int32: int32(item.Reblog.FavouritesCount),
-						Valid: true,
-					},
-					Reposts: sql.NullInt32{
-						Int32: int32(item.Reblog.QuotesCount) + int32(item.Reblog.ReblogsCount),
-						Valid: true,
-					},
-					Views: sql.NullInt32{
-						Int32: 0,
-						Valid: true,
-					},
-				}
+				createdAt = item.Reblog.CreatedAt
+				postType = "repost"
+				author = fmt.Sprintf("%s@%s", username, domain)
 			} else {
-				content := stripHTMLToText(item.Content)
+				content = stripHTMLToText(item.Content)
 
 				u, errU := url.Parse(item.Account.Uri)
 				if errU != nil {
@@ -261,51 +226,52 @@ func FetchMastodonPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, s
 				username := path.Base(u.Path)
 				domain := u.Host
 
-				postDb = database.CreatePostParams{
-					ID:                uuid.New(),
-					CreatedAt:         item.CreatedAt,
-					LastSyncedAt:      time.Now(),
-					SourceID:          sourceId,
-					IsArchived:        false,
-					Author:            fmt.Sprintf("%s@%s", username, domain),
-					PostType:          "post",
-					NetworkInternalID: postId,
-					Content: sql.NullString{
-						String: content,
-						Valid:  true,
-					},
-				}
-
-				postReactions = database.SyncReactionsParams{
-					ID:       uuid.New(),
-					SyncedAt: time.Now(),
-					Likes: sql.NullInt32{
-						Int32: int32(item.FavouritesCount),
-						Valid: true,
-					},
-					Reposts: sql.NullInt32{
-						Int32: int32(item.QuotesCount) + int32(item.ReblogsCount),
-						Valid: true,
-					},
-					Views: sql.NullInt32{
-						Int32: 0,
-						Valid: true,
-					},
-				}
+				createdAt = item.CreatedAt
+				postType = "post"
+				author = fmt.Sprintf("%s@%s", username, domain)
 			}
 
+			postDBID, err := createOrUpdatePost(
+				context.Background(),
+				dbQueries,
+				sourceId,
+				postId,
+				"Mastodon",
+				createdAt,
+				postType,
+				author,
+				content,
+			)
 			if err != nil {
-				newPost, errN := dbQueries.CreatePost(context.Background(), postDb)
-				if errN != nil {
-					return errN
-				}
-				intId = newPost.ID
-			} else {
-				intId = post.ID
+				return err
 			}
 
-			postReactions.PostID = intId
-			_, err = dbQueries.SyncReactions(context.Background(), postReactions)
+			var likes, reposts int
+			if item.Reblog != nil {
+				likes = item.Reblog.FavouritesCount
+				reposts = item.Reblog.QuotesCount + item.Reblog.ReblogsCount
+			} else {
+				likes = item.FavouritesCount
+				reposts = item.QuotesCount + item.ReblogsCount
+			}
+
+			_, err = dbQueries.SyncReactions(context.Background(), database.SyncReactionsParams{
+				ID:       uuid.New(),
+				SyncedAt: time.Now(),
+				PostID:   postDBID,
+				Likes: sql.NullInt32{
+					Int32: int32(likes),
+					Valid: true,
+				},
+				Reposts: sql.NullInt32{
+					Int32: int32(reposts),
+					Valid: true,
+				},
+				Views: sql.NullInt32{
+					Int32: 0,
+					Valid: true,
+				},
+			})
 
 		}
 

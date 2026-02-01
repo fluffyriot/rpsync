@@ -134,7 +134,7 @@
                             {{end}}
 
                             {{if .LastSynced.Valid}}
-                            <span>updated {{.LastSynced.Time.Format "Jan 02 15:04"}}</span>
+                            <span>last run: {{.LastSynced.Time.Format "Jan 02 15:04"}}</span>
                             {{end}}
 
                             {{if .StatusReason.Valid}}

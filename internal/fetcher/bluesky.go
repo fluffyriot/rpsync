@@ -189,40 +189,25 @@ func FetchBlueskyPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, so
 				post_type = "repost"
 			}
 
-			var intId uuid.UUID
-
-			post, err := dbQueries.GetPostByNetworkAndId(context.Background(), database.GetPostByNetworkAndIdParams{
-				NetworkInternalID: interNetId,
-				Network:           "Bluesky",
-			})
-
+			postID, err := createOrUpdatePost(
+				context.Background(),
+				dbQueries,
+				sourceId,
+				interNetId,
+				"Bluesky",
+				item.Post.Record.CreatedAt,
+				post_type,
+				item.Post.Author.Handle,
+				item.Post.Record.Text,
+			)
 			if err != nil {
-				newPost, errN := dbQueries.CreatePost(context.Background(), database.CreatePostParams{
-					ID:                uuid.New(),
-					CreatedAt:         item.Post.Record.CreatedAt,
-					LastSyncedAt:      time.Now(),
-					SourceID:          sourceId,
-					IsArchived:        false,
-					Author:            item.Post.Author.Handle,
-					PostType:          post_type,
-					NetworkInternalID: interNetId,
-					Content: sql.NullString{
-						String: item.Post.Record.Text,
-						Valid:  true,
-					},
-				})
-				if errN != nil {
-					return errN
-				}
-				intId = newPost.ID
-			} else {
-				intId = post.ID
+				return err
 			}
 
 			_, err = dbQueries.SyncReactions(context.Background(), database.SyncReactionsParams{
 				ID:       uuid.New(),
 				SyncedAt: time.Now(),
-				PostID:   intId,
+				PostID:   postID,
 				Likes: sql.NullInt32{
 					Int32: int32(item.Post.LikeCount),
 					Valid: true,

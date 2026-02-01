@@ -193,34 +193,19 @@ func FetchTelegramPosts(dbQueries *database.Queries, encryptionKey []byte, sid u
 
 					msgTime := time.Unix(int64(msg.Date), 0).UTC()
 
-					post, err := dbQueries.GetPostByNetworkAndId(ctx, database.GetPostByNetworkAndIdParams{
-						NetworkInternalID: msgIDStr,
-						Network:           "Telegram",
-					})
-
-					var postID uuid.UUID
+					postID, err := createOrUpdatePost(
+						ctx,
+						dbQueries,
+						sid,
+						fmt.Sprintf("%d", msg.ID),
+						"Telegram",
+						msgTime,
+						"post",
+						channelUsername,
+						msg.Message,
+					)
 					if err != nil {
-
-						newPost, err := dbQueries.CreatePost(ctx, database.CreatePostParams{
-							ID:                uuid.New(),
-							CreatedAt:         msgTime,
-							LastSyncedAt:      time.Now(),
-							SourceID:          sid,
-							PostType:          "post",
-							Author:            channelUsername,
-							IsArchived:        false,
-							NetworkInternalID: fmt.Sprintf("%d", msg.ID),
-							Content: sql.NullString{
-								String: msg.Message,
-								Valid:  true,
-							},
-						})
-						if err != nil {
-							continue
-						}
-						postID = newPost.ID
-					} else {
-						postID = post.ID
+						continue
 					}
 
 					_, err = dbQueries.SyncReactions(ctx, database.SyncReactionsParams{

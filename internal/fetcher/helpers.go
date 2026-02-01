@@ -131,3 +131,43 @@ func calculateAverageStats(ctx context.Context, dbQueries *database.Queries, sou
 
 	return stats, nil
 }
+
+func createOrUpdatePost(
+	ctx context.Context,
+	dbQueries *database.Queries,
+	sourceID uuid.UUID,
+	networkInternalID string,
+	network string,
+	createdAt time.Time,
+	postType string,
+	author string,
+	content string,
+) (uuid.UUID, error) {
+	post, err := dbQueries.GetPostByNetworkAndId(ctx, database.GetPostByNetworkAndIdParams{
+		NetworkInternalID: networkInternalID,
+		Network:           network,
+	})
+
+	if err != nil {
+		newPost, err := dbQueries.CreatePost(ctx, database.CreatePostParams{
+			ID:                uuid.New(),
+			CreatedAt:         createdAt,
+			LastSyncedAt:      time.Now(),
+			SourceID:          sourceID,
+			IsArchived:        false,
+			Author:            author,
+			PostType:          postType,
+			NetworkInternalID: networkInternalID,
+			Content: sql.NullString{
+				String: content,
+				Valid:  content != "",
+			},
+		})
+		if err != nil {
+			return uuid.Nil, err
+		}
+		return newPost.ID, nil
+	}
+
+	return post.ID, nil
+}

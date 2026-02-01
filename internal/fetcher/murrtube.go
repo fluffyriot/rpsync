@@ -92,7 +92,6 @@ func FetchMurrtubePosts(uid uuid.UUID, dbQueries *database.Queries, c *Client, s
 	linkPattern := regexp.MustCompile(`^/v/.{4}$`)
 
 	doc.Find("a").Each(func(_ int, s *goquery.Selection) {
-		var intId uuid.UUID
 		href, exists := s.Attr("href")
 		if !exists || !linkPattern.MatchString(href) {
 			return
@@ -142,29 +141,19 @@ func FetchMurrtubePosts(uid uuid.UUID, dbQueries *database.Queries, c *Client, s
 			createdAt = time.Now()
 		}
 
-		post, err := dbQueries.GetPostByNetworkAndId(context.Background(), database.GetPostByNetworkAndIdParams{
-			NetworkInternalID: id,
-			Network:           "Murrtube",
-		})
-
+		postID, err := createOrUpdatePost(
+			context.Background(),
+			dbQueries,
+			sourceId,
+			id,
+			"Murrtube",
+			createdAt,
+			"video",
+			username,
+			fmt.Sprintf("%s\n\n%s", title, description),
+		)
 		if err != nil {
-			newPost, _ := dbQueries.CreatePost(context.Background(), database.CreatePostParams{
-				ID:                uuid.New(),
-				CreatedAt:         createdAt,
-				LastSyncedAt:      time.Now(),
-				SourceID:          sourceId,
-				PostType:          "video",
-				Author:            username,
-				IsArchived:        false,
-				NetworkInternalID: id,
-				Content: sql.NullString{
-					String: fmt.Sprintf("%s\n\n%s", title, description),
-					Valid:  true,
-				},
-			})
-			intId = newPost.ID
-		} else {
-			intId = post.ID
+			return
 		}
 
 		videoViews, _ := extractMurrNumber(pageText, `([\d,]+)\s+Views`)
@@ -173,7 +162,7 @@ func FetchMurrtubePosts(uid uuid.UUID, dbQueries *database.Queries, c *Client, s
 		_, err = dbQueries.SyncReactions(context.Background(), database.SyncReactionsParams{
 			ID:       uuid.New(),
 			SyncedAt: time.Now(),
-			PostID:   intId,
+			PostID:   postID,
 			Likes: sql.NullInt32{
 				Int32: int32(videoLikes),
 				Valid: true,

@@ -132,7 +132,6 @@ func FetchBadpupsPosts(uid uuid.UUID, dbQueries *database.Queries, c *Client, so
 	linkPattern := regexp.MustCompile(`^https?://[^/]+/lite/video/[^/]+$`)
 
 	doc.Find("a").Each(func(_ int, s *goquery.Selection) {
-		var intId uuid.UUID
 		href, exists := s.Attr("href")
 		if !exists || !linkPattern.MatchString(href) {
 			return
@@ -184,29 +183,19 @@ func FetchBadpupsPosts(uid uuid.UUID, dbQueries *database.Queries, c *Client, so
 			uploadTime = time.Now()
 		}
 
-		post, err := dbQueries.GetPostByNetworkAndId(context.Background(), database.GetPostByNetworkAndIdParams{
-			NetworkInternalID: id,
-			Network:           "BadPups",
-		})
-
+		postID, err := createOrUpdatePost(
+			context.Background(),
+			dbQueries,
+			sourceId,
+			id,
+			"BadPups",
+			uploadTime,
+			"video",
+			username,
+			fmt.Sprintf("%s\n\n%s", title, description),
+		)
 		if err != nil {
-			newPost, _ := dbQueries.CreatePost(context.Background(), database.CreatePostParams{
-				ID:                uuid.New(),
-				CreatedAt:         uploadTime,
-				LastSyncedAt:      time.Now(),
-				SourceID:          sourceId,
-				IsArchived:        false,
-				PostType:          "video",
-				Author:            username,
-				NetworkInternalID: id,
-				Content: sql.NullString{
-					String: fmt.Sprintf("%s\n\n%s", title, description),
-					Valid:  true,
-				},
-			})
-			intId = newPost.ID
-		} else {
-			intId = post.ID
+			return
 		}
 
 		likesText := strings.TrimSpace(
@@ -235,7 +224,7 @@ func FetchBadpupsPosts(uid uuid.UUID, dbQueries *database.Queries, c *Client, so
 		_, err = dbQueries.SyncReactions(context.Background(), database.SyncReactionsParams{
 			ID:       uuid.New(),
 			SyncedAt: time.Now(),
-			PostID:   intId,
+			PostID:   postID,
 			Likes: sql.NullInt32{
 				Int32: int32(videoLikes),
 				Valid: true,

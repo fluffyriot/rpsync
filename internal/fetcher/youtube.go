@@ -96,40 +96,27 @@ func FetchYouTubePosts(dbQueries *database.Queries, sourceID uuid.UUID, encrypti
 				continue
 			}
 
-			existing, err := dbQueries.GetPostByNetworkAndId(ctx, database.GetPostByNetworkAndIdParams{
-				NetworkInternalID: videoId,
-				Network:           "YouTube",
-			})
-
-			var postID uuid.UUID
-			var isNew bool
-
+			pubAt, err := time.Parse(time.RFC3339, item.Snippet.PublishedAt)
 			if err != nil {
-				pubAt, err := time.Parse(time.RFC3339, item.Snippet.PublishedAt)
-				if err != nil {
-					pubAt = time.Now()
-				}
+				pubAt = time.Now()
+			}
 
-				newPost, err := dbQueries.CreatePost(ctx, database.CreatePostParams{
-					ID:                uuid.New(),
-					CreatedAt:         pubAt,
-					LastSyncedAt:      time.Now(),
-					SourceID:          sourceID,
-					IsArchived:        false,
-					Author:            item.Snippet.ChannelTitle,
-					PostType:          "video",
-					NetworkInternalID: videoId,
-					Content:           sql.NullString{String: fmt.Sprintf("%s\n\n%s", item.Snippet.Title, item.Snippet.Description), Valid: true},
-				})
-				if err != nil {
-					log.Printf("Failed to create post %s: %v", videoId, err)
-					continue
-				}
-				postID = newPost.ID
-				isNew = true
-			} else {
-				postID = existing.ID
-				isNew = false
+			content := fmt.Sprintf("%s\n\n%s", item.Snippet.Title, item.Snippet.Description)
+
+			postID, err := createOrUpdatePost(
+				ctx,
+				dbQueries,
+				sourceID,
+				videoId,
+				"YouTube",
+				pubAt,
+				"video",
+				item.Snippet.ChannelTitle,
+				content,
+			)
+			if err != nil {
+				log.Printf("Failed to create/update post %s: %v", videoId, err)
+				continue
 			}
 
 			videoCall := service.Videos.List([]string{"statistics"}).Id(videoId)
@@ -152,10 +139,6 @@ func FetchYouTubePosts(dbQueries *database.Queries, sourceID uuid.UUID, encrypti
 				if err != nil {
 					log.Printf("Failed to sync reactions for %s: %v", videoId, err)
 				}
-			}
-
-			if isNew {
-				log.Printf("Synced new YouTube video: %s", item.Snippet.Title)
 			}
 		}
 

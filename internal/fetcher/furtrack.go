@@ -182,35 +182,20 @@ func FetchFurTrackPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, s
 			totalLikes += (post.CV - 1 + post.CL)
 		}
 
-		var postID uuid.UUID
-
-		post, err := dbQueries.GetPostByNetworkAndId(context.Background(), database.GetPostByNetworkAndIdParams{
-			NetworkInternalID: networkID,
-			Network:           "FurTrack",
-		})
-
+		postID, err := createOrUpdatePost(
+			context.Background(),
+			dbQueries,
+			sourceId,
+			networkID,
+			"FurTrack",
+			getAlbumDate(albumPosts.Posts),
+			"album",
+			username,
+			album.AlbumTitle+" | "+album.Tags,
+		)
 		if err != nil {
-			newPost, errCreate := dbQueries.CreatePost(context.Background(), database.CreatePostParams{
-				ID:                uuid.New(),
-				CreatedAt:         getAlbumDate(albumPosts.Posts),
-				LastSyncedAt:      time.Now(),
-				SourceID:          sourceId,
-				IsArchived:        false,
-				NetworkInternalID: networkID,
-				Content: sql.NullString{
-					String: album.AlbumTitle + " | " + album.Tags,
-					Valid:  true,
-				},
-				PostType: "album",
-				Author:   username,
-			})
-			if errCreate != nil {
-				log.Printf("FurTrack: Failed to create post for album %s: %v", networkID, errCreate)
-				continue
-			}
-			postID = newPost.ID
-		} else {
-			postID = post.ID
+			log.Printf("FurTrack: Failed to create/update post for album %s: %v", networkID, err)
+			continue
 		}
 
 		_, err = dbQueries.SyncReactions(context.Background(), database.SyncReactionsParams{

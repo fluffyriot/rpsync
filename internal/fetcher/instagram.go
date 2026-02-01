@@ -178,7 +178,6 @@ func FetchInstagramPosts(dbQueries *database.Queries, c *Client, sourceId uuid.U
 		}
 
 		for _, item := range feed.Data {
-			var intId uuid.UUID
 
 			if _, exists := processedLinks[item.Shortcode]; exists {
 				continue
@@ -197,32 +196,19 @@ func FetchInstagramPosts(dbQueries *database.Queries, c *Client, sourceId uuid.U
 				post_type = "image"
 			}
 
-			post, err := dbQueries.GetPostByNetworkAndId(context.Background(), database.GetPostByNetworkAndIdParams{
-				NetworkInternalID: item.Shortcode,
-				Network:           "Instagram",
-			})
-
+			postID, err := createOrUpdatePost(
+				context.Background(),
+				dbQueries,
+				sourceId,
+				item.Shortcode,
+				"Instagram",
+				timeParse,
+				post_type,
+				item.Username,
+				item.Caption,
+			)
 			if err != nil {
-				newPost, errN := dbQueries.CreatePost(context.Background(), database.CreatePostParams{
-					ID:                uuid.New(),
-					CreatedAt:         timeParse,
-					LastSyncedAt:      time.Now(),
-					SourceID:          sourceId,
-					IsArchived:        false,
-					Author:            item.Username,
-					PostType:          post_type,
-					NetworkInternalID: item.Shortcode,
-					Content: sql.NullString{
-						String: item.Caption,
-						Valid:  true,
-					},
-				})
-				if errN != nil {
-					return errN
-				}
-				intId = newPost.ID
-			} else {
-				intId = post.ID
+				return err
 			}
 
 			views := 0
@@ -237,7 +223,7 @@ func FetchInstagramPosts(dbQueries *database.Queries, c *Client, sourceId uuid.U
 			_, err = dbQueries.SyncReactions(context.Background(), database.SyncReactionsParams{
 				ID:       uuid.New(),
 				SyncedAt: time.Now(),
-				PostID:   intId,
+				PostID:   postID,
 				Likes: sql.NullInt32{
 					Int32: int32(item.LikeCount),
 					Valid: true,
@@ -343,7 +329,6 @@ func FetchInstagramTags(dbQueries *database.Queries, c *Client, sourceId uuid.UU
 		}
 
 		for _, item := range feed.Data {
-			var intId uuid.UUID
 
 			shortcode := strings.TrimPrefix(item.Permalink, "https://www.instagram.com/p/")
 			shortcode = strings.TrimSuffix(shortcode, "/")
@@ -360,38 +345,25 @@ func FetchInstagramTags(dbQueries *database.Queries, c *Client, sourceId uuid.UU
 
 			timeParse, _ := time.Parse("2006-01-02T15:04:05-0700", item.Timestamp)
 
-			post, err := dbQueries.GetPostByNetworkAndId(context.Background(), database.GetPostByNetworkAndIdParams{
-				NetworkInternalID: shortcode,
-				Network:           "Instagram",
-			})
-
+			postID, err := createOrUpdatePost(
+				context.Background(),
+				dbQueries,
+				sourceId,
+				shortcode,
+				"Instagram",
+				timeParse,
+				"tag",
+				item.Username,
+				item.Caption,
+			)
 			if err != nil {
-				newPost, errN := dbQueries.CreatePost(context.Background(), database.CreatePostParams{
-					ID:                uuid.New(),
-					CreatedAt:         timeParse,
-					LastSyncedAt:      time.Now(),
-					SourceID:          sourceId,
-					IsArchived:        false,
-					Author:            item.Username,
-					PostType:          "tag",
-					NetworkInternalID: shortcode,
-					Content: sql.NullString{
-						String: item.Caption,
-						Valid:  true,
-					},
-				})
-				if errN != nil {
-					return errN
-				}
-				intId = newPost.ID
-			} else {
-				intId = post.ID
+				return err
 			}
 
 			_, err = dbQueries.SyncReactions(context.Background(), database.SyncReactionsParams{
 				ID:       uuid.New(),
 				SyncedAt: time.Now(),
-				PostID:   intId,
+				PostID:   postID,
 				Likes: sql.NullInt32{
 					Int32: int32(item.LikeCount),
 					Valid: true,

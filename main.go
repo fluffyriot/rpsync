@@ -2,10 +2,8 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"flag"
-	"fmt"
 	"log"
 	"log/slog"
 	"net/http"
@@ -14,14 +12,11 @@ import (
 	"syscall"
 	"time"
 
-	"golang.org/x/term"
-
 	_ "embed"
 
 	"github.com/fluffyriot/rpsync/internal/api/handlers"
-	"github.com/fluffyriot/rpsync/internal/authhelp"
+	"github.com/fluffyriot/rpsync/internal/cli"
 	"github.com/fluffyriot/rpsync/internal/config"
-	"github.com/fluffyriot/rpsync/internal/database"
 	"github.com/fluffyriot/rpsync/internal/fetcher"
 	"github.com/fluffyriot/rpsync/internal/middleware"
 	"github.com/fluffyriot/rpsync/internal/pusher/common"
@@ -30,7 +25,6 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
 //go:embed version.json
@@ -43,7 +37,7 @@ type projectVersion struct {
 func main() {
 	resetPwdFlag := flag.Bool("reset-password", false, "Reset user password")
 	reset2FAFlag := flag.Bool("reset-2fa", false, "Reset 2FA (TOTP) for a user")
-	resetUserFlag := flag.String("username", "", "Username to reset (optional if only one user)")
+	resetUserFlag := flag.String("username", "", "Username (required for --reset-password and --reset-2fa)")
 	flag.Parse()
 
 	var pv projectVersion
@@ -78,7 +72,7 @@ func main() {
 	store := cookie.NewStore(cfg.SessionKey)
 	store.Options(sessions.Options{
 		Path:     "/",
-		MaxAge:   86400 * 30,
+		MaxAge:   86400 * 7,
 		HttpOnly: true,
 		Secure:   cfg.HttpsPort != "",
 		SameSite: http.SameSiteLaxMode,
@@ -96,68 +90,7 @@ func main() {
 		if dbConn == nil {
 			log.Fatal("Database connection failed, cannot reset password")
 		}
-
-		ctx := context.Background()
-		targetUsername := *resetUserFlag
-
-		if targetUsername == "" {
-			users, err := dbQueries.GetAllUsers(ctx)
-			if err != nil {
-				log.Fatalf("Failed to fetch users: %v", err)
-			}
-			if len(users) == 0 {
-				log.Fatal("No users found in database.")
-			}
-			if len(users) > 1 {
-				log.Fatal("Multiple users found. Please specify --username <name>")
-			}
-			targetUsername = users[0].Username
-			fmt.Printf("Found single user: %s\n", targetUsername)
-		}
-
-		fmt.Printf("Enter new password for '%s': ", targetUsername)
-		bytePassword, err := term.ReadPassword(int(syscall.Stdin))
-		if err != nil {
-			log.Fatalf("\nFailed to read password: %v", err)
-		}
-		fmt.Println()
-
-		password := string(bytePassword)
-		if err := authhelp.ValidatePasswordStrength(password); err != nil {
-			log.Fatalf("Password is too weak: %v", err)
-		}
-
-		hash, err := authhelp.HashPassword(password)
-		if err != nil {
-			log.Fatalf("Failed to hash password: %v", err)
-		}
-
-		users, err := dbQueries.GetAllUsers(ctx)
-		if err != nil {
-			log.Fatalf("Failed to query users: %v", err)
-		}
-		var targetID string
-		for _, u := range users {
-			if u.Username == targetUsername {
-				targetID = u.ID.String()
-				break
-			}
-		}
-
-		if targetID == "" {
-			log.Fatalf("User '%s' not found", targetUsername)
-		}
-
-		uid, _ := uuid.Parse(targetID)
-		_, err = dbQueries.UpdateUserPassword(ctx, database.UpdateUserPasswordParams{
-			ID:           uid,
-			PasswordHash: sql.NullString{String: hash, Valid: true},
-		})
-		if err != nil {
-			log.Fatalf("Failed to update password: %v", err)
-		}
-
-		fmt.Println("Password updated successfully.")
+		cli.HandleResetPassword(dbQueries, *resetUserFlag)
 		return
 	}
 
@@ -165,54 +98,7 @@ func main() {
 		if dbConn == nil {
 			log.Fatal("Database connection failed, cannot reset 2FA")
 		}
-
-		ctx := context.Background()
-		targetUsername := *resetUserFlag
-
-		if targetUsername == "" {
-			users, err := dbQueries.GetAllUsers(ctx)
-			if err != nil {
-				log.Fatalf("Failed to fetch users: %v", err)
-			}
-			if len(users) == 0 {
-				log.Fatal("No users found in database.")
-			}
-			if len(users) > 1 {
-				log.Fatal("Multiple users found. Please specify --username <name>")
-			}
-			targetUsername = users[0].Username
-			fmt.Printf("Found single user: %s\n", targetUsername)
-		}
-
-		fmt.Printf("Resetting 2FA for user '%s'...\n", targetUsername)
-
-		users, err := dbQueries.GetAllUsers(ctx)
-		if err != nil {
-			log.Fatalf("Failed to query users: %v", err)
-		}
-		var targetID string
-		for _, u := range users {
-			if u.Username == targetUsername {
-				targetID = u.ID.String()
-				break
-			}
-		}
-
-		if targetID == "" {
-			log.Fatalf("User '%s' not found", targetUsername)
-		}
-
-		uid, _ := uuid.Parse(targetID)
-		_, err = dbQueries.UpdateUserTOTP(ctx, database.UpdateUserTOTPParams{
-			ID:          uid,
-			TotpSecret:  sql.NullString{Valid: false},
-			TotpEnabled: sql.NullBool{Valid: true, Bool: false},
-		})
-		if err != nil {
-			log.Fatalf("Failed to reset 2FA: %v", err)
-		}
-
-		fmt.Println("2FA (TOTP) has been disabled for this user.")
+		cli.HandleReset2FA(dbQueries, *resetUserFlag)
 		return
 	}
 

@@ -448,31 +448,20 @@ func FetchTikTokPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, sou
 		content := item.Desc
 		postType := item.Type
 
-		postId := uuid.New()
-		existing, err := dbQueries.GetPostByNetworkAndId(context.Background(), database.GetPostByNetworkAndIdParams{
-			NetworkInternalID: item.ID,
-			Network:           "TikTok",
-		})
-
+		postId, err := createOrUpdatePost(
+			context.Background(),
+			dbQueries,
+			sourceId,
+			item.ID,
+			"TikTok",
+			createdAt,
+			postType,
+			username,
+			content,
+		)
 		if err != nil {
-			newPost, errC := dbQueries.CreatePost(context.Background(), database.CreatePostParams{
-				ID:                postId,
-				CreatedAt:         createdAt,
-				LastSyncedAt:      time.Now(),
-				SourceID:          sourceId,
-				IsArchived:        false,
-				Author:            username,
-				PostType:          postType,
-				NetworkInternalID: item.ID,
-				Content:           sql.NullString{String: content, Valid: content != ""},
-			})
-			if errC != nil {
-				log.Printf("Failed to create post %s: %v", item.ID, errC)
-				continue
-			}
-			postId = newPost.ID
-		} else {
-			postId = existing.ID
+			log.Printf("Failed to create/update post %s: %v", item.ID, err)
+			continue
 		}
 
 		viewsCount := parseCount(item.Views)
