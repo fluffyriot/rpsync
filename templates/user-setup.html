@@ -3,8 +3,8 @@
 <div style="max-width: 500px; margin: 4rem auto;">
   <div class="card">
     <div class="text-center mb-4">
-      <h1>Initial Setup</h1>
-      <p class="text-muted">Welcome to RPSync. Let's get you started.</p>
+      <h1>Create Account</h1>
+      <p class="text-muted">Welcome to RPSync. Create your account to get started.</p>
     </div>
 
     {{if .Message1}}
@@ -23,15 +23,18 @@
       <button class="btn btn-primary" type="submit" style="width: 100%">Go To Dashboard</button>
     </form>
     {{else}}
-    <form method="POST" action="/user/setup">
+    <form method="POST" action="/register">
       <div class="form-group">
         <label class="form-label" for="username">Username</label>
         <input id="username" name="username" class="form-input" placeholder="Choose a username" required>
       </div>
 
-      <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
-        Create User & Continue
-      </button>
+      <div class="flex flex-col gap-2">
+        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
+          Create Account & Continue
+        </button>
+        <a href="/login" class="btn btn-secondary" style="width: 100%; text-align: center;">Back to Login</a>
+      </div>
     </form>
     {{end}}
   </div>

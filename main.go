@@ -108,28 +108,29 @@ func main() {
 	upd.Start()
 
 	ctx := context.Background()
-	users, err := dbQueries.GetAllUsers(ctx)
-	shouldStart := true
-	startInterval := 30 * time.Minute
 
+	shouldStart := true
+	enableWorkerConfig, _ := dbQueries.GetAppConfig(ctx, "enable_worker_on_startup")
+	if enableWorkerConfig != "true" {
+		shouldStart = false
+	}
+
+	startInterval := 30 * time.Minute
+	users, err := dbQueries.GetAllUsers(ctx)
 	if err == nil && len(users) > 0 {
 		user := users[0]
-		if !user.EnabledOnStartup {
-			shouldStart = false
+		parsedDuration, err := time.ParseDuration(user.SyncPeriod)
+		if err == nil {
+			startInterval = parsedDuration
 		} else {
-			parsedDuration, err := time.ParseDuration(user.SyncPeriod)
-			if err == nil {
-				startInterval = parsedDuration
-			} else {
-				log.Printf("Invalid sync period '%s', defaulting to 30m", user.SyncPeriod)
-			}
+			log.Printf("Invalid sync period '%s', defaulting to 30m", user.SyncPeriod)
 		}
 	}
 
 	if shouldStart {
 		w.Start(startInterval)
 	} else {
-		log.Println("Worker disabled on startup by user settings")
+		log.Println("Worker disabled on startup by global settings")
 	}
 
 	h := handlers.NewHandler(
@@ -146,6 +147,9 @@ func main() {
 	r.GET("/login", h.LoginViewHandler)
 	r.POST("/login", h.LoginSubmitHandler)
 	r.POST("/logout", h.LogoutHandler)
+
+	r.GET("/register", h.UserSetupViewHandler)
+	r.POST("/register", h.UserSetupHandler)
 
 	authorized := r.Group("/")
 	authorized.Use(middleware.AuthMiddleware(dbQueries))
@@ -170,6 +174,7 @@ func main() {
 
 	authorized.GET("/settings/sync", h.SyncSettingsHandler)
 	authorized.POST("/settings/sync", h.UpdateSyncSettingsHandler)
+	authorized.POST("/settings/server", h.UpdateServerSettingsHandler)
 	authorized.POST("/settings/sync/reset", h.ResetSyncSettingsHandler)
 	authorized.POST("/settings/sync/start", h.StartWorkerHandler)
 	authorized.POST("/settings/sync/stop", h.StopWorkerHandler)

@@ -48,6 +48,11 @@ func (h *Handler) RootHandler(c *gin.Context) {
 		return
 	}
 
+	if !user.PasswordHash.Valid || user.PasswordHash.String == "" {
+		c.Redirect(http.StatusFound, "/setup/password")
+		return
+	}
+
 	activeSources, _ := h.DB.GetActiveSourcesCount(ctx, user.ID)
 	activeTargets, _ := h.DB.GetActiveTargetsCount(ctx, user.ID)
 	totalPosts, _ := h.DB.GetTotalPostsCount(ctx, user.ID)

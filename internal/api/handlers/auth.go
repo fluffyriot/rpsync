@@ -37,7 +37,7 @@ func (h *Handler) FacebookLoginHandler(c *gin.Context) {
 
 	var fbConfig *oauth2.Config
 	if appID != nil && appSecret != nil {
-		fbConfig = authhelp.GenerateFacebookConfig(appID.(string), appSecret.(string), "https://"+h.Config.DomainName+"/auth/facebook/callback")
+		fbConfig = authhelp.GenerateFacebookConfig(appID.(string), appSecret.(string), h.Config.BaseURL+"/auth/facebook/callback")
 	} else {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "App ID and Secret not found in session"})
 		return
@@ -86,7 +86,7 @@ func (h *Handler) FacebookCallbackHandler(c *gin.Context) {
 		return
 	}
 
-	fbConfig := authhelp.GenerateFacebookConfig(appID.(string), appSecret.(string), "https://"+h.Config.DomainName+"/auth/facebook/callback")
+	fbConfig := authhelp.GenerateFacebookConfig(appID.(string), appSecret.(string), h.Config.BaseURL+"/auth/facebook/callback")
 
 	code := c.Query("code")
 	token, err := fbConfig.Exchange(c, code)
@@ -161,7 +161,7 @@ func (h *Handler) FacebookRefreshTokenHandler(c *gin.Context) {
 		return
 	}
 
-	fbConfig := authhelp.GenerateFacebookConfig(appID, appSecret, "https://"+h.Config.DomainName+"/auth/facebook/callback")
+	fbConfig := authhelp.GenerateFacebookConfig(appID, appSecret, h.Config.BaseURL+"/auth/facebook/callback")
 
 	newLongLivedToken, err := authhelp.ExchangeLongLivedToken(currentAccessToken, fbConfig)
 	if err != nil {

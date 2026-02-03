@@ -29,9 +29,13 @@ func (h *Handler) LoginViewHandler(c *gin.Context) {
 		}
 	}
 
+	allowCreateUserConfig, _ := h.DB.GetAppConfig(c.Request.Context(), "allow_new_user_creation")
+	allowCreateUser := allowCreateUserConfig == "true"
+
 	c.HTML(http.StatusOK, "login.html", h.CommonData(c, gin.H{
-		"title":        "Login",
-		"is_auth_page": true,
+		"title":              "Login",
+		"is_auth_page":       true,
+		"allow_registration": allowCreateUser,
 	}))
 }
 

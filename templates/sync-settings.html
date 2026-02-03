@@ -14,8 +14,11 @@
                 <a href="#user-settings" class="settings-nav-item active" data-section="user-settings">
                     <i data-lucide="user"></i> User Settings
                 </a>
+                <a href="#server-config" class="settings-nav-item" data-section="server-config">
+                    <i data-lucide="server"></i> Server Configuration
+                </a>
                 <a href="#syncer-config" class="settings-nav-item" data-section="syncer-config">
-                    <i data-lucide="settings"></i> Configuration
+                    <i data-lucide="settings"></i> Syncer Configuration
                 </a>
                 <a href="#manual-control" class="settings-nav-item" data-section="manual-control">
                     <i data-lucide="sliders"></i> Manual Control
@@ -79,7 +82,43 @@
             </div>
         </div>
 
-        <div id="syncer-config" class="card settings-section">
+        <div id="server-config" class="card settings-section">
+            <div class="card-header">Server Configuration</div>
+
+            <form method="POST" action="/settings/server">
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" name="allow_new_user_creation" id="allow_new_user_creation" {{if
+                            .allow_new_user_creation}}checked{{end}}
+                            style="width: 18px; height: 18px; cursor: pointer;">
+                        <span style="font-weight: 500;">Allow new user creation</span>
+                    </label>
+                    <p class="text-muted" style="margin-top: 0.5rem; margin-left: 1.625rem; font-size: 0.875rem;">
+                        If disabled, new users cannot register from login page.
+                    </p>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" name="enabled_on_startup" id="enabled_on_startup" {{if
+                            .enable_worker_on_startup}}checked{{end}}
+                            style="width: 18px; height: 18px; cursor: pointer;">
+                        <span style="font-weight: 500;">Enable worker on startup</span>
+                    </label>
+                    <p class="text-muted" style="margin-top: 0.5rem; margin-left: 1.625rem; font-size: 0.875rem;">
+                        When enabled, the worker will automatically start when the application launches.
+                    </p>
+                </div>
+
+                <div class="flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i data-lucide="save"></i> Save Server Settings
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div id="syncer-config" class="card settings-section" style="margin-top: 1.5rem;">
             <div class="card-header">Syncer Configuration</div>
 
             <form method="POST" action="/settings/sync">
@@ -100,17 +139,6 @@
                         automatically sync all sources and targets</p>
                 </div>
 
-                <div class="form-group" style="margin-bottom: 1.5rem;">
-                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                        <input type="checkbox" name="enabled_on_startup" id="enabled_on_startup" {{if
-                            .enabled_on_startup}}checked{{end}} style="width: 18px; height: 18px; cursor: pointer;">
-                        <span style="font-weight: 500;">Enable worker on startup</span>
-                    </label>
-                    <p class="text-muted" style="margin-top: 0.5rem; margin-left: 1.625rem; font-size: 0.875rem;">
-                        When enabled, the worker will automatically start when the application launches
-                    </p>
-                </div>
-
                 <div class="flex gap-2">
                     <button type="submit" class="btn btn-primary"
                         onclick="return submitWithConfirm(this, 'System will turn on or restart the worker with your new settings. Do you want to continue?');">
@@ -118,7 +146,7 @@
                     </button>
 
                     <form method="POST" action="/settings/sync/reset"
-                        onsubmit="return submitWithConfirm(this, 'Reset to default settings (30m interval, enabled on startup)?');">
+                        onsubmit="return submitWithConfirm(this, 'Reset to default settings (30m interval)?');">
                         <button type="submit" class="btn btn-secondary">
                             <i data-lucide="rotate-ccw"></i> Reset to Defaults
                         </button>

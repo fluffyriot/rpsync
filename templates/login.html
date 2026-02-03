@@ -23,6 +23,14 @@
                 {{ if .error }}
                 <div class="alert alert-danger u-margin-top-small">{{ .error }}</div>
                 {{ end }}
+
+                {{ if .allow_registration }}
+                <div style="margin-top: 1rem; border-top: 1px solid var(--color-border); padding-top: 1rem;">
+                    <a href="/register" class="btn btn-secondary" style="width: 100%; text-align: center;">
+                        <i data-lucide="user-plus"></i> Create Account
+                    </a>
+                </div>
+                {{ end }}
             </form>
 
             <div class="login-secondary-actions" style="margin-top: 1rem; text-align: center;">

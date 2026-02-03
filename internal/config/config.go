@@ -41,6 +41,7 @@ type AppConfig struct {
 	HttpsPort           string
 	ClientIP            string
 	DomainName          string
+	BaseURL             string
 	InstagramAPIVersion string
 	OauthEncryptionKey  string
 	TokenEncryptionKey  []byte
@@ -100,6 +101,7 @@ func LoadConfig() (*AppConfig, error) {
 	} else {
 		baseURL = fmt.Sprintf("https://%s:%s", cfg.ClientIP, cfg.HttpsPort)
 	}
+	cfg.BaseURL = baseURL
 
 	wConfig := &webauthn.Config{
 		RPDisplayName: "RPSync",
@@ -175,10 +177,11 @@ func LoadDatabase() (*database.Queries, *sql.DB, error) {
 func CreateUserFromForm(dbQueries *database.Queries, userName string) (name, id string, e error) {
 
 	u, err := dbQueries.CreateUser(context.Background(), database.CreateUserParams{
-		ID:        uuid.New(),
-		Username:  userName,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
+		ID:         uuid.New(),
+		Username:   userName,
+		CreatedAt:  time.Now(),
+		UpdatedAt:  time.Now(),
+		SyncPeriod: "30m",
 	})
 
 	if err != nil {
