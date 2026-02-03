@@ -174,6 +174,10 @@ func main() {
 	authorized.POST("/settings/sync/start", h.StartWorkerHandler)
 	authorized.POST("/settings/sync/stop", h.StopWorkerHandler)
 
+	authorized.POST("/settings/user/update", h.UpdateUserProfileHandler)
+	authorized.POST("/settings/user/avatar/upload", h.UploadAvatarHandler)
+	authorized.POST("/settings/user/avatar/remove", h.RemoveAvatarHandler)
+
 	authorized.GET("/auth/facebook/login", h.FacebookLoginHandler)
 	authorized.GET("/auth/facebook/callback", h.FacebookCallbackHandler)
 	authorized.POST("/auth/facebook/refresh", h.FacebookRefreshTokenHandler)
@@ -188,6 +192,7 @@ func main() {
 
 	authorized.GET("/user/setup", h.UserSetupViewHandler)
 	authorized.POST("/user/setup", h.UserSetupHandler)
+	authorized.GET("/user/:id/avatar", h.AvatarHandler)
 	authorized.GET("/sources", h.SourcesHandler)
 	authorized.POST("/sources/setup", h.SourcesSetupHandler)
 	authorized.POST("/sources/deactivate", h.DeactivateSourceHandler)

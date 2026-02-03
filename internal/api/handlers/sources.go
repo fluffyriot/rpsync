@@ -16,7 +16,7 @@ import (
 
 func (h *Handler) SourcesHandler(c *gin.Context) {
 	if h.Config.DBInitErr != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(gin.H{
+		c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(c, gin.H{
 			"error": h.Config.DBInitErr.Error(),
 			"title": "Error",
 		}))
@@ -33,14 +33,14 @@ func (h *Handler) SourcesHandler(c *gin.Context) {
 
 	sources, err := h.DB.GetUserSources(ctx, user.ID)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(gin.H{
+		c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(c, gin.H{
 			"error": err.Error(),
 			"title": "Error",
 		}))
 		return
 	}
 
-	c.HTML(http.StatusOK, "sources.html", h.CommonData(gin.H{
+	c.HTML(http.StatusOK, "sources.html", h.CommonData(c, gin.H{
 		"username": user.Username,
 		"user_id":  user.ID,
 		"sources":  sources,
@@ -89,7 +89,7 @@ func (h *Handler) SourcesSetupHandler(c *gin.Context) {
 	appSecret := c.PostForm("app_secret")
 
 	if userID == "" || network == "" || username == "" {
-		c.HTML(http.StatusBadRequest, "error.html", h.CommonData(gin.H{
+		c.HTML(http.StatusBadRequest, "error.html", h.CommonData(c, gin.H{
 			"error": "All fields are required",
 			"title": "Error",
 		}))
@@ -113,7 +113,7 @@ func (h *Handler) SourcesSetupHandler(c *gin.Context) {
 		h.Config.TokenEncryptionKey,
 	)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(gin.H{
+		c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(c, gin.H{
 			"error": err.Error(),
 			"title": "Error",
 		}))
@@ -141,7 +141,7 @@ func (h *Handler) SourcesSetupHandler(c *gin.Context) {
 func (h *Handler) DeactivateSourceHandler(c *gin.Context) {
 	sourceID, err := uuid.Parse(c.PostForm("source_id"))
 	if err != nil {
-		c.HTML(http.StatusBadRequest, "error.html", h.CommonData(gin.H{
+		c.HTML(http.StatusBadRequest, "error.html", h.CommonData(c, gin.H{
 			"error": err.Error(),
 			"title": "Error",
 		}))
@@ -158,7 +158,7 @@ func (h *Handler) DeactivateSourceHandler(c *gin.Context) {
 		},
 	)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(gin.H{
+		c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(c, gin.H{
 			"error": err.Error(),
 			"title": "Error",
 		}))
@@ -171,7 +171,7 @@ func (h *Handler) DeactivateSourceHandler(c *gin.Context) {
 func (h *Handler) ActivateSourceHandler(c *gin.Context) {
 	sourceID, err := uuid.Parse(c.PostForm("source_id"))
 	if err != nil {
-		c.HTML(http.StatusBadRequest, "error.html", h.CommonData(gin.H{
+		c.HTML(http.StatusBadRequest, "error.html", h.CommonData(c, gin.H{
 			"error": err.Error(),
 			"title": "Error",
 		}))
@@ -188,7 +188,7 @@ func (h *Handler) ActivateSourceHandler(c *gin.Context) {
 		},
 	)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(gin.H{
+		c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(c, gin.H{
 			"error": err.Error(),
 			"title": "Error",
 		}))
@@ -201,7 +201,7 @@ func (h *Handler) ActivateSourceHandler(c *gin.Context) {
 func (h *Handler) DeleteSourceHandler(c *gin.Context) {
 	sourceID, err := uuid.Parse(c.PostForm("source_id"))
 	if err != nil {
-		c.HTML(http.StatusBadRequest, "error.html", h.CommonData(gin.H{
+		c.HTML(http.StatusBadRequest, "error.html", h.CommonData(c, gin.H{
 			"error": err.Error(),
 			"title": "Error",
 		}))
@@ -210,7 +210,7 @@ func (h *Handler) DeleteSourceHandler(c *gin.Context) {
 
 	syncedTargets, err := h.DB.GetSourcesOfTarget(context.Background(), sourceID)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(gin.H{
+		c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(c, gin.H{
 			"error": err.Error(),
 			"title": "Error",
 		}))
@@ -220,7 +220,7 @@ func (h *Handler) DeleteSourceHandler(c *gin.Context) {
 	for _, target := range syncedTargets {
 		err = pusher.RemoveByTarget(target.TargetID, sourceID, h.DB, h.Puller, h.Config.TokenEncryptionKey)
 		if err != nil {
-			c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(gin.H{
+			c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(c, gin.H{
 				"error": err.Error(),
 				"title": "Error",
 			}))
@@ -230,7 +230,7 @@ func (h *Handler) DeleteSourceHandler(c *gin.Context) {
 
 	err = h.DB.DeleteSource(context.Background(), sourceID)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(gin.H{
+		c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(c, gin.H{
 			"error": err.Error(),
 			"title": "Error",
 		}))
@@ -243,7 +243,7 @@ func (h *Handler) DeleteSourceHandler(c *gin.Context) {
 func (h *Handler) SyncSourceHandler(c *gin.Context) {
 	sourceID, err := uuid.Parse(c.PostForm("source_id"))
 	if err != nil {
-		c.HTML(http.StatusBadRequest, "error.html", h.CommonData(gin.H{
+		c.HTML(http.StatusBadRequest, "error.html", h.CommonData(c, gin.H{
 			"error": err.Error(),
 			"title": "Error",
 		}))
@@ -265,7 +265,7 @@ func (h *Handler) SyncSourceHandler(c *gin.Context) {
 func (h *Handler) HandleExportCookies(c *gin.Context) {
 	sourceID, err := uuid.Parse(c.Query("source_id"))
 	if err != nil {
-		c.HTML(http.StatusBadRequest, "error.html", h.CommonData(gin.H{
+		c.HTML(http.StatusBadRequest, "error.html", h.CommonData(c, gin.H{
 			"error": "Invalid source ID",
 			"title": "Error",
 		}))
@@ -274,7 +274,7 @@ func (h *Handler) HandleExportCookies(c *gin.Context) {
 
 	source, err := h.DB.GetSourceById(context.Background(), sourceID)
 	if err != nil {
-		c.HTML(http.StatusNotFound, "error.html", h.CommonData(gin.H{
+		c.HTML(http.StatusNotFound, "error.html", h.CommonData(c, gin.H{
 			"error": "Source not found",
 			"title": "Error",
 		}))
@@ -282,7 +282,7 @@ func (h *Handler) HandleExportCookies(c *gin.Context) {
 	}
 
 	if source.Network != "TikTok" {
-		c.HTML(http.StatusBadRequest, "error.html", h.CommonData(gin.H{
+		c.HTML(http.StatusBadRequest, "error.html", h.CommonData(c, gin.H{
 			"error": "Cookie export only supported for TikTok",
 			"title": "Error",
 		}))

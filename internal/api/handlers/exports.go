@@ -13,7 +13,7 @@ import (
 func (h *Handler) ExportsHandler(c *gin.Context) {
 
 	if h.Config.DBInitErr != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(gin.H{
+		c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(c, gin.H{
 			"error": h.Config.DBInitErr.Error(),
 			"title": "Error",
 		}))
@@ -30,13 +30,13 @@ func (h *Handler) ExportsHandler(c *gin.Context) {
 
 	exports, err := h.DB.GetLast20ExportsByUserId(ctx, user.ID)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(gin.H{
+		c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(c, gin.H{
 			"error": err.Error(),
 			"title": "Error",
 		}))
 		return
 	}
-	c.HTML(http.StatusOK, "exports.html", h.CommonData(gin.H{
+	c.HTML(http.StatusOK, "exports.html", h.CommonData(c, gin.H{
 		"username": user.Username,
 		"user_id":  user.ID,
 		"exports":  exports,
@@ -47,7 +47,7 @@ func (h *Handler) ExportsHandler(c *gin.Context) {
 func (h *Handler) ExportDeleteAllHandler(c *gin.Context) {
 	userId, err := uuid.Parse(c.PostForm("user_id"))
 	if err != nil {
-		c.HTML(http.StatusBadRequest, "error.html", h.CommonData(gin.H{
+		c.HTML(http.StatusBadRequest, "error.html", h.CommonData(c, gin.H{
 			"error": err.Error(),
 			"title": "Error",
 		}))

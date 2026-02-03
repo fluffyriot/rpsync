@@ -11,7 +11,7 @@ import (
 func (h *Handler) TikTokLoginHandler(c *gin.Context) {
 	username := c.Query("username")
 	if username == "" {
-		c.HTML(http.StatusBadRequest, "error.html", h.CommonData(gin.H{
+		c.HTML(http.StatusBadRequest, "error.html", h.CommonData(c, gin.H{
 			"error": "username is required",
 			"title": "Error",
 		}))
@@ -20,7 +20,7 @@ func (h *Handler) TikTokLoginHandler(c *gin.Context) {
 
 	qrCode, err := fetcher.GlobalTikTokManager.StartLoginSession(username)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(gin.H{
+		c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(c, gin.H{
 			"error": "Failed to start TikTok login session: " + err.Error(),
 			"title": "Error",
 		}))
@@ -29,7 +29,7 @@ func (h *Handler) TikTokLoginHandler(c *gin.Context) {
 
 	qrBase64 := base64.StdEncoding.EncodeToString(qrCode)
 
-	c.HTML(http.StatusOK, "tiktok_login.html", h.CommonData(gin.H{
+	c.HTML(http.StatusOK, "tiktok_login.html", h.CommonData(c, gin.H{
 		"Username": username,
 		"QRCode":   qrBase64,
 		"title":    "TikTok Login",

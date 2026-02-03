@@ -204,6 +204,7 @@ type User struct {
 	PasswordHash     sql.NullString
 	TotpSecret       sql.NullString
 	TotpEnabled      sql.NullBool
+	ProfileImage     sql.NullString
 }
 
 type WebauthnCredential struct {

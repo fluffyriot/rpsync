@@ -350,25 +350,6 @@
         networkSelect.addEventListener("change", updateVisibility);
     });
 
-    function toggleDropdown(id) {
-        document.querySelectorAll('.dropdown-content').forEach(d => {
-            if (d.id !== id) d.classList.add('hidden');
-        });
-
-        const dropdown = document.getElementById(id);
-        if (dropdown) {
-            dropdown.classList.toggle('hidden');
-        }
-    }
-
-    window.onclick = function (event) {
-        if (!event.target.closest('.dropdown')) {
-            document.querySelectorAll('.dropdown-content').forEach(d => {
-                d.classList.add('hidden');
-            });
-        }
-    }
-
     async function showDiscordChannels(sourceId) {
         try {
             const response = await fetch(`/sources/${sourceId}/channels`);

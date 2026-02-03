@@ -55,3 +55,23 @@ SELECT * FROM users WHERE id = $1;
 
 -- name: GetUserByUsername :one
 SELECT * FROM users WHERE username = $1;
+
+-- name: UpdateUserProfileImage :one
+UPDATE users
+SET
+    profile_image = $2,
+    updated_at = NOW()
+WHERE
+    id = $1
+RETURNING
+    *;
+
+-- name: UpdateUserUsername :one
+UPDATE users
+SET
+    username = $2,
+    updated_at = NOW()
+WHERE
+    id = $1
+RETURNING
+    *;

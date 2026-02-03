@@ -26,10 +26,8 @@
 
 <body>
 
-    <nav
-        style="background: var(--color-bg-surface); border-bottom: 1px solid var(--color-border); padding: 1rem 0; position: relative; z-index: 50;">
-        <div class="container"
-            style="padding-top: 0; padding-bottom: 0; display: flex; align-items: center; justify-content: space-between;">
+    <nav class="navbar">
+        <div class="container navbar-container">
             <a href="/" class="navbar-brand">
                 <img src="/static/images/logo.svg" alt="Logo" class="navbar-logo">
             </a>
@@ -39,22 +37,61 @@
                 <i data-lucide="menu"></i>
             </button>
 
-            <div class="nav-links" id="nav-links" style="display: flex; gap: 1.5rem;">
-                <a href="/" class="text-muted nav-link" style="text-decoration:none; font-weight: 500;">Dashboard</a>
-                <a href="/sources" class="text-muted nav-link"
-                    style="text-decoration:none; font-weight: 500;">Sources</a>
-                <a href="/targets" class="text-muted nav-link"
-                    style="text-decoration:none; font-weight: 500;">Targets</a>
-                <a href="/exports" class="text-muted nav-link"
-                    style="text-decoration:none; font-weight: 500;">Exports</a>
-                <a href="/settings/sync" class="text-muted nav-link"
-                    style="text-decoration:none; font-weight: 500;">Settings</a>
+            <div class="nav-links" id="nav-links">
+                <a href="/" class="text-muted nav-link navbar-link">Dashboard</a>
+                <a href="/sources" class="text-muted nav-link navbar-link">Sources</a>
+                <a href="/targets" class="text-muted nav-link navbar-link">Targets</a>
+                <a href="/exports" class="text-muted nav-link navbar-link">Exports</a>
+
+                <div class="dropdown" style="line-height: 0;">
+                    <button type="button" class="btn btn-ghost btn-icon" onclick="toggleDropdown('user-menu')"
+                        style="padding: 0; border: none;">
+                        {{ if .has_avatar }}
+                        <img src="/user/{{.user_id}}/avatar?v={{.avatar_version}}" class="profile-icon" alt="Profile">
+                        {{ else }}
+                        <div class="profile-icon profile-initial">{{ .username_initial }}</div>
+                        {{ end }}
+                    </button>
+                    <div id="user-menu" class="dropdown-content hidden">
+                        <div class="dropdown-user-block">
+                            <div class="dropdown-user-label">Current User:</div>
+                            <div class="dropdown-user-name">{{ .username }}</div>
+                        </div>
+                        <a href="/settings/sync" class="dropdown-item-right">
+                            <i data-lucide="settings"></i> Settings
+                        </a>
+                        <form method="POST" action="/logout" style="margin: 0;">
+                            <button type="submit" class="dropdown-item-right text-danger">
+                                <i data-lucide="log-out"></i> Logout
+                            </button>
+                        </form>
+                    </div>
+                </div>
             </div>
             {{ end }}
         </div>
     </nav>
 
     <script>
+        function toggleDropdown(id) {
+            document.querySelectorAll('.dropdown-content').forEach(d => {
+                if (d.id !== id) d.classList.add('hidden');
+            });
+
+            const dropdown = document.getElementById(id);
+            if (dropdown) {
+                dropdown.classList.toggle('hidden');
+            }
+        }
+
+        window.onclick = function (event) {
+            if (!event.target.closest('.dropdown')) {
+                document.querySelectorAll('.dropdown-content').forEach(d => {
+                    d.classList.add('hidden');
+                });
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', function () {
             const toggle = document.getElementById('menu-toggle');
             const links = document.getElementById('nav-links');

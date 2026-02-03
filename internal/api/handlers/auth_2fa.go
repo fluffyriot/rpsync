@@ -32,17 +32,17 @@ func (h *Handler) TwoFASetupViewHandler(c *gin.Context) {
 
 	key, err := authhelp.GenerateTOTP(username)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(gin.H{"error": "Failed to generate 2FA key"}))
+		c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(c, gin.H{"error": "Failed to generate 2FA key"}))
 		return
 	}
 
 	qrCode, err := authhelp.GenerateQRCode(key)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(gin.H{"error": "Failed to generate QR code"}))
+		c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(c, gin.H{"error": "Failed to generate QR code"}))
 		return
 	}
 
-	c.HTML(http.StatusOK, "setup-2fa.html", h.CommonData(gin.H{
+	c.HTML(http.StatusOK, "setup-2fa.html", h.CommonData(c, gin.H{
 		"title":        "Setup 2FA",
 		"qr_code":      qrCode,
 		"secret":       key.Secret(),
@@ -63,7 +63,7 @@ func (h *Handler) TwoFASetupSubmitHandler(c *gin.Context) {
 	code := c.PostForm("code")
 
 	if !authhelp.ValidateTOTP(code, secret) {
-		c.HTML(http.StatusOK, "error.html", h.CommonData(gin.H{"error": "Invalid code. Please try again.", "title": "Setup Failed", "is_auth_page": true}))
+		c.HTML(http.StatusOK, "error.html", h.CommonData(c, gin.H{"error": "Invalid code. Please try again.", "title": "Setup Failed", "is_auth_page": true}))
 		return
 	}
 
@@ -73,7 +73,7 @@ func (h *Handler) TwoFASetupSubmitHandler(c *gin.Context) {
 		TotpEnabled: sql.NullBool{Bool: true, Valid: true},
 	})
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(gin.H{"error": "Database error: " + err.Error(), "is_auth_page": true}))
+		c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(c, gin.H{"error": "Database error: " + err.Error(), "is_auth_page": true}))
 		return
 	}
 
@@ -88,7 +88,7 @@ func (h *Handler) TwoFALoginViewHandler(c *gin.Context) {
 		return
 	}
 
-	c.HTML(http.StatusOK, "login-2fa.html", h.CommonData(gin.H{
+	c.HTML(http.StatusOK, "login-2fa.html", h.CommonData(c, gin.H{
 		"title":        "Two-Factor Authentication",
 		"is_auth_page": true,
 	}))
@@ -122,7 +122,7 @@ func (h *Handler) TwoFALoginSubmitHandler(c *gin.Context) {
 	}
 
 	if !authhelp.ValidateTOTP(code, user.TotpSecret.String) {
-		c.HTML(http.StatusOK, "login-2fa.html", h.CommonData(gin.H{
+		c.HTML(http.StatusOK, "login-2fa.html", h.CommonData(c, gin.H{
 			"title":        "Two-Factor Authentication",
 			"error":        "Invalid code",
 			"is_auth_page": true,

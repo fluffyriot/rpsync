@@ -36,7 +36,7 @@ func NewHandler(db *database.Queries, dbConn *sql.DB, clientFetch *fetcher.Clien
 	}
 }
 
-func (h *Handler) CommonData(data gin.H) gin.H {
+func (h *Handler) CommonData(c *gin.Context, data gin.H) gin.H {
 	data["app_version"] = config.AppVersion
 	if h.Updater.IsUpdateAvailable() {
 		data["update_available"] = true
@@ -45,6 +45,23 @@ func (h *Handler) CommonData(data gin.H) gin.H {
 		data["update_url"] = info.Url
 		data["update_desc"] = info.ShortDescription
 	}
+
+	if val, exists := c.Get("username"); exists {
+		data["username"] = val
+	}
+	if val, exists := c.Get("user_id"); exists {
+		data["user_id"] = val
+	}
+	if val, exists := c.Get("has_avatar"); exists {
+		data["has_avatar"] = val
+	}
+	if val, exists := c.Get("username_initial"); exists {
+		data["username_initial"] = val
+	}
+	if val, exists := c.Get("avatar_version"); exists {
+		data["avatar_version"] = val
+	}
+
 	return data
 }
 

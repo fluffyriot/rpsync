@@ -10,7 +10,7 @@ import (
 )
 
 func (h *Handler) UserSetupViewHandler(c *gin.Context) {
-	c.HTML(http.StatusOK, "user-setup.html", h.CommonData(gin.H{
+	c.HTML(http.StatusOK, "user-setup.html", h.CommonData(c, gin.H{
 		"title": "Welcome - Setup Admin User",
 	}))
 }
@@ -18,7 +18,7 @@ func (h *Handler) UserSetupViewHandler(c *gin.Context) {
 func (h *Handler) UserSetupHandler(c *gin.Context) {
 	username := c.PostForm("username")
 	if username == "" {
-		c.HTML(http.StatusBadRequest, "error.html", h.CommonData(gin.H{
+		c.HTML(http.StatusBadRequest, "error.html", h.CommonData(c, gin.H{
 			"error": "username is required",
 			"title": "Error",
 		}))
@@ -27,7 +27,7 @@ func (h *Handler) UserSetupHandler(c *gin.Context) {
 
 	_, _, err := config.CreateUserFromForm(h.DB, username)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(gin.H{
+		c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(c, gin.H{
 			"error": err.Error(),
 			"title": "Error",
 		}))
@@ -52,7 +52,7 @@ func (h *Handler) SyncSettingsHandler(c *gin.Context) {
 	isWebauthnConfigured := h.Config.WebAuthn != nil
 	isPasskeySupported := isSecure && isWebauthnConfigured
 
-	c.HTML(http.StatusOK, "sync-settings.html", h.CommonData(gin.H{
+	c.HTML(http.StatusOK, "sync-settings.html", h.CommonData(c, gin.H{
 		"sync_period":            user.SyncPeriod,
 		"enabled_on_startup":     user.EnabledOnStartup,
 		"worker_running":         h.Worker.IsActive(),
@@ -71,7 +71,7 @@ func (h *Handler) UpdateSyncSettingsHandler(c *gin.Context) {
 
 	duration, err := time.ParseDuration(periodStr)
 	if err != nil {
-		c.HTML(http.StatusBadRequest, "error.html", h.CommonData(gin.H{
+		c.HTML(http.StatusBadRequest, "error.html", h.CommonData(c, gin.H{
 			"error": "Invalid duration format",
 			"title": "Error",
 		}))
@@ -90,7 +90,7 @@ func (h *Handler) UpdateSyncSettingsHandler(c *gin.Context) {
 		EnabledOnStartup: enabled,
 	})
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(gin.H{
+		c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(c, gin.H{
 			"error": err.Error(),
 			"title": "Error",
 		}))
@@ -119,7 +119,7 @@ func (h *Handler) ResetSyncSettingsHandler(c *gin.Context) {
 		EnabledOnStartup: true,
 	})
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(gin.H{
+		c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(c, gin.H{
 			"error": err.Error(),
 			"title": "Error",
 		}))

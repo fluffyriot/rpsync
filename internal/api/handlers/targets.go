@@ -16,7 +16,7 @@ import (
 func (h *Handler) TargetsHandler(c *gin.Context) {
 
 	if h.Config.DBInitErr != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(gin.H{
+		c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(c, gin.H{
 			"error": h.Config.DBInitErr.Error(),
 			"title": "Error",
 		}))
@@ -33,13 +33,13 @@ func (h *Handler) TargetsHandler(c *gin.Context) {
 
 	targets, err := h.DB.GetUserTargets(ctx, user.ID)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(gin.H{
+		c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(c, gin.H{
 			"error": err.Error(),
 			"title": "Error",
 		}))
 		return
 	}
-	c.HTML(http.StatusOK, "targets.html", h.CommonData(gin.H{
+	c.HTML(http.StatusOK, "targets.html", h.CommonData(c, gin.H{
 		"username": user.Username,
 		"user_id":  user.ID,
 		"targets":  targets,
@@ -56,7 +56,7 @@ func (h *Handler) TargetsSetupHandler(c *gin.Context) {
 	period := "PT30M"
 
 	if userID == "" || target == "" || period == "" {
-		c.HTML(http.StatusBadRequest, "error.html", h.CommonData(gin.H{
+		c.HTML(http.StatusBadRequest, "error.html", h.CommonData(c, gin.H{
 			"error": "All fields are required",
 			"title": "Error",
 		}))
@@ -74,7 +74,7 @@ func (h *Handler) TargetsSetupHandler(c *gin.Context) {
 		h.Config.TokenEncryptionKey,
 	)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(gin.H{
+		c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(c, gin.H{
 			"error": err.Error(),
 			"title": "Error",
 		}))
@@ -87,7 +87,7 @@ func (h *Handler) TargetsSetupHandler(c *gin.Context) {
 func (h *Handler) ActivateTargetHandler(c *gin.Context) {
 	targetID, err := uuid.Parse(c.PostForm("target_id"))
 	if err != nil {
-		c.HTML(http.StatusBadRequest, "error.html", h.CommonData(gin.H{
+		c.HTML(http.StatusBadRequest, "error.html", h.CommonData(c, gin.H{
 			"error": err.Error(),
 			"title": "Error",
 		}))
@@ -104,7 +104,7 @@ func (h *Handler) ActivateTargetHandler(c *gin.Context) {
 		},
 	)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(gin.H{
+		c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(c, gin.H{
 			"error": err.Error(),
 			"title": "Error",
 		}))
@@ -117,7 +117,7 @@ func (h *Handler) ActivateTargetHandler(c *gin.Context) {
 func (h *Handler) DeactivateTargetHandler(c *gin.Context) {
 	targetID, err := uuid.Parse(c.PostForm("target_id"))
 	if err != nil {
-		c.HTML(http.StatusBadRequest, "error.html", h.CommonData(gin.H{
+		c.HTML(http.StatusBadRequest, "error.html", h.CommonData(c, gin.H{
 			"error": err.Error(),
 			"title": "Error",
 		}))
@@ -134,7 +134,7 @@ func (h *Handler) DeactivateTargetHandler(c *gin.Context) {
 		},
 	)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(gin.H{
+		c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(c, gin.H{
 			"error": err.Error(),
 			"title": "Error",
 		}))
@@ -147,7 +147,7 @@ func (h *Handler) DeactivateTargetHandler(c *gin.Context) {
 func (h *Handler) DeleteTargetHandler(c *gin.Context) {
 	targetID, err := uuid.Parse(c.PostForm("target_id"))
 	if err != nil {
-		c.HTML(http.StatusBadRequest, "error.html", h.CommonData(gin.H{
+		c.HTML(http.StatusBadRequest, "error.html", h.CommonData(c, gin.H{
 			"error": err.Error(),
 			"title": "Error",
 		}))
@@ -156,7 +156,7 @@ func (h *Handler) DeleteTargetHandler(c *gin.Context) {
 
 	err = h.DB.DeleteTarget(context.Background(), targetID)
 	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(gin.H{
+		c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(c, gin.H{
 			"error": err.Error(),
 			"title": "Error",
 		}))
@@ -169,7 +169,7 @@ func (h *Handler) DeleteTargetHandler(c *gin.Context) {
 func (h *Handler) SyncTargetHandler(c *gin.Context) {
 	targetID, err := uuid.Parse(c.PostForm("target_id"))
 	if err != nil {
-		c.HTML(http.StatusBadRequest, "error.html", h.CommonData(gin.H{
+		c.HTML(http.StatusBadRequest, "error.html", h.CommonData(c, gin.H{
 			"error": err.Error(),
 			"title": "Error",
 		}))
