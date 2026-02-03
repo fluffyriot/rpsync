@@ -1,4 +1,4 @@
-package fetcher
+package sources
 
 import (
 	"context"
@@ -14,6 +14,7 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/fluffyriot/rpsync/internal/database"
+	"github.com/fluffyriot/rpsync/internal/fetcher/common"
 	"github.com/fluffyriot/rpsync/internal/helpers"
 	"github.com/google/uuid"
 )
@@ -39,9 +40,9 @@ func getMurrtubeString(dbQueries *database.Queries, uid uuid.UUID) (string, stri
 	return urlString, username.UserName, nil
 }
 
-func FetchMurrtubePosts(uid uuid.UUID, dbQueries *database.Queries, c *Client, sourceId uuid.UUID) error {
+func FetchMurrtubePosts(uid uuid.UUID, dbQueries *database.Queries, c *common.Client, sourceId uuid.UUID) error {
 
-	exclusionMap, err := loadExclusionMap(dbQueries, sourceId)
+	exclusionMap, err := common.LoadExclusionMap(dbQueries, sourceId)
 	if err != nil {
 		return err
 	}
@@ -65,7 +66,7 @@ func FetchMurrtubePosts(uid uuid.UUID, dbQueries *database.Queries, c *Client, s
 	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
 	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
 		return err
 	}
@@ -116,7 +117,7 @@ func FetchMurrtubePosts(uid uuid.UUID, dbQueries *database.Queries, c *Client, s
 		videoReq.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
 		videoReq.Header.Set("Accept-Language", "en-US,en;q=0.9")
 
-		videoResp, err := c.httpClient.Do(videoReq)
+		videoResp, err := c.HTTPClient.Do(videoReq)
 		if err != nil {
 			return
 		}
@@ -142,7 +143,7 @@ func FetchMurrtubePosts(uid uuid.UUID, dbQueries *database.Queries, c *Client, s
 			createdAt = time.Now()
 		}
 
-		postID, err := createOrUpdatePost(
+		postID, err := common.CreateOrUpdatePost(
 			context.Background(),
 			dbQueries,
 			sourceId,
@@ -184,14 +185,14 @@ func FetchMurrtubePosts(uid uuid.UUID, dbQueries *database.Queries, c *Client, s
 		return errors.New("No content found")
 	}
 
-	stats, err := calculateAverageStats(context.Background(), dbQueries, sourceId)
+	stats, err := common.CalculateAverageStats(context.Background(), dbQueries, sourceId)
 	if err != nil {
 		log.Printf("Murrtube: Failed to calculate stats for source %s: %v", sourceId, err)
 	} else {
 		stats.FollowersCount = followersCount
 		stats.FollowingCount = followingCount
 
-		if err := saveOrUpdateSourceStats(context.Background(), dbQueries, sourceId, stats); err != nil {
+		if err := common.SaveOrUpdateSourceStats(context.Background(), dbQueries, sourceId, stats); err != nil {
 			log.Printf("Murrtube: Failed to save stats for source %s: %v", sourceId, err)
 		}
 	}

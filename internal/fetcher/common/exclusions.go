@@ -1,4 +1,4 @@
-package fetcher
+package common
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func loadExclusionMap(dbQueries *database.Queries, sourceID uuid.UUID) (map[string]bool, error) {
+func LoadExclusionMap(dbQueries *database.Queries, sourceID uuid.UUID) (map[string]bool, error) {
 	exclusions, err := dbQueries.GetExclusionsForSource(context.Background(), sourceID)
 	if err != nil {
 		return nil, err

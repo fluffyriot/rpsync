@@ -1,4 +1,4 @@
-package fetcher
+package sources
 
 import (
 	"context"
@@ -12,6 +12,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/fluffyriot/rpsync/internal/authhelp"
 	"github.com/fluffyriot/rpsync/internal/database"
+	"github.com/fluffyriot/rpsync/internal/fetcher/common"
 	"github.com/google/uuid"
 )
 
@@ -91,7 +92,7 @@ func handleChannelChanges(
 	return nil
 }
 
-func FetchDiscordPosts(dbQueries *database.Queries, encryptionKey []byte, sourceId uuid.UUID, c *Client) error {
+func FetchDiscordPosts(dbQueries *database.Queries, encryptionKey []byte, sourceId uuid.UUID, c *common.Client) error {
 	ctx := context.Background()
 
 	botToken, serverID, channelIDs, err := getDiscordDetails(ctx, dbQueries, encryptionKey, sourceId)
@@ -109,7 +110,7 @@ func FetchDiscordPosts(dbQueries *database.Queries, encryptionKey []byte, source
 		log.Printf("Discord: Failed to handle channel changes: %v", err)
 	}
 
-	exclusionMap, err := loadExclusionMap(dbQueries, sourceId)
+	exclusionMap, err := common.LoadExclusionMap(dbQueries, sourceId)
 	if err != nil {
 		return err
 	}
@@ -205,7 +206,7 @@ func FetchDiscordPosts(dbQueries *database.Queries, encryptionKey []byte, source
 					totalReactions += reaction.Count
 				}
 
-				postID, err := createOrUpdatePost(
+				postID, err := common.CreateOrUpdatePost(
 					ctx,
 					dbQueries,
 					sourceId,
@@ -249,13 +250,13 @@ func FetchDiscordPosts(dbQueries *database.Queries, encryptionKey []byte, source
 
 	log.Printf("Discord: Total items processed: %d", len(processedMessages))
 
-	stats, err := calculateAverageStats(ctx, dbQueries, sourceId)
+	stats, err := common.CalculateAverageStats(context.Background(), dbQueries, sourceId)
 	if err != nil {
 		log.Printf("Discord: Failed to calculate stats: %v", err)
 	} else {
 		stats.FollowersCount = memberCount
 
-		if err := saveOrUpdateSourceStats(ctx, dbQueries, sourceId, stats); err != nil {
+		if err := common.SaveOrUpdateSourceStats(context.Background(), dbQueries, sourceId, stats); err != nil {
 			log.Printf("Discord: Failed to save stats: %v", err)
 		}
 	}
@@ -300,7 +301,7 @@ func processForumThread(
 		authorName = owner.Username
 	}
 
-	postID, err := createOrUpdatePost(
+	postID, err := common.CreateOrUpdatePost(
 		ctx,
 		dbQueries,
 		sourceId,

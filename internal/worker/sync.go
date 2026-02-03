@@ -12,6 +12,7 @@ import (
 	"github.com/fluffyriot/rpsync/internal/config"
 	"github.com/fluffyriot/rpsync/internal/database"
 	"github.com/fluffyriot/rpsync/internal/fetcher"
+	fetcher_common "github.com/fluffyriot/rpsync/internal/fetcher/common"
 	"github.com/fluffyriot/rpsync/internal/pusher"
 	"github.com/fluffyriot/rpsync/internal/pusher/common"
 	"github.com/google/uuid"
@@ -35,7 +36,7 @@ func backoffWithJitter(attempt int) time.Duration {
 	return jitter
 }
 
-func SyncUser(ctx context.Context, userID uuid.UUID, db *database.Queries, f *fetcher.Client, p *common.Client, cfg *config.AppConfig) {
+func SyncUser(ctx context.Context, userID uuid.UUID, db *database.Queries, f *fetcher_common.Client, p *common.Client, cfg *config.AppConfig) {
 	var (
 		sourceWG    sync.WaitGroup
 		targetWG    sync.WaitGroup
@@ -96,12 +97,12 @@ func SyncUser(ctx context.Context, userID uuid.UUID, db *database.Queries, f *fe
 	)
 }
 
-func RunSyncSource(sid uuid.UUID, db *database.Queries, f *fetcher.Client, cfg *config.AppConfig) {
+func RunSyncSource(sid uuid.UUID, db *database.Queries, f *fetcher_common.Client, cfg *config.AppConfig) {
 	log.Printf("Worker: Starting manual sync for source %s", sid)
 	syncSourceInternal(sid, db, f, cfg)
 }
 
-func syncSourceInternal(sid uuid.UUID, db *database.Queries, f *fetcher.Client, cfg *config.AppConfig) {
+func syncSourceInternal(sid uuid.UUID, db *database.Queries, f *fetcher_common.Client, cfg *config.AppConfig) {
 	const maxRetries = 5
 
 	for attempt := 0; attempt <= maxRetries; attempt++ {

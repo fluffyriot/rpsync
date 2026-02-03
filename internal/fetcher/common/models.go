@@ -1,15 +1,10 @@
-package fetcher
+package common
 
 import (
-	"net/http"
 	"time"
 
 	"github.com/google/uuid"
 )
-
-type Client struct {
-	httpClient http.Client
-}
 
 type Media struct {
 	internalId uuid.UUID

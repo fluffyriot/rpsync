@@ -3,14 +3,14 @@ package pusher
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"log"
 	"time"
 
 	"github.com/fluffyriot/rpsync/internal/database"
 	"github.com/fluffyriot/rpsync/internal/exports"
 	"github.com/fluffyriot/rpsync/internal/pusher/common"
-	"github.com/fluffyriot/rpsync/internal/pusher/noco"
+	"github.com/fluffyriot/rpsync/internal/pusher/targets"
+	"github.com/fluffyriot/rpsync/internal/pusher/targets/noco"
 	"github.com/google/uuid"
 )
 
@@ -53,7 +53,7 @@ func PullByTarget(tid uuid.UUID, dbQueries *database.Queries, c *common.Client, 
 
 	switch target.TargetType {
 
-	case "NocoDB", "Notion":
+	case "NocoDB":
 
 		export, err := exports.CreateLogAutoExport(target.UserID, dbQueries, target.TargetType, target.ID)
 		if err != nil {
@@ -70,7 +70,7 @@ func PullByTarget(tid uuid.UUID, dbQueries *database.Queries, c *common.Client, 
 
 	case "CSV":
 
-		hasPosts, err := HasPosts(dbQueries, target.UserID)
+		hasPosts, err := targets.HasPosts(dbQueries, target.UserID)
 		if err != nil {
 			finalErr = err
 		} else if hasPosts {
@@ -78,7 +78,7 @@ func PullByTarget(tid uuid.UUID, dbQueries *database.Queries, c *common.Client, 
 			if err != nil {
 				log.Println("Error creating posts export log:", err)
 			} else {
-				filename, err := GeneratePostsCsv(dbQueries, target, exportPosts)
+				filename, err := targets.GeneratePostsCsv(dbQueries, target, exportPosts)
 				if err != nil {
 					exports.UpdateLogAutoExport(exportPosts, dbQueries, "Failed", err.Error(), filename)
 					finalErr = err
@@ -88,7 +88,7 @@ func PullByTarget(tid uuid.UUID, dbQueries *database.Queries, c *common.Client, 
 			}
 		}
 
-		hasAnalytics, err := HasAnalytics(dbQueries, target.UserID)
+		hasAnalytics, err := targets.HasAnalytics(dbQueries, target.UserID)
 		if err != nil {
 			if finalErr == nil {
 				finalErr = err
@@ -98,7 +98,7 @@ func PullByTarget(tid uuid.UUID, dbQueries *database.Queries, c *common.Client, 
 			if err != nil {
 				log.Println("Error creating website export log:", err)
 			} else {
-				filename, err := GenerateWebsiteCsv(dbQueries, target, exportWeb)
+				filename, err := targets.GenerateWebsiteCsv(dbQueries, target, exportWeb)
 				if err != nil {
 					exports.UpdateLogAutoExport(exportWeb, dbQueries, "Failed", err.Error(), filename)
 					if finalErr == nil {
@@ -113,7 +113,7 @@ func PullByTarget(tid uuid.UUID, dbQueries *database.Queries, c *common.Client, 
 			if err != nil {
 				log.Println("Error creating website pages export log:", err)
 			} else {
-				filename, err := GeneratePageViewsCsv(dbQueries, target, exportPages)
+				filename, err := targets.GeneratePageViewsCsv(dbQueries, target, exportPages)
 				if err != nil {
 					exports.UpdateLogAutoExport(exportPages, dbQueries, "Failed", err.Error(), filename)
 					if finalErr == nil {
@@ -156,10 +156,6 @@ func PullByTarget(tid uuid.UUID, dbQueries *database.Queries, c *common.Client, 
 
 func startDbSync(dbQueries *database.Queries, c *common.Client, encryptionKey []byte, target database.Target) error {
 
-	if target.TargetType == "Notion" {
-		return fmt.Errorf("not implemented yet")
-	}
-
 	_, err := dbQueries.GetTableMappingsByTargetAndName(context.Background(), database.GetTableMappingsByTargetAndNameParams{
 		TargetID:        target.ID,
 		TargetTableName: "Analytics_Page_Stats",
@@ -177,7 +173,7 @@ func startDbSync(dbQueries *database.Queries, c *common.Client, encryptionKey []
 }
 
 func startDbRemoval(dbQueries *database.Queries, c *common.Client, targetId uuid.UUID, encryptionKey []byte, target database.Target, source database.Source) error {
-	if target.TargetType == "Notion" || target.TargetType == "CSV" {
+	if target.TargetType == "CSV" {
 		return nil
 	}
 

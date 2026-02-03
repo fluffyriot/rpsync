@@ -8,14 +8,14 @@ import (
 
 	"github.com/fluffyriot/rpsync/internal/config"
 	"github.com/fluffyriot/rpsync/internal/database"
-	"github.com/fluffyriot/rpsync/internal/fetcher"
+	fetcher_common "github.com/fluffyriot/rpsync/internal/fetcher/common"
 	"github.com/fluffyriot/rpsync/internal/pusher/common"
 	"github.com/google/uuid"
 )
 
 type Worker struct {
 	DB               *database.Queries
-	Fetcher          *fetcher.Client
+	Fetcher          *fetcher_common.Client
 	Puller           *common.Client
 	Config           *config.AppConfig
 	StopChan         chan bool
@@ -24,7 +24,7 @@ type Worker struct {
 	activeManualSync bool
 }
 
-func NewWorker(db *database.Queries, fetcher *fetcher.Client, puller *common.Client, cfg *config.AppConfig) *Worker {
+func NewWorker(db *database.Queries, fetcher *fetcher_common.Client, puller *common.Client, cfg *config.AppConfig) *Worker {
 	return &Worker{
 		DB:       db,
 		Fetcher:  fetcher,

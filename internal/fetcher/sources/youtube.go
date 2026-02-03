@@ -1,4 +1,4 @@
-package fetcher
+package sources
 
 import (
 	"context"
@@ -10,21 +10,22 @@ import (
 
 	"github.com/fluffyriot/rpsync/internal/authhelp"
 	"github.com/fluffyriot/rpsync/internal/database"
+	"github.com/fluffyriot/rpsync/internal/fetcher/common"
 	"github.com/google/uuid"
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/option"
 	"google.golang.org/api/youtube/v3"
 )
 
-func FetchYouTubePosts(dbQueries *database.Queries, sourceID uuid.UUID, encryptionKey []byte) error {
+func FetchYouTubePosts(dbQueries *database.Queries, sourceId uuid.UUID, encryptionKey []byte) error {
 	ctx := context.Background()
 
-	source, err := dbQueries.GetSourceById(ctx, sourceID)
+	source, err := dbQueries.GetSourceById(ctx, sourceId)
 	if err != nil {
 		return fmt.Errorf("failed to get source: %w", err)
 	}
 
-	token, _, _, _, err := authhelp.GetSourceToken(ctx, dbQueries, encryptionKey, sourceID)
+	token, _, _, _, err := authhelp.GetSourceToken(ctx, dbQueries, encryptionKey, sourceId)
 	if err != nil {
 		return fmt.Errorf("failed to get source token: %w", err)
 	}
@@ -64,15 +65,17 @@ func FetchYouTubePosts(dbQueries *database.Queries, sourceID uuid.UUID, encrypti
 	if channel.Statistics != nil {
 		parsedCount := int(channel.Statistics.SubscriberCount)
 
-		currentStats, _ := calculateAverageStats(ctx, dbQueries, sourceID)
+		currentStats, _ := common.CalculateAverageStats(context.Background(), dbQueries, sourceId)
 		if currentStats == nil {
-			currentStats = &ProfileStats{}
+			currentStats = &common.ProfileStats{}
 		}
 		currentStats.FollowersCount = &parsedCount
-		saveOrUpdateSourceStats(ctx, dbQueries, sourceID, currentStats)
+		if err := common.SaveOrUpdateSourceStats(context.Background(), dbQueries, sourceId, currentStats); err != nil {
+			log.Printf("Failed to save/update source stats: %v", err)
+		}
 	}
 
-	exclusionMap, _ := loadExclusionMap(dbQueries, sourceID)
+	exclusionMap, _ := common.LoadExclusionMap(dbQueries, sourceId)
 
 	nextPageToken := ""
 	for {
@@ -103,10 +106,10 @@ func FetchYouTubePosts(dbQueries *database.Queries, sourceID uuid.UUID, encrypti
 
 			content := fmt.Sprintf("%s\n\n%s", item.Snippet.Title, item.Snippet.Description)
 
-			postID, err := createOrUpdatePost(
+			postID, err := common.CreateOrUpdatePost(
 				ctx,
 				dbQueries,
-				sourceID,
+				sourceId,
 				videoId,
 				"YouTube",
 				pubAt,

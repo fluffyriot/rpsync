@@ -1,4 +1,4 @@
-package fetcher
+package sources
 
 import (
 	"context"
@@ -14,6 +14,7 @@ import (
 
 	"github.com/fluffyriot/rpsync/internal/authhelp"
 	"github.com/fluffyriot/rpsync/internal/database"
+	"github.com/fluffyriot/rpsync/internal/fetcher/common"
 	"github.com/google/uuid"
 
 	_ "github.com/lib/pq"
@@ -95,7 +96,7 @@ func getInstagramTagstring(dbQueries *database.Queries, sid uuid.UUID, next stri
 
 }
 
-func fetchInstagramProfile(token, pid, version string, c *Client) (*instagramProfile, error) {
+func fetchInstagramProfile(token, pid, version string, c *common.Client) (*instagramProfile, error) {
 	url := fmt.Sprintf("https://graph.facebook.com/%s/%s?fields=follows_count,followers_count&access_token=%s", version, pid, token)
 
 	req, err := http.NewRequest("GET", url, nil)
@@ -103,7 +104,7 @@ func fetchInstagramProfile(token, pid, version string, c *Client) (*instagramPro
 		return nil, err
 	}
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -126,9 +127,9 @@ func fetchInstagramProfile(token, pid, version string, c *Client) (*instagramPro
 	return &profile, nil
 }
 
-func FetchInstagramPosts(dbQueries *database.Queries, c *Client, sourceId uuid.UUID, version string, encryptionKey []byte) error {
+func FetchInstagramPosts(dbQueries *database.Queries, c *common.Client, sourceId uuid.UUID, version string, encryptionKey []byte) error {
 
-	exclusionMap, err := loadExclusionMap(dbQueries, sourceId)
+	exclusionMap, err := common.LoadExclusionMap(dbQueries, sourceId)
 	if err != nil {
 		return err
 	}
@@ -153,7 +154,7 @@ func FetchInstagramPosts(dbQueries *database.Queries, c *Client, sourceId uuid.U
 			return err
 		}
 
-		resp, err := c.httpClient.Do(req)
+		resp, err := c.HTTPClient.Do(req)
 		if err != nil {
 			return err
 		}
@@ -196,7 +197,7 @@ func FetchInstagramPosts(dbQueries *database.Queries, c *Client, sourceId uuid.U
 				post_type = "image"
 			}
 
-			postID, err := createOrUpdatePost(
+			postID, err := common.CreateOrUpdatePost(
 				context.Background(),
 				dbQueries,
 				sourceId,
@@ -257,7 +258,7 @@ func FetchInstagramPosts(dbQueries *database.Queries, c *Client, sourceId uuid.U
 		return errors.New("No content found")
 	}
 
-	stats, err := calculateAverageStats(context.Background(), dbQueries, sourceId)
+	stats, err := common.CalculateAverageStats(context.Background(), dbQueries, sourceId)
 	if err != nil {
 		log.Printf("Instagram: Failed to calculate stats for source %s: %v", sourceId, err)
 	} else {
@@ -270,7 +271,7 @@ func FetchInstagramPosts(dbQueries *database.Queries, c *Client, sourceId uuid.U
 			stats.FollowingCount = &profile.FollowsCount
 		}
 
-		if err := saveOrUpdateSourceStats(context.Background(), dbQueries, sourceId, stats); err != nil {
+		if err := common.SaveOrUpdateSourceStats(context.Background(), dbQueries, sourceId, stats); err != nil {
 			log.Printf("Instagram: Failed to save stats for source %s: %v", sourceId, err)
 		}
 	}
@@ -279,9 +280,9 @@ func FetchInstagramPosts(dbQueries *database.Queries, c *Client, sourceId uuid.U
 
 }
 
-func FetchInstagramTags(dbQueries *database.Queries, c *Client, sourceId uuid.UUID, version string, encryptionKey []byte) error {
+func FetchInstagramTags(dbQueries *database.Queries, c *common.Client, sourceId uuid.UUID, version string, encryptionKey []byte) error {
 
-	exclusionMap, err := loadExclusionMap(dbQueries, sourceId)
+	exclusionMap, err := common.LoadExclusionMap(dbQueries, sourceId)
 	if err != nil {
 		return err
 	}
@@ -304,7 +305,7 @@ func FetchInstagramTags(dbQueries *database.Queries, c *Client, sourceId uuid.UU
 			return err
 		}
 
-		resp, err := c.httpClient.Do(req)
+		resp, err := c.HTTPClient.Do(req)
 		if err != nil {
 			return err
 		}
@@ -345,7 +346,7 @@ func FetchInstagramTags(dbQueries *database.Queries, c *Client, sourceId uuid.UU
 
 			timeParse, _ := time.Parse("2006-01-02T15:04:05-0700", item.Timestamp)
 
-			postID, err := createOrUpdatePost(
+			postID, err := common.CreateOrUpdatePost(
 				context.Background(),
 				dbQueries,
 				sourceId,

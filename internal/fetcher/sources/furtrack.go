@@ -1,4 +1,4 @@
-package fetcher
+package sources
 
 import (
 	"context"
@@ -15,6 +15,7 @@ import (
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/chromedp"
 	"github.com/fluffyriot/rpsync/internal/database"
+	"github.com/fluffyriot/rpsync/internal/fetcher/common"
 	"github.com/google/uuid"
 )
 
@@ -50,11 +51,16 @@ type FurTrackPost struct {
 	CL            int    `json:"cl"`
 }
 
-func FetchFurTrackPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, sourceId uuid.UUID) error {
+func FetchFurTrackPosts(dbQueries *database.Queries, c *common.Client, uid uuid.UUID, sourceId uuid.UUID) error {
 
 	source, err := dbQueries.GetSourceById(context.Background(), sourceId)
 	if err != nil {
 		return fmt.Errorf("failed to get source: %w", err)
+	}
+
+	exclusionMap, err := common.LoadExclusionMap(dbQueries, sourceId)
+	if err != nil {
+		return err
 	}
 
 	username := source.UserName
@@ -130,6 +136,10 @@ func FetchFurTrackPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, s
 		}
 		processedAlbums[networkID] = struct{}{}
 
+		if exclusionMap[networkID] {
+			continue
+		}
+
 		albumURL := fmt.Sprintf("https://www.furtrack.com/user/%s/album-%d", username, album.AlbumID)
 		log.Printf("FurTrack: Syncing Album %s (%d)", album.AlbumTitle, album.AlbumID)
 
@@ -182,7 +192,7 @@ func FetchFurTrackPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, s
 			totalLikes += (post.CV - 1 + post.CL)
 		}
 
-		postID, err := createOrUpdatePost(
+		postID, err := common.CreateOrUpdatePost(
 			context.Background(),
 			dbQueries,
 			sourceId,
@@ -224,11 +234,11 @@ func FetchFurTrackPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, s
 		return fmt.Errorf("FurTrack: No albums found")
 	}
 
-	stats, err := calculateAverageStats(context.Background(), dbQueries, sourceId)
+	stats, err := common.CalculateAverageStats(context.Background(), dbQueries, sourceId)
 	if err != nil {
 		log.Printf("FurTrack: Failed to calculate stats for source %s: %v", sourceId, err)
 	} else {
-		if err := saveOrUpdateSourceStats(context.Background(), dbQueries, sourceId, stats); err != nil {
+		if err := common.SaveOrUpdateSourceStats(context.Background(), dbQueries, sourceId, stats); err != nil {
 			log.Printf("FurTrack: Failed to save stats for source %s: %v", sourceId, err)
 		}
 	}

@@ -1,4 +1,4 @@
-package fetcher
+package sources
 
 import (
 	"context"
@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/fluffyriot/rpsync/internal/database"
+	"github.com/fluffyriot/rpsync/internal/fetcher/common"
 	"github.com/google/uuid"
 
 	_ "github.com/lib/pq"
@@ -85,7 +86,7 @@ func getBskyApiString(dbQueries *database.Queries, uid uuid.UUID, cursor string)
 
 }
 
-func fetchBlueskyProfile(username string, c *Client) (*bskyProfile, error) {
+func fetchBlueskyProfile(username string, c *common.Client) (*bskyProfile, error) {
 
 	url := fmt.Sprintf("https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=%s", username)
 
@@ -94,7 +95,7 @@ func fetchBlueskyProfile(username string, c *Client) (*bskyProfile, error) {
 		return nil, err
 	}
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -117,9 +118,9 @@ func fetchBlueskyProfile(username string, c *Client) (*bskyProfile, error) {
 	return &profile, nil
 }
 
-func FetchBlueskyPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, sourceId uuid.UUID) error {
+func FetchBlueskyPosts(dbQueries *database.Queries, c *common.Client, uid uuid.UUID, sourceId uuid.UUID) error {
 
-	exclusionMap, err := loadExclusionMap(dbQueries, sourceId)
+	exclusionMap, err := common.LoadExclusionMap(dbQueries, sourceId)
 	if err != nil {
 		return err
 	}
@@ -144,7 +145,7 @@ func FetchBlueskyPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, so
 			return err
 		}
 
-		resp, err := c.httpClient.Do(req)
+		resp, err := c.HTTPClient.Do(req)
 		if err != nil {
 			return err
 		}
@@ -189,7 +190,7 @@ func FetchBlueskyPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, so
 				post_type = "repost"
 			}
 
-			postID, err := createOrUpdatePost(
+			postID, err := common.CreateOrUpdatePost(
 				context.Background(),
 				dbQueries,
 				sourceId,
@@ -234,7 +235,7 @@ func FetchBlueskyPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, so
 		return errors.New("No content found")
 	}
 
-	stats, err := calculateAverageStats(context.Background(), dbQueries, sourceId)
+	stats, err := common.CalculateAverageStats(context.Background(), dbQueries, sourceId)
 	if err != nil {
 		log.Printf("Bluesky: Failed to calculate stats for source %s: %v", sourceId, err)
 	} else {
@@ -247,7 +248,7 @@ func FetchBlueskyPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, so
 			stats.FollowingCount = &profile.FollowsCount
 		}
 
-		if err := saveOrUpdateSourceStats(context.Background(), dbQueries, sourceId, stats); err != nil {
+		if err := common.SaveOrUpdateSourceStats(context.Background(), dbQueries, sourceId, stats); err != nil {
 			log.Printf("Bluesky: Failed to save stats for source %s: %v", sourceId, err)
 		}
 	}

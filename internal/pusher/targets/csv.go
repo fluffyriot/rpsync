@@ -1,4 +1,4 @@
-package pusher
+package targets
 
 import (
 	"context"

@@ -1,4 +1,4 @@
-package fetcher
+package sources
 
 import (
 	"context"
@@ -14,6 +14,7 @@ import (
 
 	"github.com/fluffyriot/rpsync/internal/authhelp"
 	"github.com/fluffyriot/rpsync/internal/database"
+	"github.com/fluffyriot/rpsync/internal/fetcher/common"
 	"github.com/fluffyriot/rpsync/internal/helpers"
 	"github.com/google/uuid"
 	"github.com/gotd/td/session"
@@ -68,15 +69,15 @@ func botAuth(ctx context.Context, client *telegram.Client, botToken string, maxR
 	return fmt.Errorf("bot auth failed after %d retries", maxRetries)
 }
 
-func FetchTelegramPosts(dbQueries *database.Queries, encryptionKey []byte, sid uuid.UUID, c *Client) error {
+func FetchTelegramPosts(dbQueries *database.Queries, encryptionKey []byte, sourceId uuid.UUID, c *common.Client) error {
 	ctx := context.Background()
 
-	botToken, channelUsername, appID, appHash, err := getTgDetails(ctx, dbQueries, encryptionKey, sid)
+	botToken, channelUsername, appID, appHash, err := getTgDetails(ctx, dbQueries, encryptionKey, sourceId)
 	if err != nil {
 		return err
 	}
 
-	sessionFile := fmt.Sprintf("outputs/telegram_session_%s.json", sid.String())
+	sessionFile := fmt.Sprintf("outputs/telegram_session_%s.json", sourceId.String())
 	sess := &session.FileStorage{Path: sessionFile}
 
 	client := telegram.NewClient(appID, appHash, telegram.Options{
@@ -85,7 +86,7 @@ func FetchTelegramPosts(dbQueries *database.Queries, encryptionKey []byte, sid u
 
 	return client.Run(ctx, func(ctx context.Context) error {
 
-		exclusionMap, err := loadExclusionMap(dbQueries, sid)
+		exclusionMap, err := common.LoadExclusionMap(dbQueries, sourceId)
 		if err != nil {
 			return err
 		}
@@ -194,10 +195,10 @@ func FetchTelegramPosts(dbQueries *database.Queries, encryptionKey []byte, sid u
 
 					msgTime := time.Unix(int64(msg.Date), 0).UTC()
 
-					postID, err := createOrUpdatePost(
+					postID, err := common.CreateOrUpdatePost(
 						ctx,
 						dbQueries,
-						sid,
+						sourceId,
 						fmt.Sprintf("%d", msg.ID),
 						"Telegram",
 						msgTime,
@@ -245,14 +246,14 @@ func FetchTelegramPosts(dbQueries *database.Queries, encryptionKey []byte, sid u
 			return fmt.Errorf("no new messages found")
 		}
 
-		stats, err := calculateAverageStats(ctx, dbQueries, sid)
+		stats, err := common.CalculateAverageStats(context.Background(), dbQueries, sourceId)
 		if err != nil {
-			log.Printf("Telegram: Failed to calculate stats for source %s: %v", sid, err)
+			log.Printf("Telegram: Failed to calculate stats for source %s: %v", sourceId, err)
 		} else {
 			stats.FollowersCount = participantCount
 
-			if err := saveOrUpdateSourceStats(ctx, dbQueries, sid, stats); err != nil {
-				log.Printf("Telegram: Failed to save stats for source %s: %v", sid, err)
+			if err := common.SaveOrUpdateSourceStats(context.Background(), dbQueries, sourceId, stats); err != nil {
+				log.Printf("Telegram: Failed to save stats for source %s: %v", sourceId, err)
 			}
 		}
 
@@ -260,7 +261,7 @@ func FetchTelegramPosts(dbQueries *database.Queries, encryptionKey []byte, sid u
 	})
 }
 
-func FetchTelegramWebStats(channel string, messageID int, c *Client) (int, error) {
+func FetchTelegramWebStats(channel string, messageID int, c *common.Client) (int, error) {
 	url := fmt.Sprintf("https://t.me/%s/%d?embed=1&mode=tme", channel, messageID)
 
 	likes := 0
@@ -277,7 +278,7 @@ func FetchTelegramWebStats(channel string, messageID int, c *Client) (int, error
 	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
 	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
 		return likes, err
 	}

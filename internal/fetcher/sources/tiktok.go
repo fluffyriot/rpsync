@@ -1,4 +1,4 @@
-package fetcher
+package sources
 
 import (
 	"context"
@@ -17,6 +17,7 @@ import (
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/chromedp"
 	"github.com/fluffyriot/rpsync/internal/database"
+	"github.com/fluffyriot/rpsync/internal/fetcher/common"
 	"github.com/google/uuid"
 )
 
@@ -244,9 +245,9 @@ type ScrapedPost struct {
 	IsScraped bool   `json:"is_scraped"`
 }
 
-func FetchTikTokPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, sourceId uuid.UUID) error {
+func FetchTikTokPosts(dbQueries *database.Queries, c *common.Client, uid uuid.UUID, sourceId uuid.UUID) error {
 
-	exclusionMap, err := loadExclusionMap(dbQueries, sourceId)
+	exclusionMap, err := common.LoadExclusionMap(dbQueries, sourceId)
 	if err != nil {
 		return err
 	}
@@ -458,7 +459,7 @@ func FetchTikTokPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, sou
 		content := item.Desc
 		postType := item.Type
 
-		postId, err := createOrUpdatePost(
+		postID, err := common.CreateOrUpdatePost(
 			context.Background(),
 			dbQueries,
 			sourceId,
@@ -480,7 +481,7 @@ func FetchTikTokPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, sou
 		_, err = dbQueries.SyncReactions(context.Background(), database.SyncReactionsParams{
 			ID:       uuid.New(),
 			SyncedAt: time.Now(),
-			PostID:   postId,
+			PostID:   postID,
 			Views:    sql.NullInt32{Int32: int32(viewsCount), Valid: viewsCount > 0},
 			Likes:    sql.NullInt32{Int32: int32(likesCount), Valid: likesCount >= 0},
 			Reposts:  sql.NullInt32{Int32: int32(0), Valid: false},
@@ -523,14 +524,14 @@ func FetchTikTokPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, sou
 		log.Printf("TikTok: Failed to scrape follower count: %v", err)
 	}
 
-	stats, err := calculateAverageStats(context.Background(), dbQueries, sourceId)
+	stats, err := common.CalculateAverageStats(context.Background(), dbQueries, sourceId)
 	if err != nil {
 		log.Printf("TikTok: Failed to calculate stats for source %s: %v", sourceId, err)
 	} else {
 
 		stats.FollowersCount = followersCount
 
-		if err := saveOrUpdateSourceStats(context.Background(), dbQueries, sourceId, stats); err != nil {
+		if err := common.SaveOrUpdateSourceStats(context.Background(), dbQueries, sourceId, stats); err != nil {
 			log.Printf("TikTok: Failed to save stats for source %s: %v", sourceId, err)
 		}
 	}

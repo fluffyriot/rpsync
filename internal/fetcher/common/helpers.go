@@ -1,4 +1,4 @@
-package fetcher
+package common
 
 import (
 	"context"
@@ -13,7 +13,7 @@ import (
 	"golang.org/x/net/html"
 )
 
-func stripHTMLToText(input string) string {
+func StripHTMLToText(input string) string {
 	doc, err := html.Parse(strings.NewReader(input))
 	if err != nil {
 		return ""
@@ -43,7 +43,7 @@ func stripHTMLToText(input string) string {
 	return strings.Join(strings.Fields(html.UnescapeString(b.String())), " ")
 }
 
-func saveOrUpdateSourceStats(ctx context.Context, dbQueries *database.Queries, sourceID uuid.UUID, stats *ProfileStats) error {
+func SaveOrUpdateSourceStats(ctx context.Context, dbQueries *database.Queries, sourceID uuid.UUID, stats *ProfileStats) error {
 
 	today := time.Now().UTC().Truncate(24 * time.Hour)
 
@@ -108,7 +108,7 @@ func saveOrUpdateSourceStats(ctx context.Context, dbQueries *database.Queries, s
 	return err
 }
 
-func calculateAverageStats(ctx context.Context, dbQueries *database.Queries, sourceID uuid.UUID) (*ProfileStats, error) {
+func CalculateAverageStats(ctx context.Context, dbQueries *database.Queries, sourceID uuid.UUID) (*ProfileStats, error) {
 	totals, err := dbQueries.GetSourceTotals(ctx, sourceID)
 	if err != nil {
 		return nil, err
@@ -133,7 +133,7 @@ func calculateAverageStats(ctx context.Context, dbQueries *database.Queries, sou
 	return stats, nil
 }
 
-func createOrUpdatePost(
+func CreateOrUpdatePost(
 	ctx context.Context,
 	dbQueries *database.Queries,
 	sourceID uuid.UUID,

@@ -4,7 +4,7 @@ import (
 	"encoding/base64"
 	"net/http"
 
-	"github.com/fluffyriot/rpsync/internal/fetcher"
+	"github.com/fluffyriot/rpsync/internal/fetcher/sources"
 	"github.com/gin-gonic/gin"
 )
 
@@ -18,7 +18,7 @@ func (h *Handler) TikTokLoginHandler(c *gin.Context) {
 		return
 	}
 
-	qrCode, err := fetcher.GlobalTikTokManager.StartLoginSession(username)
+	qrCode, err := sources.GlobalTikTokManager.StartLoginSession(username)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(c, gin.H{
 			"error": "Failed to start TikTok login session: " + err.Error(),
@@ -43,7 +43,7 @@ func (h *Handler) TikTokCheckHandler(c *gin.Context) {
 		return
 	}
 
-	status, msg, err := fetcher.GlobalTikTokManager.CheckStatus(username)
+	status, msg, err := sources.GlobalTikTokManager.CheckStatus(username)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"status": "error", "message": err.Error()})
 		return

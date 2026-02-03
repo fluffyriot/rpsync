@@ -1,4 +1,4 @@
-package fetcher
+package sources
 
 import (
 	"context"
@@ -14,10 +14,11 @@ import (
 	"time"
 
 	"github.com/fluffyriot/rpsync/internal/database"
+	"github.com/fluffyriot/rpsync/internal/fetcher/common"
 	"github.com/google/uuid"
 )
 
-type mastUser struct {
+type mastodonProfile struct {
 	ID             string `json:"id"`
 	FollowersCount int    `json:"followers_count"`
 	FollowingCount int    `json:"following_count"`
@@ -49,7 +50,48 @@ type mastFeed []struct {
 	} `json:"reblog"`
 }
 
-func getMastodonProfile(dbQueries *database.Queries, uid uuid.UUID, c *Client) (string, *mastUser, error) {
+func fetchMastodonProfile(domain string, c *common.Client, userId string) (*mastodonProfile, error) {
+	initUrl := fmt.Sprintf(
+		"https://%s/api/v1/accounts/lookup?acct=%s",
+		domain,
+		userId,
+	)
+
+	req, err := http.NewRequest("GET", initUrl, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("Failed to get a successfull response. %v: %v", resp.StatusCode, resp.Status)
+	}
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var mastProfile mastodonProfile
+	if err := json.Unmarshal(data, &mastProfile); err != nil {
+		return nil, err
+	}
+
+	return &mastProfile, nil
+}
+
+func FetchMastodonPosts(dbQueries *database.Queries, c *common.Client, uid uuid.UUID, sourceId uuid.UUID) error {
+
+	exclusionMap, err := common.LoadExclusionMap(dbQueries, sourceId)
+	if err != nil {
+		return err
+	}
+
 	username, err := dbQueries.GetUserActiveSourceByName(
 		context.Background(),
 		database.GetUserActiveSourceByNameParams{
@@ -59,61 +101,20 @@ func getMastodonProfile(dbQueries *database.Queries, uid uuid.UUID, c *Client) (
 	)
 
 	if err != nil {
-		return "", nil, err
+		return err
 	}
 
 	splits := strings.SplitN(username.UserName, "@", 2)
 	user := splits[0]
 	domain := splits[1]
 
-	initUrl := fmt.Sprintf(
-		"https://%s/api/v1/accounts/lookup?acct=%s",
-		domain,
-		user,
-	)
-
-	req, err := http.NewRequest("GET", initUrl, nil)
-	if err != nil {
-		return "", nil, err
-	}
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return "", nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		return "", nil, fmt.Errorf("Failed to get a successfull response. %v: %v", resp.StatusCode, resp.Status)
-	}
-
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", nil, err
-	}
-
-	var mastUser mastUser
-	if err := json.Unmarshal(data, &mastUser); err != nil {
-		return "", nil, err
-	}
-
-	return domain, &mastUser, nil
-}
-
-func FetchMastodonPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, sourceId uuid.UUID) error {
-
-	exclusionMap, err := loadExclusionMap(dbQueries, sourceId)
-	if err != nil {
-		return err
-	}
-
-	domain, profile, err := getMastodonProfile(dbQueries, uid, c)
+	profile, err := fetchMastodonProfile(domain, c, user)
 	if err != nil {
 		return fmt.Errorf("failed to get mastodon profile: %w", err)
 	}
 
 	defer func() {
-		stats, err := calculateAverageStats(context.Background(), dbQueries, sourceId)
+		stats, err := common.CalculateAverageStats(context.Background(), dbQueries, sourceId)
 		if err != nil {
 			log.Printf("Mastodon: Failed to calculate stats for source %s: %v", sourceId, err)
 		} else {
@@ -121,7 +122,7 @@ func FetchMastodonPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, s
 				stats.FollowersCount = &profile.FollowersCount
 				stats.FollowingCount = &profile.FollowingCount
 			}
-			if err := saveOrUpdateSourceStats(context.Background(), dbQueries, sourceId, stats); err != nil {
+			if err := common.SaveOrUpdateSourceStats(context.Background(), dbQueries, sourceId, stats); err != nil {
 				log.Printf("Mastodon: Failed to save stats for source %s: %v", sourceId, err)
 			}
 		}
@@ -148,7 +149,7 @@ func FetchMastodonPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, s
 			return err
 		}
 
-		resp, err := c.httpClient.Do(req)
+		resp, err := c.HTTPClient.Do(req)
 		if err != nil {
 			return err
 		}
@@ -202,7 +203,7 @@ func FetchMastodonPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, s
 			var postType, author, content string
 
 			if item.Reblog != nil {
-				content = stripHTMLToText(item.Reblog.Content)
+				content = common.StripHTMLToText(item.Reblog.Content)
 
 				u, errU := url.Parse(item.Reblog.Account.Uri)
 				if errU != nil {
@@ -216,7 +217,7 @@ func FetchMastodonPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, s
 				postType = "repost"
 				author = fmt.Sprintf("%s@%s", username, domain)
 			} else {
-				content = stripHTMLToText(item.Content)
+				content = common.StripHTMLToText(item.Content)
 
 				u, errU := url.Parse(item.Account.Uri)
 				if errU != nil {
@@ -231,7 +232,7 @@ func FetchMastodonPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, s
 				author = fmt.Sprintf("%s@%s", username, domain)
 			}
 
-			postDBID, err := createOrUpdatePost(
+			postID, err := common.CreateOrUpdatePost(
 				context.Background(),
 				dbQueries,
 				sourceId,
@@ -258,7 +259,7 @@ func FetchMastodonPosts(dbQueries *database.Queries, c *Client, uid uuid.UUID, s
 			_, err = dbQueries.SyncReactions(context.Background(), database.SyncReactionsParams{
 				ID:       uuid.New(),
 				SyncedAt: time.Now(),
-				PostID:   postDBID,
+				PostID:   postID,
 				Likes: sql.NullInt32{
 					Int32: int32(likes),
 					Valid: true,

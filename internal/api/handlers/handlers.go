@@ -5,7 +5,7 @@ import (
 
 	"github.com/fluffyriot/rpsync/internal/config"
 	"github.com/fluffyriot/rpsync/internal/database"
-	"github.com/fluffyriot/rpsync/internal/fetcher"
+	fetcher_common "github.com/fluffyriot/rpsync/internal/fetcher/common"
 	"github.com/fluffyriot/rpsync/internal/pusher/common"
 	"github.com/fluffyriot/rpsync/internal/updater"
 	"github.com/fluffyriot/rpsync/internal/worker"
@@ -17,14 +17,14 @@ import (
 type Handler struct {
 	DB      *database.Queries
 	DBConn  *sql.DB
-	Fetcher *fetcher.Client
+	Fetcher *fetcher_common.Client
 	Puller  *common.Client
 	Config  *config.AppConfig
 	Worker  *worker.Worker
 	Updater *updater.Updater
 }
 
-func NewHandler(db *database.Queries, dbConn *sql.DB, clientFetch *fetcher.Client, clientPull *common.Client, cfg *config.AppConfig, w *worker.Worker, upd *updater.Updater) *Handler {
+func NewHandler(db *database.Queries, dbConn *sql.DB, clientFetch *fetcher_common.Client, clientPull *common.Client, cfg *config.AppConfig, w *worker.Worker, upd *updater.Updater) *Handler {
 	return &Handler{
 		DB:      db,
 		DBConn:  dbConn,

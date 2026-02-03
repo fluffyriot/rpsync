@@ -17,7 +17,7 @@ import (
 	"github.com/fluffyriot/rpsync/internal/api/handlers"
 	"github.com/fluffyriot/rpsync/internal/cli"
 	"github.com/fluffyriot/rpsync/internal/config"
-	"github.com/fluffyriot/rpsync/internal/fetcher"
+	fetcher_common "github.com/fluffyriot/rpsync/internal/fetcher/common"
 	"github.com/fluffyriot/rpsync/internal/middleware"
 	"github.com/fluffyriot/rpsync/internal/pusher/common"
 	"github.com/fluffyriot/rpsync/internal/updater"
@@ -53,7 +53,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	clientFetch := fetcher.NewClient(600 * time.Second)
+	clientFetch := fetcher_common.NewClient(600 * time.Second)
 	clientPull := common.NewClient(600 * time.Second)
 
 	if cfg.GinMode != "" {
