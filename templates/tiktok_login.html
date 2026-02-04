@@ -70,12 +70,11 @@
                     if (data.status === 'success') {
                         statusDiv.innerHTML = '<span class="success">Login Successful! Redirecting...</span>';
                         setTimeout(() => {
-                            window.location.href = '/';
+                            window.location.href = '/sources';
                         }, 2000);
                     } else if (data.status === 'failed') {
                         statusDiv.innerText = 'Login Failed: ' + (data.message || 'Unknown error');
                     } else {
-                        // Keep polling
                         setTimeout(checkStatus, 2000);
                     }
                 })
@@ -85,7 +84,6 @@
                 });
         };
 
-        // Start polling
         setTimeout(checkStatus, 2000);
     </script>
 </body>

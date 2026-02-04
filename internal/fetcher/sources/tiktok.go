@@ -432,14 +432,7 @@ func FetchTikTokPosts(dbQueries *database.Queries, c *common.Client, uid uuid.UU
 	log.Printf("Successfully scraped %d posts", len(scrapedPosts))
 
 	if len(scrapedPosts) == 0 {
-		var debugHtml string
-		var debugScreenshot []byte
-		chromedp.Run(ctx,
-			chromedp.OuterHTML("html", &debugHtml),
-			chromedp.CaptureScreenshot(&debugScreenshot),
-		)
-		_ = os.WriteFile(filepath.Join("outputs", "debug_tiktok_studio.html"), []byte(debugHtml), 0644)
-		_ = os.WriteFile(filepath.Join("outputs", "debug_tiktok_studio.png"), debugScreenshot, 0644)
+		return fmt.Errorf("no posts found: login might have expired")
 	}
 
 	for _, item := range scrapedPosts {
@@ -522,6 +515,10 @@ func FetchTikTokPosts(dbQueries *database.Queries, c *common.Client, uid uuid.UU
 	)
 	if err != nil {
 		log.Printf("TikTok: Failed to scrape follower count: %v", err)
+	}
+
+	if followersCount == nil {
+		return fmt.Errorf("login might have expired: no followers found")
 	}
 
 	stats, err := common.CalculateAverageStats(context.Background(), dbQueries, sourceId)
