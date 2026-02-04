@@ -40,6 +40,7 @@ type NocoRecordFields struct {
 
 type NocoColumnTypeOptions struct {
 	Title string `json:"title"`
+	Color string `json:"color,omitempty"`
 }
 
 type NocoColumnTypeSelectOptions struct {

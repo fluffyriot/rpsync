@@ -6,6 +6,25 @@ import (
 	"strings"
 )
 
+type SourceNetwork struct {
+	Name  string
+	Color string
+}
+
+var AvailableSources = []SourceNetwork{
+	{Name: "Instagram", Color: "#ff0076"},
+	{Name: "Bluesky", Color: "#1185fe"},
+	{Name: "YouTube", Color: "#ff0033"},
+	{Name: "TikTok", Color: "#000000"},
+	{Name: "Mastodon", Color: "#563acc"},
+	{Name: "Telegram", Color: "#26a4e3"},
+	{Name: "Google Analytics", Color: "#f9ab00"},
+	{Name: "BadPups", Color: "#c1272d"},
+	{Name: "Murrtube", Color: "#344aa8"},
+	{Name: "Discord", Color: "#5662f6"},
+	{Name: "FurTrack", Color: "#2d0e4c"},
+}
+
 func ConvNetworkToURL(network, username string) (string, error) {
 	switch network {
 	case "Instagram":

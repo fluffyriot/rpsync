@@ -232,3 +232,38 @@ func createNocoColumn(c *common.Client, dbQueries *database.Queries, encryptionK
 
 	return &result, nil
 }
+
+func updateNocoColumn(c *common.Client, dbQueries *database.Queries, encryptionKey []byte, target database.Target, tableID, columnID string, column NocoColumn) error {
+	url := target.HostUrl.String +
+		"/api/v3/meta/bases/" +
+		target.DbID.String +
+		"/tables/" + tableID + "/fields/" + columnID
+
+	body, err := json.Marshal(column)
+	if err != nil {
+		return fmt.Errorf("marshal column schema: %w", err)
+	}
+
+	req, err := http.NewRequest("PATCH", url, bytes.NewBuffer(body))
+	if err != nil {
+		return fmt.Errorf("create request: %w", err)
+	}
+
+	err = setNocoHeaders(target.ID, req, dbQueries, encryptionKey)
+	if err != nil {
+		return err
+	}
+
+	resp, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("send request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("update column error: status %d, body %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	return nil
+}

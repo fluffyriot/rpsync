@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/fluffyriot/rpsync/internal/database"
+	"github.com/fluffyriot/rpsync/internal/helpers"
 	"github.com/fluffyriot/rpsync/internal/pusher/common"
 	"github.com/google/uuid"
 )
@@ -273,6 +274,11 @@ func InitializeNoco(dbQueries *database.Queries, c *common.Client, encryptionKey
 	var sourcesTableID string
 
 	if err != nil {
+		var choices []NocoColumnTypeOptions
+		for _, source := range helpers.AvailableSources {
+			choices = append(choices, NocoColumnTypeOptions{Title: source.Name, Color: source.Color})
+		}
+
 		sourcesTable := NocoTable{
 			Title:       "sources",
 			Description: "Social media sources",
@@ -282,19 +288,8 @@ func InitializeNoco(dbQueries *database.Queries, c *common.Client, encryptionKey
 					Title: "network",
 					Type:  "SingleSelect",
 					Options: NocoColumnTypeSelectOptions{
-						Choices: []NocoColumnTypeOptions{
-							{Title: "Instagram"},
-							{Title: "Bluesky"},
-							{Title: "YouTube"},
-							{Title: "TikTok"},
-							{Title: "Mastodon"},
-							{Title: "Telegram"},
-							{Title: "Google Analytics"},
-							{Title: "BadPups"},
-							{Title: "Murrtube"},
-							{Title: "Discord"},
-							{Title: "FurTrack"},
-						}},
+						Choices: choices,
+					},
 				},
 				{Title: "username", Type: "SingleLineText"},
 				{Title: "URL", Type: "URL"},

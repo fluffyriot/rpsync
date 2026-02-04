@@ -3,6 +3,7 @@ package noco
 import (
 	"context"
 	"fmt"
+	"log"
 	"strconv"
 
 	"github.com/fluffyriot/rpsync/internal/database"
@@ -195,6 +196,36 @@ func syncNocoSources(c *common.Client, dbQueries *database.Queries, encryptionKe
 		})
 		if err != nil {
 			return fmt.Errorf("failed to delete source target mapping: %w", err)
+		}
+	}
+
+	tm, err := dbQueries.GetTableMappingsByTargetAndName(context.Background(), database.GetTableMappingsByTargetAndNameParams{
+		TargetID:        target.ID,
+		TargetTableName: "sources",
+	})
+	if err == nil {
+		colMapping, err := dbQueries.GetColumnMappingsByTableAndName(context.Background(), database.GetColumnMappingsByTableAndNameParams{
+			TableMappingID:   tm.ID,
+			TargetColumnName: "network",
+		})
+		if err == nil && colMapping.TargetColumnCode.Valid {
+			var choices []NocoColumnTypeOptions
+			for _, network := range helpers.AvailableSources {
+				choices = append(choices, NocoColumnTypeOptions{Title: network.Name, Color: network.Color})
+			}
+
+			err = updateNocoColumn(c, dbQueries, encryptionKey, target, tableId, colMapping.TargetColumnCode.String, NocoColumn{
+				Title: "network",
+				Type:  "SingleSelect",
+				Options: NocoColumnTypeSelectOptions{
+					Choices: choices,
+				},
+			})
+			if err != nil {
+				log.Printf("Failed to update network column options: %v", err)
+			} else {
+				log.Println("Updated network column options")
+			}
 		}
 	}
 

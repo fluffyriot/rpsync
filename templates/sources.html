@@ -26,17 +26,9 @@
                     <label class="form-label" for="network">Network</label>
                     <select id="network" name="network" class="form-select" required>
                         <option value="" disabled selected>Select Network</option>
-                        <option value="Bluesky">Bluesky</option>
-                        <option value="Instagram">Instagram</option>
-                        <option value="TikTok">TikTok</option>
-                        <option value="YouTube">YouTube</option>
-                        <option value="Mastodon">Mastodon</option>
-                        <option value="Telegram">Telegram</option>
-                        <option value="Murrtube">Murrtube</option>
-                        <option value="BadPups">BadPups</option>
-                        <option value="FurTrack">FurTrack</option>
-                        <option value="Discord">Discord</option>
-                        <option value="Google Analytics">Google Analytics</option>
+                        {{range .available_sources}}
+                        <option value="{{.Name}}">{{.Name}}</option>
+                        {{end}}
                     </select>
                 </div>
 

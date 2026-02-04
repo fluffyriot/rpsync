@@ -8,6 +8,7 @@ import (
 
 	"github.com/fluffyriot/rpsync/internal/config"
 	"github.com/fluffyriot/rpsync/internal/database"
+	"github.com/fluffyriot/rpsync/internal/helpers"
 	"github.com/fluffyriot/rpsync/internal/pusher"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
@@ -41,10 +42,11 @@ func (h *Handler) SourcesHandler(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "sources.html", h.CommonData(c, gin.H{
-		"username": user.Username,
-		"user_id":  user.ID,
-		"sources":  sources,
-		"title":    "Sources",
+		"username":          user.Username,
+		"user_id":           user.ID,
+		"sources":           sources,
+		"available_sources": helpers.AvailableSources,
+		"title":             "Sources",
 	}))
 }
 
