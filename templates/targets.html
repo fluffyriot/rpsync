@@ -19,7 +19,7 @@
   <div>
     <div class="card">
       <div class="card-header">Add New Target</div>
-      <form method="POST" action="/targets/setup" id="targets_form">
+      <form method="POST" action="/targets/setup" id="targets_form" autocomplete="off">
         <input type="hidden" name="user_id" value="{{.user_id}}">
 
         <div class="form-group">
@@ -33,17 +33,19 @@
 
         <div class="form-group">
           <label class="form-label" for="db_id">Database Id</label>
-          <input type="text" id="db_id" name="db_id" class="form-input" placeholder="Database Id" required>
+          <input type="text" id="db_id" name="db_id" class="form-input" placeholder="Database Id" required
+            autocapitalize="off">
         </div>
 
         <div class="form-group" id="tokenized_db" style="display:none;">
           <label class="form-label" for="api_token">API Bearer Token</label>
-          <input id="api_token" name="api_token" class="form-input" placeholder="xxxxxxxxxxxxxxxxxxxxxx">
+          <input id="api_token" name="api_token" class="form-input" placeholder="xxxxxxxxxxxxxxxxxxxxxx"
+            autocapitalize="off">
         </div>
 
         <div class="form-group" id="db_with_url" style="display:none;">
           <label class="form-label" for="host_url">Host Url</label>
-          <input id="host_url" name="host_url" class="form-input" placeholder="http://127.0.0.1">
+          <input id="host_url" name="host_url" class="form-input" placeholder="http://127.0.0.1" autocapitalize="off">
         </div>
 
         <button type="submit" class="btn btn-primary" style="width: 100%">
