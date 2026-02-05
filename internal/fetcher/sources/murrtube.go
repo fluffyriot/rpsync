@@ -1,0 +1,235 @@
+package sources
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"fmt"
+	"log"
+	"net/http"
+	"regexp"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/PuerkitoBio/goquery"
+	"github.com/fluffyriot/rpsync/internal/database"
+	"github.com/fluffyriot/rpsync/internal/fetcher/common"
+	"github.com/fluffyriot/rpsync/internal/helpers"
+	"github.com/google/uuid"
+)
+
+func getMurrtubeString(dbQueries *database.Queries, uid uuid.UUID) (string, string, error) {
+
+	username, err := dbQueries.GetUserActiveSourceByName(
+		context.Background(),
+		database.GetUserActiveSourceByNameParams{
+			UserID:  uid,
+			Network: "Murrtube",
+		},
+	)
+	if err != nil {
+		return "", "", err
+	}
+
+	urlString := fmt.Sprintf(
+		"https://murrtube.net/%s",
+		username.UserName,
+	)
+
+	return urlString, username.UserName, nil
+}
+
+func FetchMurrtubePosts(uid uuid.UUID, dbQueries *database.Queries, c *common.Client, sourceId uuid.UUID) error {
+
+	exclusionMap, err := common.LoadExclusionMap(dbQueries, sourceId)
+	if err != nil {
+		return err
+	}
+
+	processedLinks := make(map[string]struct{})
+
+	profileURL, username, err := getMurrtubeString(dbQueries, uid)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest("GET", profileURL, nil)
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set(
+		"User-Agent",
+		"Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)",
+	)
+	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
+
+	resp, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return err
+	}
+
+	doc, err := goquery.NewDocumentFromReader(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	var followersCount, followingCount *int
+	doc.Find("ul li a").Each(func(_ int, s *goquery.Selection) {
+		text := strings.TrimSpace(s.Text())
+
+		if strings.HasPrefix(text, "Followers") {
+			if count, err := extractMurrNumber(text, `Followers \((\d+)\)`); err == nil {
+				followersCount = &count
+			}
+		} else if strings.HasPrefix(text, "Following") {
+			if count, err := extractMurrNumber(text, `Following \((\d+)\)`); err == nil {
+				followingCount = &count
+			}
+		}
+	})
+
+	linkPattern := regexp.MustCompile(`^/v/.{4}$`)
+
+	doc.Find("a").Each(func(_ int, s *goquery.Selection) {
+		href, exists := s.Attr("href")
+		if !exists || !linkPattern.MatchString(href) {
+			return
+		}
+
+		videoURL := "https://murrtube.net" + href
+		if _, exists := processedLinks[videoURL]; exists {
+			return
+		}
+
+		processedLinks[videoURL] = struct{}{}
+
+		videoReq, err := http.NewRequest("GET", videoURL, nil)
+		if err != nil {
+			return
+		}
+		videoReq.Header.Set(
+			"User-Agent",
+			"Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)",
+		)
+		videoReq.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+		videoReq.Header.Set("Accept-Language", "en-US,en;q=0.9")
+
+		videoResp, err := c.HTTPClient.Do(videoReq)
+		if err != nil {
+			return
+		}
+
+		videoDoc, err := goquery.NewDocumentFromReader(videoResp.Body)
+		if err != nil {
+			return
+		}
+
+		pageText := videoDoc.Text()
+
+		id := strings.TrimPrefix(href, "/v/")
+
+		if exclusionMap[id] {
+			return
+		}
+
+		title, _ := videoDoc.Find(`meta[property="og:title"]`).Attr("content")
+		description, _ := videoDoc.Find(`meta[property="og:description"]`).Attr("content")
+
+		createdAt, err := extractMurrtubeCreatedAt(videoDoc)
+		if err != nil {
+			createdAt = time.Now()
+		}
+
+		postID, err := common.CreateOrUpdatePost(
+			context.Background(),
+			dbQueries,
+			sourceId,
+			id,
+			"Murrtube",
+			createdAt,
+			"video",
+			username,
+			fmt.Sprintf("%s\n\n%s", title, description),
+		)
+		if err != nil {
+			return
+		}
+
+		videoViews, _ := extractMurrNumber(pageText, `([\d,]+)\s+Views`)
+		videoLikes, _ := extractMurrNumber(pageText, `([\d,]+)\s+Likes`)
+
+		_, err = dbQueries.SyncReactions(context.Background(), database.SyncReactionsParams{
+			ID:       uuid.New(),
+			SyncedAt: time.Now(),
+			PostID:   postID,
+			Likes: sql.NullInt32{
+				Int32: helpers.ClampToInt32(videoLikes),
+				Valid: true,
+			},
+			Reposts: sql.NullInt32{
+				Int32: 0,
+				Valid: true,
+			},
+			Views: sql.NullInt32{
+				Int32: helpers.ClampToInt32(videoViews),
+				Valid: true,
+			},
+		})
+
+	})
+
+	if len(processedLinks) == 0 {
+		return errors.New("No content found")
+	}
+
+	stats, err := common.CalculateAverageStats(context.Background(), dbQueries, sourceId)
+	if err != nil {
+		log.Printf("Murrtube: Failed to calculate stats for source %s: %v", sourceId, err)
+	} else {
+		stats.FollowersCount = followersCount
+		stats.FollowingCount = followingCount
+
+		if err := common.SaveOrUpdateSourceStats(context.Background(), dbQueries, sourceId, stats); err != nil {
+			log.Printf("Murrtube: Failed to save stats for source %s: %v", sourceId, err)
+		}
+	}
+
+	return nil
+}
+
+func extractMurrtubeCreatedAt(doc *goquery.Document) (time.Time, error) {
+	span := doc.Find(`span[data-tooltip]`).First()
+	if span.Length() == 0 {
+		return time.Time{}, errors.New("created date not found")
+	}
+
+	raw, exists := span.Attr("data-tooltip")
+	if !exists || strings.TrimSpace(raw) == "" {
+		return time.Time{}, errors.New("created date empty")
+	}
+
+	t, err := time.Parse("January 2, 2006 - 15:04", raw)
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	return t, nil
+}
+
+func extractMurrNumber(text, pattern string) (int, error) {
+	re := regexp.MustCompile(pattern)
+	match := re.FindStringSubmatch(text)
+	if len(match) < 2 {
+		return 0, fmt.Errorf("nothing matched")
+	}
+
+	clean := strings.ReplaceAll(match[1], ",", "")
+	value, err := strconv.Atoi(clean)
+	if err != nil {
+		return 0, nil
+	}
+	return value, nil
+}

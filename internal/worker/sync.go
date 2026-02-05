@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"crypto/rand"
+	"database/sql"
 	"encoding/binary"
 	"log"
 	"sync"
@@ -11,6 +12,7 @@ import (
 	"github.com/fluffyriot/rpsync/internal/config"
 	"github.com/fluffyriot/rpsync/internal/database"
 	"github.com/fluffyriot/rpsync/internal/fetcher"
+	fetcher_common "github.com/fluffyriot/rpsync/internal/fetcher/common"
 	"github.com/fluffyriot/rpsync/internal/pusher"
 	"github.com/fluffyriot/rpsync/internal/pusher/common"
 	"github.com/google/uuid"
@@ -34,21 +36,7 @@ func backoffWithJitter(attempt int) time.Duration {
 	return jitter
 }
 
-func RunSync(db *database.Queries, f *fetcher.Client, p *common.Client, cfg *config.AppConfig) {
-	log.Println("Worker: Starting sync...")
-	ctx := context.Background()
-
-	err := db.DeleteOldStats(ctx)
-	if err != nil {
-		log.Printf("Worker Data deletion error: %v", err)
-	}
-
-	users, err := db.GetAllUsers(ctx)
-	if err != nil {
-		log.Printf("Worker Error getting users: %v", err)
-		return
-	}
-
+func SyncUser(ctx context.Context, userID uuid.UUID, db *database.Queries, f *fetcher_common.Client, p *common.Client, cfg *config.AppConfig) {
 	var (
 		sourceWG    sync.WaitGroup
 		targetWG    sync.WaitGroup
@@ -58,13 +46,12 @@ func RunSync(db *database.Queries, f *fetcher.Client, p *common.Client, cfg *con
 
 	visitedSources := make(map[uuid.UUID]bool)
 
-	for _, user := range users {
-		sources, err := db.GetUserActiveSources(ctx, user.ID)
-		if err != nil {
-			log.Printf("Worker Error getting sources for user %s: %v", user.Username, err)
-			continue
+	sources, err := db.GetUserActiveSources(ctx, userID)
+	if err != nil {
+		if err != sql.ErrNoRows {
+			log.Printf("Worker Error getting sources for user %s: %v", userID, err)
 		}
-
+	} else {
 		for _, source := range sources {
 			if visitedSources[source.ID] {
 				continue
@@ -83,13 +70,12 @@ func RunSync(db *database.Queries, f *fetcher.Client, p *common.Client, cfg *con
 
 	sourceWG.Wait()
 
-	for _, user := range users {
-		targets, err := db.GetUserActiveTargets(ctx, user.ID)
-		if err != nil {
-			log.Printf("Worker Error getting targets for user %s: %v", user.Username, err)
-			continue
+	targets, err := db.GetUserActiveTargets(ctx, userID)
+	if err != nil {
+		if err != sql.ErrNoRows {
+			log.Printf("Worker Error getting targets for user %s: %v", userID, err)
 		}
-
+	} else {
 		for _, target := range targets {
 			targetWG.Add(1)
 			countTarget++
@@ -104,18 +90,19 @@ func RunSync(db *database.Queries, f *fetcher.Client, p *common.Client, cfg *con
 	targetWG.Wait()
 
 	log.Printf(
-		"Worker: Completed sync for %d sources and %d targets",
+		"Worker: Completed sync for user %s (sources=%d targets=%d)",
+		userID,
 		countSource,
 		countTarget,
 	)
 }
 
-func RunSyncSource(sid uuid.UUID, db *database.Queries, f *fetcher.Client, cfg *config.AppConfig) {
+func RunSyncSource(sid uuid.UUID, db *database.Queries, f *fetcher_common.Client, cfg *config.AppConfig) {
 	log.Printf("Worker: Starting manual sync for source %s", sid)
 	syncSourceInternal(sid, db, f, cfg)
 }
 
-func syncSourceInternal(sid uuid.UUID, db *database.Queries, f *fetcher.Client, cfg *config.AppConfig) {
+func syncSourceInternal(sid uuid.UUID, db *database.Queries, f *fetcher_common.Client, cfg *config.AppConfig) {
 	const maxRetries = 5
 
 	for attempt := 0; attempt <= maxRetries; attempt++ {

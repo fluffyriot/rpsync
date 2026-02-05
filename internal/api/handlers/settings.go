@@ -90,7 +90,7 @@ func (h *Handler) SyncSettingsHandler(c *gin.Context) {
 func (h *Handler) UpdateSyncSettingsHandler(c *gin.Context) {
 	periodStr := c.PostForm("sync_period")
 
-	duration, err := time.ParseDuration(periodStr)
+	_, err := time.ParseDuration(periodStr)
 	if err != nil {
 		c.HTML(http.StatusBadRequest, "error.html", h.CommonData(c, gin.H{
 			"error": "Invalid duration format",
@@ -118,7 +118,7 @@ func (h *Handler) UpdateSyncSettingsHandler(c *gin.Context) {
 	}
 
 	if h.Worker.IsActive() {
-		h.Worker.Restart(duration)
+		h.Worker.Restart()
 	}
 
 	c.Redirect(http.StatusSeeOther, "/settings/sync")
@@ -183,23 +183,18 @@ func (h *Handler) ResetSyncSettingsHandler(c *gin.Context) {
 		return
 	}
 
-	h.Worker.Restart(30 * time.Minute)
+	h.Worker.Restart()
 	c.Redirect(http.StatusSeeOther, "/settings/sync")
 }
 
 func (h *Handler) StartWorkerHandler(c *gin.Context) {
-	user, loggedIn := h.GetAuthenticatedUser(c)
+	_, loggedIn := h.GetAuthenticatedUser(c)
 	if !loggedIn {
 		c.Redirect(http.StatusFound, "/login")
 		return
 	}
 
-	duration, err := time.ParseDuration(user.SyncPeriod)
-	if err != nil {
-		duration = 30 * time.Minute
-	}
-
-	h.Worker.Start(duration)
+	h.Worker.Start()
 	c.Redirect(http.StatusSeeOther, "/settings/sync")
 }
 

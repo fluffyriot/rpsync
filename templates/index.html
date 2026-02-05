@@ -16,13 +16,58 @@
   </div>
 </div>
 
+{{if .top_sources}}
+<div class="top-sources-grid">
+  {{range .top_sources}}
+  <div class="source-tile">
+    <div class="source-tile-header">
+      <img src="/static/images/sources/{{.Network | lower}}_logo.svg" alt="{{.Network}}" class="source-logo"
+        onerror="this.style.display='none'; var ph=this.nextElementSibling; ph.style.display='flex'; ph.style.backgroundColor=ph.dataset.color;">
+      <div class="source-logo-placeholder" style="display: none;" data-color="{{index $.network_colors .Network}}">
+        {{slice .Network 0 1 | upper}}
+      </div>
+      <div style="min-width: 0;">
+        <a href="{{.ProfileURL}}" target="_blank" class="source-name" title="{{.UserName}}">{{.UserName | stripAt}}</a>
+        <div class="source-network">{{.Network}}</div>
+      </div>
+    </div>
+    <div class="source-stats">
+      <div class="source-stat">
+        <span class="source-stat-value formatted-metric">{{.TotalInteractions}}</span>
+        <span class="source-stat-label">Interactions</span>
+      </div>
+      <div class="source-stat source-stat-right">
+        <span class="source-stat-value formatted-metric">{{.FollowersCount}}</span>
+        <span class="source-stat-label">Followers</span>
+      </div>
+    </div>
+  </div>
+  {{end}}
+</div>
+{{end}}
+
+<div class="dashboard-comparison-grid">
+  <div class="card">
+    <div class="card-header">Your Engagement</div>
+    <div style="position: relative; height: 250px; width: 100%;">
+      <canvas id="engagementComparisonChart"></canvas>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">Your Followers</div>
+    <div style="position: relative; height: 250px; width: 100%;">
+      <canvas id="followersComparisonChart"></canvas>
+    </div>
+  </div>
+</div>
+
 <div class="grid-dashboard">
 
   <div class="stat-card {{if .worker_is_off}}has-errors{{end}}">
     <div class="stat-icon"><i data-lucide="activity" style="width: 24px; height: 24px;"></i></div>
     <div class="stat-value">{{.worker_status}}</div>
     <div class="stat-label">Syncer Status</div>
-    <a href="/settings/sync" class="stat-link">Manage Settings &rarr;</a>
+    <a href="/settings/sync#syncer-config" class="stat-link">Manage Settings &rarr;</a>
   </div>
 
 
@@ -31,7 +76,7 @@
     <div class="stat-icon"><i data-lucide="clock" style="width: 24px; height: 24px;"></i></div>
     <div class="stat-value">{{.sync_period}}</div>
     <div class="stat-label">Sync Frequency</div>
-    <a href="/settings/sync" class="stat-link">Change Frequency &rarr;</a>
+    <a href="/settings/sync#syncer-config" class="stat-link">Change Frequency &rarr;</a>
   </div>
   {{end}}
 
@@ -214,8 +259,8 @@
         Chart.defaults.borderColor = '#333';
 
         const colorMap = {
-          "Website Visitors": "#10b981",
-          "Page Views": "#60a5fa"
+          "Website Visitors": "#f9ab00",
+          "Page Views": "#e37400"
         };
 
         data.forEach((series, index) => {
@@ -236,7 +281,7 @@
           }
 
           datasets.push({
-            label: series.label,
+            label: '  ' + series.label,
             data: dataPoints,
             borderColor: color,
             backgroundColor: color + '20',
@@ -284,7 +329,19 @@
                 bodyColor: '#ccc',
                 padding: 10,
                 cornerRadius: 8,
-                displayColors: true
+                displayColors: true,
+                callbacks: {
+                  label: function (context) {
+                    let label = context.dataset.label.trim() || '';
+                    if (label) {
+                      label += ': ';
+                    }
+                    if (context.parsed.y !== null) {
+                      label += context.parsed.y;
+                    }
+                    return label;
+                  }
+                }
               }
             }
           }
@@ -292,6 +349,10 @@
       })
       .catch(err => console.error("Error fetching analytics stats:", err));
   });
+</script>
+
+<script id="network-colors-data" type="application/json">
+  {{.network_colors | json}}
 </script>
 
 <script>
@@ -311,17 +372,12 @@
         Chart.defaults.color = '#a0a0a0';
         Chart.defaults.borderColor = '#333';
 
-        const palette = [
-          '#60A5FA', '#F97316', '#10B981', '#EF4444',
-          '#A855F7', '#F59E0B', '#14B8A6', '#EC4899',
-          '#22C55E', '#6366F1'
-        ];
-
-        data.sort((a, b) => {
-          const nameA = (a.network + a.username).toLowerCase();
-          const nameB = (b.network + b.username).toLowerCase();
-          return nameA.localeCompare(nameB);
-        });
+        let networkColors = {};
+        try {
+          networkColors = JSON.parse(document.getElementById('network-colors-data').textContent);
+        } catch (e) {
+          console.error("Failed to parse network colors", e);
+        }
 
         data.forEach((source, index) => {
           const points = source.points || [];
@@ -334,10 +390,10 @@
             };
           });
 
-          const color = palette[index % palette.length];
+          const color = networkColors[source.network] || '#9167e4';
 
           datasets.push({
-            label: `${source.network} (${source.username})`,
+            label: `  ${source.network} (${source.username})`,
             data: dataPoints,
             borderColor: color,
             backgroundColor: color + '20',
@@ -385,12 +441,149 @@
                 bodyColor: '#ccc',
                 padding: 10,
                 cornerRadius: 8,
-                displayColors: true
+                displayColors: true,
+                callbacks: {
+                  label: function (context) {
+                    let label = context.dataset.label.trim() || '';
+                    if (label) {
+                      label += ': ';
+                    }
+                    if (context.parsed.y !== null) {
+                      label += context.parsed.y;
+                    }
+                    return label;
+                  }
+                }
               }
             }
           }
         });
       })
       .catch(err => console.error("Error fetching stats:", err));
+  });
+</script>
+
+<script id="dashboard-summary-data" type="application/json">
+  {{.dashboard_summary | json}}
+</script>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    let data;
+    try {
+      const el = document.getElementById('dashboard-summary-data');
+      if (el && el.textContent.trim()) {
+        data = JSON.parse(el.textContent);
+      }
+    } catch (e) {
+      console.error("Failed to parse dashboard summary", e);
+      return;
+    }
+
+    if (!data) return;
+
+    function renderComparisonChart(ctxId, label, currentData, previousData, primaryColor) {
+      const ctx = document.getElementById(ctxId).getContext('2d');
+
+      const currentValues = currentData.map(p => p.value);
+      const previousValues = previousData.map(p => p.value);
+
+      const dayLabels = Array.from({ length: 7 }, (_, i) => `Day ${i + 1}`);
+
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: dayLabels,
+          datasets: [
+            {
+              label: '  Last 7 Days',
+              data: currentValues,
+              borderColor: primaryColor,
+              backgroundColor: primaryColor + '20',
+              fill: true,
+              tension: 0.3,
+              borderWidth: 2,
+              pointRadius: 2
+            },
+            {
+              label: '  Previous 7 Days',
+              data: previousValues,
+              borderColor: '#6B7280',
+              backgroundColor: 'transparent',
+              borderDash: [5, 5],
+              fill: false,
+              tension: 0.3,
+              borderWidth: 2,
+              pointRadius: 2
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { display: true, maxTicksLimit: 7 }
+            },
+            y: {
+              beginAtZero: false,
+              grid: { color: 'rgba(255, 255, 255, 0.05)' }
+            }
+          },
+          plugins: {
+            legend: {
+              display: true,
+              position: 'bottom',
+              labels: {
+                usePointStyle: true,
+                boxWidth: 8
+              }
+            },
+            tooltip: {
+              backgroundColor: 'rgba(20, 20, 30, 0.9)',
+              titleColor: '#fff',
+              bodyColor: '#ccc',
+              padding: 10,
+              cornerRadius: 8,
+              callbacks: {
+                label: function (context) {
+                  let idx = context.dataIndex;
+                  let val = context.parsed.y;
+                  let dateStr = '';
+                  if (context.datasetIndex === 0 && currentData[idx]) {
+                    dateStr = ` (${currentData[idx].date})`;
+                  } else if (context.datasetIndex === 1 && previousData[idx]) {
+                    dateStr = ` (${previousData[idx].date})`;
+                  }
+                  return `${context.dataset.label.trim()}: ${val}${dateStr}`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    if (data.engagement) {
+      renderComparisonChart(
+        'engagementComparisonChart',
+        'Engagement',
+        data.engagement.current_period,
+        data.engagement.previous_period,
+        '#9167e4'
+      );
+    }
+
+    if (data.followers) {
+      renderComparisonChart(
+        'followersComparisonChart',
+        'Followers',
+        data.followers.current_period,
+        data.followers.previous_period,
+        '#9167e4'
+      );
+    }
   });
 </script>

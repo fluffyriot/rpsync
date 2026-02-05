@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/fluffyriot/rpsync/internal/database"
-	"github.com/fluffyriot/rpsync/internal/fetcher"
+	"github.com/fluffyriot/rpsync/internal/fetcher/sources"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
@@ -231,7 +231,7 @@ func (h *Handler) HandleDeleteRedirect(c *gin.Context) {
 		startDate := fmt.Sprintf("%ddaysAgo", totalDays)
 		endDate := "today"
 
-		err = fetcher.FetchGoogleAnalyticsStatsWithRange(h.DB, redirect.SourceID, h.Config.TokenEncryptionKey, startDate, endDate)
+		err = sources.FetchGoogleAnalyticsStatsWithRange(h.DB, redirect.SourceID, h.Config.TokenEncryptionKey, startDate, endDate)
 		if err != nil {
 			log.Printf("Error re-fetching stats after redirect deletion: %v", err)
 		}

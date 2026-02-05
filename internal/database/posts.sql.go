@@ -13,6 +13,25 @@ import (
 	"github.com/google/uuid"
 )
 
+const archiveUnsyncedPosts = `-- name: ArchiveUnsyncedPosts :exec
+UPDATE posts
+SET
+    is_archived = true
+WHERE
+    source_id = $1
+    AND last_synced_at < $2
+`
+
+type ArchiveUnsyncedPostsParams struct {
+	SourceID     uuid.UUID
+	LastSyncedAt time.Time
+}
+
+func (q *Queries) ArchiveUnsyncedPosts(ctx context.Context, arg ArchiveUnsyncedPostsParams) error {
+	_, err := q.db.ExecContext(ctx, archiveUnsyncedPosts, arg.SourceID, arg.LastSyncedAt)
+	return err
+}
+
 const checkCountOfPostsForUser = `-- name: CheckCountOfPostsForUser :one
 SELECT COUNT(*)
 FROM posts p
@@ -217,6 +236,53 @@ type GetPostByNetworkAndIdParams struct {
 
 func (q *Queries) GetPostByNetworkAndId(ctx context.Context, arg GetPostByNetworkAndIdParams) (Post, error) {
 	row := q.db.QueryRowContext(ctx, getPostByNetworkAndId, arg.NetworkInternalID, arg.Network)
+	var i Post
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.LastSyncedAt,
+		&i.SourceID,
+		&i.IsArchived,
+		&i.NetworkInternalID,
+		&i.PostType,
+		&i.Author,
+		&i.Content,
+	)
+	return i, err
+}
+
+const updatePost = `-- name: UpdatePost :one
+UPDATE posts
+SET
+    last_synced_at = $2,
+    is_archived = $3,
+    content = $4,
+    post_type = $5,
+    author = $6
+WHERE
+    id = $1
+RETURNING
+    id, created_at, last_synced_at, source_id, is_archived, network_internal_id, post_type, author, content
+`
+
+type UpdatePostParams struct {
+	ID           uuid.UUID
+	LastSyncedAt time.Time
+	IsArchived   bool
+	Content      sql.NullString
+	PostType     string
+	Author       string
+}
+
+func (q *Queries) UpdatePost(ctx context.Context, arg UpdatePostParams) (Post, error) {
+	row := q.db.QueryRowContext(ctx, updatePost,
+		arg.ID,
+		arg.LastSyncedAt,
+		arg.IsArchived,
+		arg.Content,
+		arg.PostType,
+		arg.Author,
+	)
 	var i Post
 	err := row.Scan(
 		&i.ID,

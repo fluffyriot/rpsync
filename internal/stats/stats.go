@@ -2,9 +2,11 @@ package stats
 
 import (
 	"context"
+	"time"
 
 	"github.com/fluffyriot/rpsync/internal/database"
 	"github.com/google/uuid"
+	"golang.org/x/sync/errgroup"
 )
 
 type ValidationPoint struct {
@@ -106,4 +108,93 @@ func GetAnalyticsStats(dbQueries *database.Queries, userID uuid.UUID) ([]Analyti
 	}
 
 	return series, nil
+}
+
+type ChartPoint struct {
+	Date  string `json:"date"`
+	Value int64  `json:"value"`
+}
+
+type SummaryChart struct {
+	CurrentPeriod  []ChartPoint `json:"current_period"`
+	PreviousPeriod []ChartPoint `json:"previous_period"`
+}
+
+type DashboardSummary struct {
+	Engagement SummaryChart `json:"engagement"`
+	Followers  SummaryChart `json:"followers"`
+}
+
+func GetDashboardSummary(dbQueries *database.Queries, userID uuid.UUID) (*DashboardSummary, error) {
+	ctx := context.Background()
+	now := time.Now()
+	startDate := now.AddDate(0, 0, -13)
+
+	var (
+		engStats      []database.GetTotalDailyEngagementStatsRow
+		followerStats []database.GetTotalDailyFollowerStatsRow
+	)
+
+	g, ctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		var err error
+		engStats, err = dbQueries.GetTotalDailyEngagementStats(ctx, database.GetTotalDailyEngagementStatsParams{
+			UserID:  userID,
+			Column2: startDate,
+			Column3: now,
+		})
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		followerStats, err = dbQueries.GetTotalDailyFollowerStats(ctx, database.GetTotalDailyFollowerStatsParams{
+			UserID:  userID,
+			Column2: startDate,
+			Column3: now,
+		})
+		return err
+	})
+
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+
+	summary := &DashboardSummary{
+		Engagement: SummaryChart{
+			CurrentPeriod:  make([]ChartPoint, 0),
+			PreviousPeriod: make([]ChartPoint, 0),
+		},
+		Followers: SummaryChart{
+			CurrentPeriod:  make([]ChartPoint, 0),
+			PreviousPeriod: make([]ChartPoint, 0),
+		},
+	}
+
+	for i, stat := range engStats {
+		point := ChartPoint{
+			Date:  stat.PeriodDate.Format("2006-01-02"),
+			Value: stat.TotalEngagement,
+		}
+		if i < 7 {
+			summary.Engagement.PreviousPeriod = append(summary.Engagement.PreviousPeriod, point)
+		} else {
+			summary.Engagement.CurrentPeriod = append(summary.Engagement.CurrentPeriod, point)
+		}
+	}
+
+	for i, stat := range followerStats {
+		point := ChartPoint{
+			Date:  stat.PeriodDate.Format("2006-01-02"),
+			Value: stat.TotalFollowers,
+		}
+		if i < 7 {
+			summary.Followers.PreviousPeriod = append(summary.Followers.PreviousPeriod, point)
+		} else {
+			summary.Followers.CurrentPeriod = append(summary.Followers.CurrentPeriod, point)
+		}
+	}
+
+	return summary, nil
 }

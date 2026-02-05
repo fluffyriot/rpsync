@@ -19,31 +19,34 @@
   <div>
     <div class="card">
       <div class="card-header">Add New Target</div>
-      <form method="POST" action="/targets/setup" id="targets_form">
+      <form method="POST" action="/targets/setup" id="targets_form" autocomplete="off">
         <input type="hidden" name="user_id" value="{{.user_id}}">
 
         <div class="form-group">
           <label class="form-label" for="target">Target</label>
           <select id="target" name="target" class="form-select" required>
             <option value="" disabled selected>Select Target</option>
-            <option value="NocoDB">NocoDB</option>
-            <option value="CSV">CSV</option>
+            {{range .available_targets}}
+            <option value="{{.Name}}">{{.Name}}</option>
+            {{end}}
           </select>
         </div>
 
         <div class="form-group">
           <label class="form-label" for="db_id">Database Id</label>
-          <input type="text" id="db_id" name="db_id" class="form-input" placeholder="Database Id" required>
+          <input type="text" id="db_id" name="db_id" class="form-input" placeholder="Database Id" required
+            autocapitalize="off">
         </div>
 
         <div class="form-group" id="tokenized_db" style="display:none;">
           <label class="form-label" for="api_token">API Bearer Token</label>
-          <input id="api_token" name="api_token" class="form-input" placeholder="xxxxxxxxxxxxxxxxxxxxxx">
+          <input id="api_token" name="api_token" class="form-input" placeholder="xxxxxxxxxxxxxxxxxxxxxx"
+            autocapitalize="off">
         </div>
 
         <div class="form-group" id="db_with_url" style="display:none;">
           <label class="form-label" for="host_url">Host Url</label>
-          <input id="host_url" name="host_url" class="form-input" placeholder="http://127.0.0.1">
+          <input id="host_url" name="host_url" class="form-input" placeholder="http://127.0.0.1" autocapitalize="off">
         </div>
 
         <button type="submit" class="btn btn-primary" style="width: 100%">
@@ -68,9 +71,18 @@
         <div class="source-item">
           <div class="source-info">
             <div class="flex items-center gap-2">
+              <span class="badge-with-logo dynamic-badge" data-bg-color="{{index $.network_colors .TargetType}}">
+                <img src='/static/images/targets/badge/{{replace (lower .TargetType) " " "_"}}_logo.svg'
+                  alt="{{.TargetType}}" class="badge-logo"
+                  onerror="this.style.display='none'; var ph=this.nextElementSibling; ph.style.display='flex';">
+                <div class="badge-logo-placeholder" style="display: none;">
+                  {{slice .TargetType 0 1 | upper}}
+                </div>
+                {{.TargetType}}
+              </span>
               <span style="font-weight: bold; font-size: 1.05rem;">{{.DbID.String}}</span>
-              <span class="badge badge-neutral">{{.TargetType}}</span>
             </div>
+
 
             <div class="source-meta flex items-center gap-2">
               {{if .IsActive}}
@@ -107,30 +119,38 @@
               </button>
             </form>
 
-            {{if .IsActive}}
-            <form method="POST" action="/targets/deactivate"
-              onsubmit="return submitWithConfirm(this, 'Deactivate this source?');">
-              <input type="hidden" name="target_id" value="{{.ID}}">
-              <button type="submit" class="btn btn-secondary btn-icon" title="Disable">
-                <i data-lucide="power"></i>
+            <div class="dropdown">
+              <button type="button" class="btn btn-secondary btn-icon" title="Actions"
+                onclick="toggleDropdown('dd_actions_{{.ID}}')">
+                <i data-lucide="ellipsis"></i>
               </button>
-            </form>
-            {{else}}
-            <form method="POST" action="/targets/activate" onsubmit="return submitWithConfirm(this);">
-              <input type="hidden" name="target_id" value="{{.ID}}">
-              <button type="submit" class="btn btn-secondary btn-icon" title="Enable">
-                <i data-lucide="power"></i>
-              </button>
-            </form>
-            {{end}}
+              <div id="dd_actions_{{.ID}}" class="dropdown-content hidden" style="min-width: 140px;">
+                {{if .IsActive}}
+                <form method="POST" action="/targets/deactivate"
+                  onsubmit="return submitWithConfirm(this, 'Deactivate this target?');">
+                  <input type="hidden" name="target_id" value="{{.ID}}">
+                  <button type="submit" class="dropdown-item" title="Disable">
+                    <i data-lucide="power"></i> Disable
+                  </button>
+                </form>
+                {{else}}
+                <form method="POST" action="/targets/activate" onsubmit="return submitWithConfirm(this);">
+                  <input type="hidden" name="target_id" value="{{.ID}}">
+                  <button type="submit" class="dropdown-item" title="Enable">
+                    <i data-lucide="power"></i> Enable
+                  </button>
+                </form>
+                {{end}}
 
-            <form method="POST" action="/targets/delete"
-              onsubmit="return submitWithConfirm(this, 'Delete this source?');">
-              <input type="hidden" name="target_id" value="{{.ID}}">
-              <button type="submit" class="btn btn-danger btn-icon" title="Delete">
-                <i data-lucide="trash-2"></i>
-              </button>
-            </form>
+                <form method="POST" action="/targets/delete"
+                  onsubmit="return submitWithConfirm(this, 'Delete this target?');">
+                  <input type="hidden" name="target_id" value="{{.ID}}">
+                  <button type="submit" class="dropdown-item text-danger" title="Delete">
+                    <i data-lucide="trash-2"></i> Delete
+                  </button>
+                </form>
+              </div>
+            </div>
           </div>
         </div>
         {{end}}
@@ -168,6 +188,10 @@
     }
 
     targetSelect.addEventListener("change", updateVisibility);
+
+    document.querySelectorAll('.dynamic-badge').forEach(el => {
+      el.style.backgroundColor = el.dataset.bgColor;
+    });
   });
 </script>
 

@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"flag"
+	"html/template"
 	"log"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -17,7 +19,7 @@ import (
 	"github.com/fluffyriot/rpsync/internal/api/handlers"
 	"github.com/fluffyriot/rpsync/internal/cli"
 	"github.com/fluffyriot/rpsync/internal/config"
-	"github.com/fluffyriot/rpsync/internal/fetcher"
+	fetcher_common "github.com/fluffyriot/rpsync/internal/fetcher/common"
 	"github.com/fluffyriot/rpsync/internal/middleware"
 	"github.com/fluffyriot/rpsync/internal/pusher/common"
 	"github.com/fluffyriot/rpsync/internal/updater"
@@ -53,7 +55,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	clientFetch := fetcher.NewClient(600 * time.Second)
+	clientFetch := fetcher_common.NewClient(600 * time.Second)
 	clientPull := common.NewClient(600 * time.Second)
 
 	if cfg.GinMode != "" {
@@ -66,6 +68,19 @@ func main() {
 
 	r.Static("/static", "./static")
 	r.StaticFile("/apple-touch-icon.png", "./static/images/apple-touch-icon.png")
+
+	r.SetFuncMap(template.FuncMap{
+		"lower": strings.ToLower,
+		"upper": strings.ToUpper,
+		"json": func(v interface{}) template.JS {
+			a, _ := json.Marshal(v)
+			return template.JS(a)
+		},
+		"stripAt": func(s string) string {
+			return strings.TrimPrefix(s, "@")
+		},
+		"replace": strings.ReplaceAll,
+	})
 
 	r.LoadHTMLGlob("templates/*.html")
 
@@ -115,20 +130,8 @@ func main() {
 		shouldStart = false
 	}
 
-	startInterval := 30 * time.Minute
-	users, err := dbQueries.GetAllUsers(ctx)
-	if err == nil && len(users) > 0 {
-		user := users[0]
-		parsedDuration, err := time.ParseDuration(user.SyncPeriod)
-		if err == nil {
-			startInterval = parsedDuration
-		} else {
-			log.Printf("Invalid sync period '%s', defaulting to 30m", user.SyncPeriod)
-		}
-	}
-
 	if shouldStart {
-		w.Start(startInterval)
+		w.Start()
 	} else {
 		log.Println("Worker disabled on startup by global settings")
 	}
@@ -220,6 +223,7 @@ func main() {
 
 	authorized.GET("/analytics/engagement", h.AnalyticsEngagementHandler)
 	authorized.GET("/analytics/website", h.AnalyticsWebsiteHandler)
+	authorized.GET("/analytics/summary", h.AnalyticsDashboardSummaryHandler)
 
 	authorized.GET("/api/sources", h.HandleGetSourcesAPI)
 	authorized.GET("/api/exclusions", h.HandleGetExclusions)

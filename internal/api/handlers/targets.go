@@ -8,6 +8,7 @@ import (
 
 	"github.com/fluffyriot/rpsync/internal/config"
 	"github.com/fluffyriot/rpsync/internal/database"
+	"github.com/fluffyriot/rpsync/internal/helpers"
 	"github.com/fluffyriot/rpsync/internal/pusher"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -40,10 +41,11 @@ func (h *Handler) TargetsHandler(c *gin.Context) {
 		return
 	}
 	c.HTML(http.StatusOK, "targets.html", h.CommonData(c, gin.H{
-		"username": user.Username,
-		"user_id":  user.ID,
-		"targets":  targets,
-		"title":    "Targets",
+		"username":          user.Username,
+		"user_id":           user.ID,
+		"targets":           targets,
+		"available_targets": helpers.AvailableTargets,
+		"title":             "Targets",
 	}))
 }
 

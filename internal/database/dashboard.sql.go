@@ -7,6 +7,7 @@ package database
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -47,6 +48,202 @@ func (q *Queries) GetAverageWebsiteSession(ctx context.Context, userID uuid.UUID
 	var average_website_session int64
 	err := row.Scan(&average_website_session)
 	return average_website_session, err
+}
+
+const getTopSources = `-- name: GetTopSources :many
+SELECT
+    s.id,
+    s.user_name,
+    s.network,
+    SUM(
+        COALESCE(prh.likes, 0) + COALESCE(prh.reposts, 0)
+    )::BIGINT AS total_interactions,
+    COALESCE(
+        (
+            SELECT ss.followers_count
+            FROM sources_stats ss
+            WHERE
+                ss.source_id = s.id
+            ORDER BY ss.date DESC
+            LIMIT 1
+        ),
+        0
+    )::BIGINT AS followers_count
+FROM sources s
+    LEFT JOIN posts p ON s.id = p.source_id
+    LEFT JOIN (
+        SELECT DISTINCT
+            ON (post_id) post_id, likes, reposts
+        FROM posts_reactions_history
+        ORDER BY post_id, synced_at DESC
+    ) prh ON p.id = prh.post_id
+WHERE
+    s.user_id = $1
+    AND s.is_active = TRUE
+    AND NOT s.network in ('Google Analytics')
+GROUP BY
+    s.id
+ORDER BY total_interactions DESC
+LIMIT 3
+`
+
+type GetTopSourcesRow struct {
+	ID                uuid.UUID
+	UserName          string
+	Network           string
+	TotalInteractions int64
+	FollowersCount    int64
+}
+
+func (q *Queries) GetTopSources(ctx context.Context, userID uuid.UUID) ([]GetTopSourcesRow, error) {
+	rows, err := q.db.QueryContext(ctx, getTopSources, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetTopSourcesRow
+	for rows.Next() {
+		var i GetTopSourcesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserName,
+			&i.Network,
+			&i.TotalInteractions,
+			&i.FollowersCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getTotalDailyEngagementStats = `-- name: GetTotalDailyEngagementStats :many
+SELECT
+    calendar.date::date as period_date,
+    COALESCE(
+        (
+            SELECT SUM(
+                    COALESCE(likes, 0) + COALESCE(reposts, 0)
+                )
+            FROM (
+                    SELECT DISTINCT
+                        ON (prh.post_id) prh.likes, prh.reposts
+                    FROM
+                        posts_reactions_history prh
+                        JOIN posts p ON prh.post_id = p.id
+                        JOIN sources s ON p.source_id = s.id
+                    WHERE
+                        s.user_id = $1
+                        AND prh.synced_at < calendar.date + INTERVAL '1 day'
+                    ORDER BY prh.post_id, prh.synced_at DESC
+                ) as distinct_posts
+        ),
+        0
+    )::BIGINT as total_engagement
+FROM generate_series(
+        date_trunc('day', $2::timestamp), date_trunc('day', $3::timestamp), '1 day'::interval
+    ) as calendar (date)
+ORDER BY calendar.date ASC
+`
+
+type GetTotalDailyEngagementStatsParams struct {
+	UserID  uuid.UUID
+	Column2 time.Time
+	Column3 time.Time
+}
+
+type GetTotalDailyEngagementStatsRow struct {
+	PeriodDate      time.Time
+	TotalEngagement int64
+}
+
+func (q *Queries) GetTotalDailyEngagementStats(ctx context.Context, arg GetTotalDailyEngagementStatsParams) ([]GetTotalDailyEngagementStatsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getTotalDailyEngagementStats, arg.UserID, arg.Column2, arg.Column3)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetTotalDailyEngagementStatsRow
+	for rows.Next() {
+		var i GetTotalDailyEngagementStatsRow
+		if err := rows.Scan(&i.PeriodDate, &i.TotalEngagement); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getTotalDailyFollowerStats = `-- name: GetTotalDailyFollowerStats :many
+SELECT
+    calendar.date::date as period_date,
+    COALESCE(
+        (
+            SELECT SUM(COALESCE(followers_count, 0))
+            FROM (
+                    SELECT DISTINCT
+                        ON (ss.source_id) ss.followers_count
+                    FROM sources_stats ss
+                        JOIN sources s ON ss.source_id = s.id
+                    WHERE
+                        s.user_id = $1
+                        AND ss.date < calendar.date + INTERVAL '1 day'
+                    ORDER BY ss.source_id, ss.date DESC
+                ) as distinct_sources
+        ),
+        0
+    )::BIGINT as total_followers
+FROM generate_series(
+        date_trunc('day', $2::timestamp), date_trunc('day', $3::timestamp), '1 day'::interval
+    ) as calendar (date)
+ORDER BY calendar.date ASC
+`
+
+type GetTotalDailyFollowerStatsParams struct {
+	UserID  uuid.UUID
+	Column2 time.Time
+	Column3 time.Time
+}
+
+type GetTotalDailyFollowerStatsRow struct {
+	PeriodDate     time.Time
+	TotalFollowers int64
+}
+
+func (q *Queries) GetTotalDailyFollowerStats(ctx context.Context, arg GetTotalDailyFollowerStatsParams) ([]GetTotalDailyFollowerStatsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getTotalDailyFollowerStats, arg.UserID, arg.Column2, arg.Column3)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetTotalDailyFollowerStatsRow
+	for rows.Next() {
+		var i GetTotalDailyFollowerStatsRow
+		if err := rows.Scan(&i.PeriodDate, &i.TotalFollowers); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getTotalPageViews = `-- name: GetTotalPageViews :one

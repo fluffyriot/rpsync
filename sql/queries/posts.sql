@@ -76,3 +76,24 @@ DELETE FROM posts
 WHERE
     source_id = $1
     AND network_internal_id LIKE $2;
+
+-- name: UpdatePost :one
+UPDATE posts
+SET
+    last_synced_at = $2,
+    is_archived = $3,
+    content = $4,
+    post_type = $5,
+    author = $6
+WHERE
+    id = $1
+RETURNING
+    *;
+
+-- name: ArchiveUnsyncedPosts :exec
+UPDATE posts
+SET
+    is_archived = true
+WHERE
+    source_id = $1
+    AND last_synced_at < $2;

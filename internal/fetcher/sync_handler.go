@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/fluffyriot/rpsync/internal/database"
+	"github.com/fluffyriot/rpsync/internal/fetcher/common"
+	"github.com/fluffyriot/rpsync/internal/fetcher/sources"
 	"github.com/google/uuid"
 )
 
@@ -16,6 +18,8 @@ func executeSync(
 	syncFunc func() error,
 	isLastRetry bool,
 ) error {
+	syncStartTime := time.Now()
+
 	_, err := dbQueries.UpdateSourceSyncStatusById(ctx, database.UpdateSourceSyncStatusByIdParams{
 		ID:         sourceID,
 		SyncStatus: "Syncing",
@@ -42,6 +46,14 @@ func executeSync(
 		}
 		return err
 	}
+
+	if err := dbQueries.ArchiveUnsyncedPosts(ctx, database.ArchiveUnsyncedPostsParams{
+		SourceID:     sourceID,
+		LastSyncedAt: syncStartTime.Add(-36 * time.Hour),
+	}); err != nil {
+		return err
+	}
+
 	_, err = dbQueries.UpdateSourceSyncStatusById(ctx, database.UpdateSourceSyncStatusByIdParams{
 		ID:           sourceID,
 		SyncStatus:   "Synced",
@@ -52,7 +64,7 @@ func executeSync(
 	return err
 }
 
-func SyncBySource(sid uuid.UUID, dbQueries *database.Queries, c *Client, ver string, encryptionKey []byte, isLastRetry bool) error {
+func SyncBySource(sid uuid.UUID, dbQueries *database.Queries, c *common.Client, ver string, encryptionKey []byte, isLastRetry bool) error {
 
 	source, err := dbQueries.GetSourceById(context.Background(), sid)
 	if err != nil {
@@ -62,40 +74,40 @@ func SyncBySource(sid uuid.UUID, dbQueries *database.Queries, c *Client, ver str
 	return executeSync(context.Background(), dbQueries, source.ID, func() error {
 		switch source.Network {
 		case "Bluesky":
-			return FetchBlueskyPosts(dbQueries, c, source.UserID, source.ID)
+			return sources.FetchBlueskyPosts(dbQueries, c, source.UserID, source.ID)
 
 		case "Instagram":
-			if err := FetchInstagramPosts(dbQueries, c, source.ID, ver, encryptionKey); err != nil {
+			if err := sources.FetchInstagramPosts(dbQueries, c, source.ID, ver, encryptionKey); err != nil {
 				return err
 			}
-			return FetchInstagramTags(dbQueries, c, source.ID, ver, encryptionKey)
+			return sources.FetchInstagramTags(dbQueries, c, source.ID, ver, encryptionKey)
 
 		case "Murrtube":
-			return FetchMurrtubePosts(source.UserID, dbQueries, c, source.ID)
+			return sources.FetchMurrtubePosts(source.UserID, dbQueries, c, source.ID)
 
 		case "BadPups":
-			return FetchBadpupsPosts(source.UserID, dbQueries, c, source.ID)
+			return sources.FetchBadpupsPosts(source.UserID, dbQueries, c, source.ID)
 
 		case "TikTok":
-			return FetchTikTokPosts(dbQueries, c, source.UserID, source.ID)
+			return sources.FetchTikTokPosts(dbQueries, c, source.UserID, source.ID)
 
 		case "Mastodon":
-			return FetchMastodonPosts(dbQueries, c, source.UserID, source.ID)
+			return sources.FetchMastodonPosts(dbQueries, c, source.UserID, source.ID)
 
 		case "Telegram":
-			return FetchTelegramPosts(dbQueries, encryptionKey, source.ID, c)
+			return sources.FetchTelegramPosts(dbQueries, encryptionKey, source.ID, c)
 
 		case "Google Analytics":
-			return FetchGoogleAnalyticsStats(dbQueries, source.ID, encryptionKey)
+			return sources.FetchGoogleAnalyticsStats(dbQueries, source.ID, encryptionKey)
 
 		case "YouTube":
-			return FetchYouTubePosts(dbQueries, source.ID, encryptionKey)
+			return sources.FetchYouTubePosts(dbQueries, source.ID, encryptionKey)
 
 		case "FurTrack":
-			return FetchFurTrackPosts(dbQueries, c, source.UserID, source.ID)
- 
-	case "Discord":
-		return FetchDiscordPosts(dbQueries, encryptionKey, source.ID, c)
+			return sources.FetchFurTrackPosts(dbQueries, c, source.UserID, source.ID)
+
+		case "Discord":
+			return sources.FetchDiscordPosts(dbQueries, encryptionKey, source.ID, c)
 
 		default:
 			return nil

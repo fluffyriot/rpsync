@@ -74,7 +74,7 @@
                             style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Username</label>
                         <div class="flex gap-2">
                             <input type="text" id="username_input" name="username" class="form-input"
-                                value="{{ .username }}" required style="margin-bottom: 0;">
+                                value="{{ .username }}" required style="margin-bottom: 0;" autocapitalize="off">
                             <button type="submit" class="btn btn-primary"><i data-lucide="save"></i> Update</button>
                         </div>
                     </div>
@@ -241,7 +241,8 @@
                     </button>
 
                     <div class="exclusion-search-container">
-                        <input type="text" id="exclusionSearch" class="form-select" placeholder="Search by ID...">
+                        <input type="text" id="exclusionSearch" class="form-select" placeholder="Search by ID..."
+                            autocapitalize="off">
                     </div>
                 </div>
 
@@ -277,7 +278,8 @@
                     </button>
 
                     <div class="exclusion-search-container">
-                        <input type="text" id="redirectSearch" class="form-select" placeholder="Search by Path...">
+                        <input type="text" id="redirectSearch" class="form-select" placeholder="Search by Path..."
+                            autocapitalize="off">
                     </div>
                 </div>
 
@@ -319,7 +321,8 @@
                     <label for="exclusion_network_id"
                         style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Network Internal ID(s)</label>
                     <input type="text" name="network_internal_id" id="exclusion_network_id" class="form-select" required
-                        style="width: 100%;" placeholder="e.g., post ID, shortcode, or comma-separated list...">
+                        style="width: 100%;" placeholder="e.g., post ID, shortcode, or comma-separated list..."
+                        autocapitalize="off">
                     <p class="text-muted" style="margin-top: 0.5rem; font-size: 0.875rem;">One or more platform-specific
                         IDs to exclude</p>
                 </div>
@@ -355,14 +358,14 @@
                     <label for="redirect_from_path"
                         style="display: block; margin-bottom: 0.5rem; font-weight: 500;">From Path</label>
                     <input type="text" name="from_path" id="redirect_from_path" class="form-select" required
-                        style="width: 100%;" placeholder="e.g. /old-page">
+                        style="width: 100%;" placeholder="e.g. /old-page" autocapitalize="off">
                 </div>
 
                 <div class="form-group" style="margin-bottom: 1.5rem;">
                     <label for="redirect_to_path" style="display: block; margin-bottom: 0.5rem; font-weight: 500;">To
                         Path</label>
                     <input type="text" name="to_path" id="redirect_to_path" class="form-select" required
-                        style="width: 100%;" placeholder="e.g. /new-page">
+                        style="width: 100%;" placeholder="e.g. /new-page" autocapitalize="off">
                     <p class="text-muted" style="margin-top: 0.5rem; font-size: 0.875rem;">
                         Note: Stats will be merged. This action deletes the old path stats.
                     </p>

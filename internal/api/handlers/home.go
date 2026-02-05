@@ -1,10 +1,15 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 
+	"github.com/fluffyriot/rpsync/internal/database"
+	"github.com/fluffyriot/rpsync/internal/helpers"
+	"github.com/fluffyriot/rpsync/internal/stats"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"golang.org/x/sync/errgroup"
 )
 
 func (h *Handler) RootHandler(c *gin.Context) {
@@ -53,21 +58,110 @@ func (h *Handler) RootHandler(c *gin.Context) {
 		return
 	}
 
-	activeSources, _ := h.DB.GetActiveSourcesCount(ctx, user.ID)
-	activeTargets, _ := h.DB.GetActiveTargetsCount(ctx, user.ID)
-	totalPosts, _ := h.DB.GetTotalPostsCount(ctx, user.ID)
-	reactions, _ := h.DB.GetTotalReactions(ctx, user.ID)
-	siteStats, _ := h.DB.GetTotalSiteStats(ctx, user.ID)
-	pageViews, _ := h.DB.GetTotalPageViews(ctx, user.ID)
-	siteAvSession, _ := h.DB.GetAverageWebsiteSession(ctx, user.ID)
-	syncErrors30d, _ := h.DB.GetSyncErrorsCountLast30Days(ctx, user.ID)
-	recentLogs, _ := h.DB.GetRecentLogs(ctx, user.ID)
+	var (
+		activeSources int64
+		activeTargets int64
+		totalPosts    int64
+		reactions     database.GetTotalReactionsRow
+		siteStats     int64
+		pageViews     int64
+		siteAvSession int64
+		syncErrors30d int64
+		recentLogs    []database.GetRecentLogsRow
+		topSourcesDB  []database.GetTopSourcesRow
+		dashSummary   *stats.DashboardSummary
+	)
+
+	g, ctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		var err error
+		activeSources, err = h.DB.GetActiveSourcesCount(ctx, user.ID)
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		activeTargets, err = h.DB.GetActiveTargetsCount(ctx, user.ID)
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		totalPosts, err = h.DB.GetTotalPostsCount(ctx, user.ID)
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		reactions, err = h.DB.GetTotalReactions(ctx, user.ID)
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		siteStats, err = h.DB.GetTotalSiteStats(ctx, user.ID)
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		pageViews, err = h.DB.GetTotalPageViews(ctx, user.ID)
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		siteAvSession, err = h.DB.GetAverageWebsiteSession(ctx, user.ID)
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		syncErrors30d, err = h.DB.GetSyncErrorsCountLast30Days(ctx, user.ID)
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		recentLogs, err = h.DB.GetRecentLogs(ctx, user.ID)
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		topSourcesDB, err = h.DB.GetTopSources(ctx, user.ID)
+		return err
+	})
+
+	g.Go(func() error {
+		var err error
+		dashSummary, err = stats.GetDashboardSummary(h.DB, user.ID)
+		return err
+	})
+
+	if err := g.Wait(); err != nil {
+		log.Printf("Error getting dashboard data: %v", err)
+	}
 
 	workerStatus := "Off"
 	workerIsOff := true
 	if h.Worker.IsActive() {
 		workerStatus = "On"
 		workerIsOff = false
+	}
+
+	var topSources []TopSourceViewModel
+	for _, src := range topSourcesDB {
+		profileURL, _ := helpers.ConvNetworkToURL(src.Network, src.UserName)
+		topSources = append(topSources, TopSourceViewModel{
+			ID:                src.ID,
+			UserName:          src.UserName,
+			Network:           src.Network,
+			TotalInteractions: src.TotalInteractions,
+			FollowersCount:    src.FollowersCount,
+			ProfileURL:        profileURL,
+		})
 	}
 
 	c.HTML(http.StatusOK, "index.html", h.CommonData(c, gin.H{
@@ -87,6 +181,8 @@ func (h *Handler) RootHandler(c *gin.Context) {
 		"worker_status":           workerStatus,
 		"worker_is_off":           workerIsOff,
 		"sync_period":             user.SyncPeriod,
+		"top_sources":             topSources,
+		"dashboard_summary":       dashSummary,
 		"title":                   "Dashboard",
 	}))
 }

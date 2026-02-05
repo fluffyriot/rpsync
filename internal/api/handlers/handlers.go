@@ -5,7 +5,8 @@ import (
 
 	"github.com/fluffyriot/rpsync/internal/config"
 	"github.com/fluffyriot/rpsync/internal/database"
-	"github.com/fluffyriot/rpsync/internal/fetcher"
+	fetcher_common "github.com/fluffyriot/rpsync/internal/fetcher/common"
+	"github.com/fluffyriot/rpsync/internal/helpers"
 	"github.com/fluffyriot/rpsync/internal/pusher/common"
 	"github.com/fluffyriot/rpsync/internal/updater"
 	"github.com/fluffyriot/rpsync/internal/worker"
@@ -17,14 +18,14 @@ import (
 type Handler struct {
 	DB      *database.Queries
 	DBConn  *sql.DB
-	Fetcher *fetcher.Client
+	Fetcher *fetcher_common.Client
 	Puller  *common.Client
 	Config  *config.AppConfig
 	Worker  *worker.Worker
 	Updater *updater.Updater
 }
 
-func NewHandler(db *database.Queries, dbConn *sql.DB, clientFetch *fetcher.Client, clientPull *common.Client, cfg *config.AppConfig, w *worker.Worker, upd *updater.Updater) *Handler {
+func NewHandler(db *database.Queries, dbConn *sql.DB, clientFetch *fetcher_common.Client, clientPull *common.Client, cfg *config.AppConfig, w *worker.Worker, upd *updater.Updater) *Handler {
 	return &Handler{
 		DB:      db,
 		DBConn:  dbConn,
@@ -61,6 +62,15 @@ func (h *Handler) CommonData(c *gin.Context, data gin.H) gin.H {
 	if val, exists := c.Get("avatar_version"); exists {
 		data["avatar_version"] = val
 	}
+
+	networkColors := make(map[string]string)
+	for _, source := range helpers.AvailableSources {
+		networkColors[source.Name] = source.Color
+	}
+	for _, target := range helpers.AvailableTargets {
+		networkColors[target.Name] = target.Color
+	}
+	data["network_colors"] = networkColors
 
 	return data
 }

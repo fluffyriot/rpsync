@@ -19,56 +19,49 @@
     <div>
         <div class="card">
             <div class="card-header">Add New Source</div>
-            <form method="POST" action="/sources/setup" id="source_form">
+            <form method="POST" action="/sources/setup" id="source_form" autocomplete="off">
                 <input type="hidden" name="user_id" value="{{.user_id}}">
 
                 <div class="form-group">
                     <label class="form-label" for="network">Network</label>
                     <select id="network" name="network" class="form-select" required>
                         <option value="" disabled selected>Select Network</option>
-                        <option value="Bluesky">Bluesky</option>
-                        <option value="Instagram">Instagram</option>
-                        <option value="TikTok">TikTok</option>
-                        <option value="YouTube">YouTube</option>
-                        <option value="Mastodon">Mastodon</option>
-                        <option value="Telegram">Telegram</option>
-                        <option value="Murrtube">Murrtube</option>
-                        <option value="BadPups">BadPups</option>
-                        <option value="FurTrack">FurTrack</option>
-                        <option value="Discord">Discord</option>
-                        <option value="Google Analytics">Google Analytics</option>
+                        {{range .available_sources}}
+                        <option value="{{.Name}}">{{.Name}}</option>
+                        {{end}}
                     </select>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label" for="username_input">Username</label>
                     <input type="text" id="username_input" name="username" class="form-input"
-                        placeholder="username (no @)" required>
+                        placeholder="username (no @)" required autocapitalize="off">
                 </div>
 
                 <div class="form-group" id="instagram_section" style="display:none;">
                     <label class="form-label" for="instagram_profile_id">Instagram Profile ID</label>
                     <input id="instagram_profile_id" name="instagram_profile_id" class="form-input"
-                        placeholder="123456789">
+                        placeholder="123456789" autocapitalize="off">
 
                     <label class="form-label" for="app_id">App ID</label>
-                    <input id="app_id" name="app_id" class="form-input" placeholder="Facebook App ID">
+                    <input id="app_id" name="app_id" class="form-input" placeholder="Facebook App ID"
+                        autocapitalize="off">
 
                     <label class="form-label" for="app_secret">App Secret</label>
                     <input id="app_secret" name="app_secret" type="password" class="form-input"
-                        placeholder="Facebook App Secret">
+                        placeholder="Facebook App Secret" autocapitalize="off">
                 </div>
 
                 <div class="form-group" id="google_analytics_section" style="display:none;">
                     <label class="form-label" for="google_analytics_property_id">Property ID</label>
                     <input id="google_analytics_property_id" name="google_analytics_property_id" class="form-input"
-                        placeholder="e.g. 34221144">
+                        placeholder="e.g. 34221144" autocapitalize="off">
                     <p class="text-muted" style="font-size: 0.8rem; margin-top: 0.25rem;">Found in Admin > Property
                         Settings</p>
 
                     <label class="form-label" for="google_service_account_key">Service Account JSON Key</label>
                     <textarea id="google_service_account_key" name="google_service_account_key" class="form-input"
-                        rows="5" placeholder='{"type": "service_account", ...}'></textarea>
+                        rows="5" placeholder='{"type": "service_account", ...}' autocapitalize="off"></textarea>
                     <p class="text-muted" style="font-size: 0.8rem; margin-top: 0.25rem;">Create a Service Account in
                         Google Cloud
                         Console, download the JSON key, and paste it here.</p>
@@ -78,32 +71,34 @@
 
                     <label class="form-label" for="telegram_bot_token">Telegram Bot Token</label>
                     <input id="telegram_bot_token" name="telegram_bot_token" class="form-input"
-                        placeholder="your_bot-token">
+                        placeholder="your_bot-token" autocapitalize="off">
 
                     <label class="form-label" for="telegram_channel_id">Telegram Channel ID</label>
                     <input id="telegram_channel_id" name="telegram_channel_id" class="form-input"
-                        placeholder="your_channel_id">
+                        placeholder="your_channel_id" autocapitalize="off">
 
                     <label class="form-label" for="telegram_app_id">Telegram App ID</label>
-                    <input id="telegram_app_id" name="telegram_app_id" class="form-input" placeholder="your_app_id">
+                    <input id="telegram_app_id" name="telegram_app_id" class="form-input" placeholder="your_app_id"
+                        autocapitalize="off">
 
                     <label class="form-label" for="telegram_app_hash">Telegram App Hash</label>
                     <input id="telegram_app_hash" name="telegram_app_hash" class="form-input"
-                        placeholder="your_app_hash">
+                        placeholder="your_app_hash" autocapitalize="off">
 
                 </div>
 
                 <div class="form-group" id="discord_section" style="display:none;">
                     <label class="form-label" for="discord_bot_token">Discord Bot Token</label>
                     <input id="discord_bot_token" name="discord_bot_token" class="form-input"
-                        placeholder="your_bot_token">
+                        placeholder="your_bot_token" autocapitalize="off">
 
                     <label class="form-label" for="discord_server_id">Server ID</label>
-                    <input id="discord_server_id" name="discord_server_id" class="form-input" placeholder="123456789">
+                    <input id="discord_server_id" name="discord_server_id" class="form-input" placeholder="123456789"
+                        autocapitalize="off">
 
                     <label class="form-label" for="discord_channel_ids">Channel IDs (comma-separated)</label>
                     <input id="discord_channel_ids" name="discord_channel_ids" class="form-input"
-                        placeholder="123456,789012,345678">
+                        placeholder="123456,789012,345678" autocapitalize="off">
                     <p class="text-muted" style="font-size: 0.8rem; margin-top: 0.25rem;">Enter multiple channel IDs
                         separated by commas</p>
                 </div>
@@ -130,8 +125,17 @@
                 <div class="source-item">
                     <div class="source-info">
                         <div class="flex items-center gap-2">
+                            <span class="badge-with-logo dynamic-badge"
+                                data-bg-color="{{index $.network_colors .Network}}">
+                                <img src='/static/images/sources/badge/{{replace (lower .Network) " " "_"}}_logo.svg'
+                                    alt="{{.Network}}" class="badge-logo"
+                                    onerror="this.style.display='none'; var ph=this.nextElementSibling; ph.style.display='flex';">
+                                <div class="badge-logo-placeholder" style="display: none;">
+                                    {{slice .Network 0 1 | upper}}
+                                </div>
+                                {{.Network}}
+                            </span>
                             <span style="font-weight: bold; font-size: 1.05rem;">{{.UserName}}</span>
-                            <span class="badge badge-neutral">{{.Network}}</span>
                         </div>
 
                         <div class="source-meta flex items-center gap-2">
@@ -169,23 +173,6 @@
                             </button>
                         </form>
 
-                        {{if .IsActive}}
-                        <form method="POST" action="/sources/deactivate"
-                            onsubmit="return submitWithConfirm(this, 'Deactivate this source?');">
-                            <input type="hidden" name="source_id" value="{{.ID}}">
-                            <button type="submit" class="btn btn-secondary btn-icon" title="Disable">
-                                <i data-lucide="power"></i>
-                            </button>
-                        </form>
-                        {{else}}
-                        <form method="POST" action="/sources/activate" onsubmit="return submitWithConfirm(this);">
-                            <input type="hidden" name="source_id" value="{{.ID}}">
-                            <button type="submit" class="btn btn-secondary btn-icon" title="Enable">
-                                <i data-lucide="power"></i>
-                            </button>
-                        </form>
-                        {{end}}
-
                         {{if eq .Network "TikTok"}}
                         <div class="dropdown">
                             <button type="button" class="btn btn-secondary btn-icon" title="Manage Cookies"
@@ -222,7 +209,7 @@
                         <form method="POST" action="/auth/facebook/refresh"
                             onsubmit="return submitWithConfirm(this, 'Refresh access token for this source?');">
                             <input type="hidden" name="source_id" value="{{.ID}}">
-                            <button type="submit" class="btn btn-danger btn-icon" {{if not .IsActive}}disabled{{end}}
+                            <button type="submit" class="btn btn-secondary btn-icon" {{if not .IsActive}}disabled{{end}}
                                 title="Refresh Token">
                                 <i data-lucide="key-round"></i>
                             </button>
@@ -231,18 +218,44 @@
 
                         {{if eq .Network "Discord"}}
                         <button type="button" class="btn btn-secondary btn-icon"
-                            onclick="showDiscordChannels('{{.ID}}')" title="View Channels">
+                            onclick="showDiscordChannels('{{.ID}}')" title="View / Update Channels">
                             <i data-lucide="hash"></i>
                         </button>
                         {{end}}
 
-                        <form method="POST" action="/sources/delete"
-                            onsubmit="return submitWithConfirm(this, 'Delete this source?');">
-                            <input type="hidden" name="source_id" value="{{.ID}}">
-                            <button type="submit" class="btn btn-danger btn-icon" title="Delete">
-                                <i data-lucide="trash-2"></i>
+                        <div class="dropdown">
+                            <button type="button" class="btn btn-secondary btn-icon" title="Actions"
+                                onclick="toggleDropdown('dd_actions_{{.ID}}')">
+                                <i data-lucide="ellipsis"></i>
                             </button>
-                        </form>
+                            <div id="dd_actions_{{.ID}}" class="dropdown-content hidden" style="min-width: 140px;">
+                                {{if .IsActive}}
+                                <form method="POST" action="/sources/deactivate"
+                                    onsubmit="return submitWithConfirm(this, 'Deactivate this source?');">
+                                    <input type="hidden" name="source_id" value="{{.ID}}">
+                                    <button type="submit" class="dropdown-item" title="Disable">
+                                        <i data-lucide="power"></i> Disable
+                                    </button>
+                                </form>
+                                {{else}}
+                                <form method="POST" action="/sources/activate"
+                                    onsubmit="return submitWithConfirm(this);">
+                                    <input type="hidden" name="source_id" value="{{.ID}}">
+                                    <button type="submit" class="dropdown-item" title="Enable">
+                                        <i data-lucide="power"></i> Enable
+                                    </button>
+                                </form>
+                                {{end}}
+
+                                <form method="POST" action="/sources/delete"
+                                    onsubmit="return submitWithConfirm(this, 'Delete this source?');">
+                                    <input type="hidden" name="source_id" value="{{.ID}}">
+                                    <button type="submit" class="dropdown-item text-danger" title="Delete">
+                                        <i data-lucide="trash-2"></i> Delete
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 {{end}}
@@ -438,6 +451,13 @@
             alert('Failed to update channels');
         }
     }
+
+
+    document.addEventListener("DOMContentLoaded", function () {
+        document.querySelectorAll('.dynamic-badge').forEach(el => {
+            el.style.backgroundColor = el.dataset.bgColor;
+        });
+    });
 </script>
 
 {{ template "footer.html" . }}
