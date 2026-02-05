@@ -26,8 +26,9 @@
           <label class="form-label" for="target">Target</label>
           <select id="target" name="target" class="form-select" required>
             <option value="" disabled selected>Select Target</option>
-            <option value="NocoDB">NocoDB</option>
-            <option value="CSV">CSV</option>
+            {{range .available_targets}}
+            <option value="{{.Name}}">{{.Name}}</option>
+            {{end}}
           </select>
         </div>
 
@@ -70,9 +71,18 @@
         <div class="source-item">
           <div class="source-info">
             <div class="flex items-center gap-2">
+              <span class="badge-with-logo dynamic-badge" data-bg-color="{{index $.network_colors .TargetType}}">
+                <img src='/static/images/targets/badge/{{replace (lower .TargetType) " " "_"}}_logo.svg'
+                  alt="{{.TargetType}}" class="badge-logo"
+                  onerror="this.style.display='none'; var ph=this.nextElementSibling; ph.style.display='flex';">
+                <div class="badge-logo-placeholder" style="display: none;">
+                  {{slice .TargetType 0 1 | upper}}
+                </div>
+                {{.TargetType}}
+              </span>
               <span style="font-weight: bold; font-size: 1.05rem;">{{.DbID.String}}</span>
-              <span class="badge badge-neutral">{{.TargetType}}</span>
             </div>
+
 
             <div class="source-meta flex items-center gap-2">
               {{if .IsActive}}
@@ -178,6 +188,10 @@
     }
 
     targetSelect.addEventListener("change", updateVisibility);
+
+    document.querySelectorAll('.dynamic-badge').forEach(el => {
+      el.style.backgroundColor = el.dataset.bgColor;
+    });
   });
 </script>
 

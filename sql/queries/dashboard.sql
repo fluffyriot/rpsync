@@ -134,6 +134,7 @@ FROM sources s
 WHERE
     s.user_id = $1
     AND s.is_active = TRUE
+    AND NOT s.network in ('Google Analytics')
 GROUP BY
     s.id
 ORDER BY total_interactions DESC

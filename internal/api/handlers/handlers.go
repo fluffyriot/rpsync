@@ -6,6 +6,7 @@ import (
 	"github.com/fluffyriot/rpsync/internal/config"
 	"github.com/fluffyriot/rpsync/internal/database"
 	fetcher_common "github.com/fluffyriot/rpsync/internal/fetcher/common"
+	"github.com/fluffyriot/rpsync/internal/helpers"
 	"github.com/fluffyriot/rpsync/internal/pusher/common"
 	"github.com/fluffyriot/rpsync/internal/updater"
 	"github.com/fluffyriot/rpsync/internal/worker"
@@ -61,6 +62,15 @@ func (h *Handler) CommonData(c *gin.Context, data gin.H) gin.H {
 	if val, exists := c.Get("avatar_version"); exists {
 		data["avatar_version"] = val
 	}
+
+	networkColors := make(map[string]string)
+	for _, source := range helpers.AvailableSources {
+		networkColors[source.Name] = source.Color
+	}
+	for _, target := range helpers.AvailableTargets {
+		networkColors[target.Name] = target.Color
+	}
+	data["network_colors"] = networkColors
 
 	return data
 }

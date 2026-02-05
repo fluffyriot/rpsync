@@ -24,10 +24,10 @@
       <img src="/static/images/sources/{{.Network | lower}}_logo.svg" alt="{{.Network}}" class="source-logo"
         onerror="this.style.display='none'; var ph=this.nextElementSibling; ph.style.display='flex'; ph.style.backgroundColor=ph.dataset.color;">
       <div class="source-logo-placeholder" style="display: none;" data-color="{{index $.network_colors .Network}}">
-        {{slice .UserName 0 1 | upper}}
+        {{slice .Network 0 1 | upper}}
       </div>
       <div style="min-width: 0;">
-        <a href="{{.ProfileURL}}" target="_blank" class="source-name" title="{{.UserName}}">{{.UserName}}</a>
+        <a href="{{.ProfileURL}}" target="_blank" class="source-name" title="{{.UserName}}">{{.UserName | stripAt}}</a>
         <div class="source-network">{{.Network}}</div>
       </div>
     </div>
@@ -36,7 +36,7 @@
         <span class="source-stat-value formatted-metric">{{.TotalInteractions}}</span>
         <span class="source-stat-label">Interactions</span>
       </div>
-      <div class="source-stat">
+      <div class="source-stat source-stat-right">
         <span class="source-stat-value formatted-metric">{{.FollowersCount}}</span>
         <span class="source-stat-label">Followers</span>
       </div>
@@ -259,8 +259,8 @@
         Chart.defaults.borderColor = '#333';
 
         const colorMap = {
-          "Website Visitors": "#10b981",
-          "Page Views": "#60a5fa"
+          "Website Visitors": "#f9ab00",
+          "Page Views": "#e37400"
         };
 
         data.forEach((series, index) => {
@@ -351,6 +351,10 @@
   });
 </script>
 
+<script id="network-colors-data" type="application/json">
+  {{.network_colors | json}}
+</script>
+
 <script>
   document.addEventListener("DOMContentLoaded", function () {
     fetch('/analytics/engagement')
@@ -368,17 +372,12 @@
         Chart.defaults.color = '#a0a0a0';
         Chart.defaults.borderColor = '#333';
 
-        const palette = [
-          '#60A5FA', '#F97316', '#10B981', '#EF4444',
-          '#A855F7', '#F59E0B', '#14B8A6', '#EC4899',
-          '#22C55E', '#6366F1'
-        ];
-
-        data.sort((a, b) => {
-          const nameA = (a.network + a.username).toLowerCase();
-          const nameB = (b.network + b.username).toLowerCase();
-          return nameA.localeCompare(nameB);
-        });
+        let networkColors = {};
+        try {
+          networkColors = JSON.parse(document.getElementById('network-colors-data').textContent);
+        } catch (e) {
+          console.error("Failed to parse network colors", e);
+        }
 
         data.forEach((source, index) => {
           const points = source.points || [];
@@ -391,7 +390,7 @@
             };
           });
 
-          const color = palette[index % palette.length];
+          const color = networkColors[source.network] || '#9167e4';
 
           datasets.push({
             label: `  ${source.network} (${source.username})`,
@@ -561,7 +560,7 @@
             'Engagement',
             data.engagement.current_period,
             data.engagement.previous_period,
-            '#60a5fa'
+            '#9167e4'
           );
         }
 
@@ -571,7 +570,7 @@
             'Followers',
             data.followers.current_period,
             data.followers.previous_period,
-            '#10b981'
+            '#9167e4'
           );
         }
 

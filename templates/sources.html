@@ -125,8 +125,17 @@
                 <div class="source-item">
                     <div class="source-info">
                         <div class="flex items-center gap-2">
+                            <span class="badge-with-logo dynamic-badge"
+                                data-bg-color="{{index $.network_colors .Network}}">
+                                <img src='/static/images/sources/badge/{{replace (lower .Network) " " "_"}}_logo.svg'
+                                    alt="{{.Network}}" class="badge-logo"
+                                    onerror="this.style.display='none'; var ph=this.nextElementSibling; ph.style.display='flex';">
+                                <div class="badge-logo-placeholder" style="display: none;">
+                                    {{slice .Network 0 1 | upper}}
+                                </div>
+                                {{.Network}}
+                            </span>
                             <span style="font-weight: bold; font-size: 1.05rem;">{{.UserName}}</span>
-                            <span class="badge badge-neutral">{{.Network}}</span>
                         </div>
 
                         <div class="source-meta flex items-center gap-2">
@@ -442,6 +451,13 @@
             alert('Failed to update channels');
         }
     }
+
+
+    document.addEventListener("DOMContentLoaded", function () {
+        document.querySelectorAll('.dynamic-badge').forEach(el => {
+            el.style.backgroundColor = el.dataset.bgColor;
+        });
+    });
 </script>
 
 {{ template "footer.html" . }}

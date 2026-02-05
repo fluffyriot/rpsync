@@ -72,6 +72,14 @@ func main() {
 	r.SetFuncMap(template.FuncMap{
 		"lower": strings.ToLower,
 		"upper": strings.ToUpper,
+		"json": func(v interface{}) template.JS {
+			a, _ := json.Marshal(v)
+			return template.JS(a)
+		},
+		"stripAt": func(s string) string {
+			return strings.TrimPrefix(s, "@")
+		},
+		"replace": strings.ReplaceAll,
 	})
 
 	r.LoadHTMLGlob("templates/*.html")

@@ -1100,6 +1100,10 @@ a:hover {
   flex-direction: column;
 }
 
+.source-stat-right {
+  text-align: right;
+}
+
 .source-stat-value {
   font-weight: bold;
   font-size: 1.1rem;
@@ -1108,4 +1112,35 @@ a:hover {
 .source-stat-label {
   font-size: 0.75rem;
   color: var(--color-text-muted);
+}
+
+.badge-with-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 99px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: white;
+  letter-spacing: 0.05em;
+}
+
+.badge-logo {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+}
+
+.badge-logo-placeholder {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: bold;
 }
