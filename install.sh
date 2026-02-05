@@ -251,8 +251,8 @@ ${APP_PORTS_CONFIG}
       - ./Caddyfile:/etc/caddy/Caddyfile
       - ./certs:/certs
     ports:
-      - "\${HTTP_PORT}:80"
-      - "\${HTTPS_PORT}:443"
+      - "\${HTTP_PORT}:\${HTTP_PORT}"
+      - "\${HTTPS_PORT}:\${HTTPS_PORT}"
     depends_on:
       - app
 
