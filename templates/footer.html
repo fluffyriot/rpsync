@@ -25,120 +25,14 @@
 </div>
 
 <script>
+    window.rpsyncAppVersion = "{{.app_version}}";
+    window.rpsyncUserLastSeenVersion = "{{.user_last_seen_version}}";
+
     document.addEventListener('DOMContentLoaded', () => {
-        const appVersion = "{{.app_version}}";
-        const userLastSeenVersion = "{{.user_last_seen_version}}";
-
-        if (appVersion && appVersion !== "unknown" && userLastSeenVersion && appVersion !== userLastSeenVersion) {
-            showReleaseNotes(appVersion);
+        if (window.rpsyncAppVersion && window.rpsyncAppVersion !== "unknown" &&
+            window.rpsyncUserLastSeenVersion && window.rpsyncAppVersion !== window.rpsyncUserLastSeenVersion) {
+            showReleaseNotes(window.rpsyncAppVersion, window.rpsyncUserLastSeenVersion);
         }
-    });
-
-    function showReleaseNotes(version) {
-        const overlay = document.getElementById('release-notes-overlay');
-        const sidebar = document.getElementById('release-notes-sidebar');
-        const versionSpan = document.getElementById('release-notes-version');
-        const bodyDiv = document.getElementById('release-notes-body');
-        const linkBtn = document.getElementById('release-notes-link');
-
-        if (!overlay || !sidebar) return;
-
-        overlay.classList.add('active');
-        sidebar.classList.add('active');
-
-        versionSpan.innerText = version;
-        fetch(`/api/updates/notes?version=${version}&last_seen={{.user_last_seen_version}}`)
-            .then(res => res.json())
-            .then(data => {
-                if (data.error) {
-                    bodyDiv.innerHTML = `<div class="text-danger">Failed to load notes: ${data.error}</div>`;
-                    return;
-                }
-
-                bodyDiv.innerHTML = marked.parse(data.notes || "_No release notes available._");
-
-                if (data.html_url) {
-                    linkBtn.href = data.html_url;
-                }
-
-                lucide.createIcons();
-            })
-            .catch(err => {
-                bodyDiv.innerHTML = `<div class="text-danger">Error fetching notes.</div>`;
-                console.error(err);
-            });
-    }
-
-    function closeReleaseNotes() {
-        const overlay = document.getElementById('release-notes-overlay');
-        const sidebar = document.getElementById('release-notes-sidebar');
-
-        if (overlay) overlay.classList.remove('active');
-        if (sidebar) sidebar.classList.remove('active');
-
-        const appVersion = "{{.app_version}}";
-        fetch('/api/user/ack-version', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ version: appVersion })
-        })
-            .then(res => {
-                if (!res.ok) console.error("Failed to ack version");
-            })
-            .catch(err => console.error(err));
-    }
-</script>
-
-<script>
-    lucide.createIcons();
-
-    function submitWithConfirm(form, message) {
-        if (message && !window.confirm(message)) {
-            return false;
-        }
-
-        const btn = form.querySelector('button[type="submit"]');
-        const originalContent = btn ? btn.innerHTML : '';
-        if (btn) {
-            btn.disabled = true;
-            btn.classList.add('loading');
-            btn.innerHTML = '<i data-lucide="loader-2" class="spin"></i> Processing...';
-            lucide.createIcons();
-        }
-
-        fetch(form.action, {
-            method: form.method,
-            body: new FormData(form)
-        })
-            .then(res => {
-                if (res.ok) {
-                    window.location.reload();
-                } else {
-                    res.text().then(text => alert("Operation failed: " + text));
-                    if (btn) {
-                        btn.disabled = false;
-                        btn.innerHTML = originalContent;
-                        lucide.createIcons();
-                    }
-                }
-            })
-            .catch(err => {
-                console.error(err);
-                alert("Error performing operation");
-                if (btn) {
-                    btn.disabled = false;
-                    btn.innerHTML = originalContent;
-                    lucide.createIcons();
-                }
-            });
-
-        return false;
-    }
-
-    window.addEventListener('DOMContentLoaded', () => {
-        lucide.createIcons();
     });
 </script>
 
