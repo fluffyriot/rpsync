@@ -73,3 +73,12 @@ WHERE
     id = $1
 RETURNING
     *;
+-- name: UpdateUserLastSeenVersion :one
+UPDATE users
+SET
+    last_seen_version = $2,
+    updated_at = NOW()
+WHERE
+    id = $1
+RETURNING
+    *;

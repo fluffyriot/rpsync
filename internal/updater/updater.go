@@ -17,10 +17,7 @@ const (
 )
 
 type RemoteVersion struct {
-	Latest           string `json:"latest"`
-	ReleasedAt       string `json:"releasedAt"`
-	Url              string `json:"url"`
-	ShortDescription string `json:"shortDescription"`
+	Latest string `json:"latest"`
 }
 
 type Updater struct {

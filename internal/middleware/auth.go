@@ -41,6 +41,7 @@ func AuthMiddleware(db *database.Queries) gin.HandlerFunc {
 		username := session.Get("username")
 		hasAvatar := session.Get("has_avatar")
 		avatarVersion := session.Get("avatar_version")
+		lastSeenVersion := session.Get("last_seen_version")
 
 		userIdStr, ok := userID.(string)
 		if !ok {
@@ -52,6 +53,7 @@ func AuthMiddleware(db *database.Queries) gin.HandlerFunc {
 		var currentUsername string
 		var currentHasAvatar bool
 		var currentAvatarVersion int64
+		var currentLastSeenVersion string
 
 		if username != nil {
 			currentUsername = username.(string)
@@ -68,6 +70,9 @@ func AuthMiddleware(db *database.Queries) gin.HandlerFunc {
 					currentAvatarVersion = int64(v)
 				}
 			}
+			if lastSeenVersion != nil {
+				currentLastSeenVersion = lastSeenVersion.(string)
+			}
 		} else {
 			users, err := db.GetAllUsers(c.Request.Context())
 			if err == nil {
@@ -79,6 +84,7 @@ func AuthMiddleware(db *database.Queries) gin.HandlerFunc {
 							currentHasAvatar = true
 						}
 						currentAvatarVersion = u.UpdatedAt.Unix()
+						currentLastSeenVersion = u.LastSeenVersion
 
 						if !u.PasswordHash.Valid || u.PasswordHash.String == "" {
 							if c.Request.URL.Path != "/setup/password" {
@@ -100,6 +106,7 @@ func AuthMiddleware(db *database.Queries) gin.HandlerFunc {
 		if len(currentUsername) > 0 {
 			c.Set("username_initial", strings.ToUpper(string(currentUsername[0])))
 		}
+		c.Set("last_seen_version", currentLastSeenVersion)
 
 		c.Next()
 	}

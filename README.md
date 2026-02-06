@@ -75,6 +75,7 @@ The easiest way to get up and running.
 #### 1. Setup Directory
 ```bash
 mkdir rpsync && cd rpsync
+mkdir -p outputs && sudo chmod 777 outputs
 ```
 
 #### 2. Environment Configuration
@@ -140,10 +141,18 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - ./certs:/certs
     ports:
-      - "${HTTP_PORT}:80"
-      - "${HTTPS_PORT}:443"
+      - "${HTTP_PORT}:${HTTP_PORT}"
+      - "${HTTPS_PORT}:${HTTPS_PORT}"
     depends_on:
       - app
+
+  watchtower:
+    image: nickfedor/watchtower
+    container_name: rpsync_watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --interval 14400 --cleanup rpsync_app
 
 volumes:
   db_data:

@@ -24,7 +24,7 @@ INSERT INTO
     )
 VALUES ($1, $2, $3, $4, $5)
 RETURNING
-    id, username, created_at, updated_at, sync_period, password_hash, totp_secret, totp_enabled, profile_image
+    id, username, created_at, updated_at, sync_period, password_hash, totp_secret, totp_enabled, profile_image, last_seen_version
 `
 
 type CreateUserParams struct {
@@ -54,6 +54,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.TotpSecret,
 		&i.TotpEnabled,
 		&i.ProfileImage,
+		&i.LastSeenVersion,
 	)
 	return i, err
 }
@@ -68,7 +69,7 @@ func (q *Queries) EmptyUsers(ctx context.Context) error {
 }
 
 const getAllUsers = `-- name: GetAllUsers :many
-SELECT id, username, created_at, updated_at, sync_period, password_hash, totp_secret, totp_enabled, profile_image FROM users
+SELECT id, username, created_at, updated_at, sync_period, password_hash, totp_secret, totp_enabled, profile_image, last_seen_version FROM users
 `
 
 func (q *Queries) GetAllUsers(ctx context.Context) ([]User, error) {
@@ -90,6 +91,7 @@ func (q *Queries) GetAllUsers(ctx context.Context) ([]User, error) {
 			&i.TotpSecret,
 			&i.TotpEnabled,
 			&i.ProfileImage,
+			&i.LastSeenVersion,
 		); err != nil {
 			return nil, err
 		}
@@ -105,7 +107,7 @@ func (q *Queries) GetAllUsers(ctx context.Context) ([]User, error) {
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, username, created_at, updated_at, sync_period, password_hash, totp_secret, totp_enabled, profile_image FROM users WHERE id = $1
+SELECT id, username, created_at, updated_at, sync_period, password_hash, totp_secret, totp_enabled, profile_image, last_seen_version FROM users WHERE id = $1
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
@@ -121,12 +123,13 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.TotpSecret,
 		&i.TotpEnabled,
 		&i.ProfileImage,
+		&i.LastSeenVersion,
 	)
 	return i, err
 }
 
 const getUserByUsername = `-- name: GetUserByUsername :one
-SELECT id, username, created_at, updated_at, sync_period, password_hash, totp_secret, totp_enabled, profile_image FROM users WHERE username = $1
+SELECT id, username, created_at, updated_at, sync_period, password_hash, totp_secret, totp_enabled, profile_image, last_seen_version FROM users WHERE username = $1
 `
 
 func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User, error) {
@@ -142,6 +145,41 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User,
 		&i.TotpSecret,
 		&i.TotpEnabled,
 		&i.ProfileImage,
+		&i.LastSeenVersion,
+	)
+	return i, err
+}
+
+const updateUserLastSeenVersion = `-- name: UpdateUserLastSeenVersion :one
+UPDATE users
+SET
+    last_seen_version = $2,
+    updated_at = NOW()
+WHERE
+    id = $1
+RETURNING
+    id, username, created_at, updated_at, sync_period, password_hash, totp_secret, totp_enabled, profile_image, last_seen_version
+`
+
+type UpdateUserLastSeenVersionParams struct {
+	ID              uuid.UUID
+	LastSeenVersion string
+}
+
+func (q *Queries) UpdateUserLastSeenVersion(ctx context.Context, arg UpdateUserLastSeenVersionParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, updateUserLastSeenVersion, arg.ID, arg.LastSeenVersion)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.SyncPeriod,
+		&i.PasswordHash,
+		&i.TotpSecret,
+		&i.TotpEnabled,
+		&i.ProfileImage,
+		&i.LastSeenVersion,
 	)
 	return i, err
 }
@@ -154,7 +192,7 @@ SET
 WHERE
     id = $1
 RETURNING
-    id, username, created_at, updated_at, sync_period, password_hash, totp_secret, totp_enabled, profile_image
+    id, username, created_at, updated_at, sync_period, password_hash, totp_secret, totp_enabled, profile_image, last_seen_version
 `
 
 type UpdateUserPasswordParams struct {
@@ -175,6 +213,7 @@ func (q *Queries) UpdateUserPassword(ctx context.Context, arg UpdateUserPassword
 		&i.TotpSecret,
 		&i.TotpEnabled,
 		&i.ProfileImage,
+		&i.LastSeenVersion,
 	)
 	return i, err
 }
@@ -187,7 +226,7 @@ SET
 WHERE
     id = $1
 RETURNING
-    id, username, created_at, updated_at, sync_period, password_hash, totp_secret, totp_enabled, profile_image
+    id, username, created_at, updated_at, sync_period, password_hash, totp_secret, totp_enabled, profile_image, last_seen_version
 `
 
 type UpdateUserProfileImageParams struct {
@@ -208,6 +247,7 @@ func (q *Queries) UpdateUserProfileImage(ctx context.Context, arg UpdateUserProf
 		&i.TotpSecret,
 		&i.TotpEnabled,
 		&i.ProfileImage,
+		&i.LastSeenVersion,
 	)
 	return i, err
 }
@@ -220,7 +260,7 @@ SET
 WHERE
     id = $1
 RETURNING
-    id, username, created_at, updated_at, sync_period, password_hash, totp_secret, totp_enabled, profile_image
+    id, username, created_at, updated_at, sync_period, password_hash, totp_secret, totp_enabled, profile_image, last_seen_version
 `
 
 type UpdateUserSyncSettingsParams struct {
@@ -241,6 +281,7 @@ func (q *Queries) UpdateUserSyncSettings(ctx context.Context, arg UpdateUserSync
 		&i.TotpSecret,
 		&i.TotpEnabled,
 		&i.ProfileImage,
+		&i.LastSeenVersion,
 	)
 	return i, err
 }
@@ -254,7 +295,7 @@ SET
 WHERE
     id = $1
 RETURNING
-    id, username, created_at, updated_at, sync_period, password_hash, totp_secret, totp_enabled, profile_image
+    id, username, created_at, updated_at, sync_period, password_hash, totp_secret, totp_enabled, profile_image, last_seen_version
 `
 
 type UpdateUserTOTPParams struct {
@@ -276,6 +317,7 @@ func (q *Queries) UpdateUserTOTP(ctx context.Context, arg UpdateUserTOTPParams) 
 		&i.TotpSecret,
 		&i.TotpEnabled,
 		&i.ProfileImage,
+		&i.LastSeenVersion,
 	)
 	return i, err
 }
@@ -288,7 +330,7 @@ SET
 WHERE
     id = $1
 RETURNING
-    id, username, created_at, updated_at, sync_period, password_hash, totp_secret, totp_enabled, profile_image
+    id, username, created_at, updated_at, sync_period, password_hash, totp_secret, totp_enabled, profile_image, last_seen_version
 `
 
 type UpdateUserUsernameParams struct {
@@ -309,6 +351,7 @@ func (q *Queries) UpdateUserUsername(ctx context.Context, arg UpdateUserUsername
 		&i.TotpSecret,
 		&i.TotpEnabled,
 		&i.ProfileImage,
+		&i.LastSeenVersion,
 	)
 	return i, err
 }

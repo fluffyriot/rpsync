@@ -185,6 +185,7 @@ func main() {
 	authorized.POST("/settings/user/update", h.UpdateUserProfileHandler)
 	authorized.POST("/settings/user/avatar/upload", h.UploadAvatarHandler)
 	authorized.POST("/settings/user/avatar/remove", h.RemoveAvatarHandler)
+	authorized.POST("/settings/user/password", h.UpdateUserPasswordHandler)
 
 	authorized.GET("/auth/facebook/login", h.FacebookLoginHandler)
 	authorized.GET("/auth/facebook/callback", h.FacebookCallbackHandler)
@@ -233,6 +234,9 @@ func main() {
 	authorized.GET("/api/redirects", h.HandleGetRedirects)
 	authorized.POST("/api/redirects", h.HandleCreateRedirect)
 	authorized.DELETE("/api/redirects/:id", h.HandleDeleteRedirect)
+
+	authorized.GET("/api/updates/notes", h.GetReleaseNotesHandler)
+	authorized.POST("/api/user/ack-version", h.UpdateLastSeenVersionHandler)
 
 	srv := &http.Server{
 		Addr:    ":" + cfg.AppPort,

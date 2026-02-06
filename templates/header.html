@@ -17,7 +17,9 @@
         href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400;1,700&display=swap"
         rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/static/js/utils.js" defer></script>
     <link rel="manifest" href="/static/manifest.json">
     <meta name="theme-color" content="#1e2329">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -71,53 +73,5 @@
             {{ end }}
         </div>
     </nav>
-
-    <script>
-        function toggleDropdown(id) {
-            document.querySelectorAll('.dropdown-content').forEach(d => {
-                if (d.id !== id) d.classList.add('hidden');
-            });
-
-            const dropdown = document.getElementById(id);
-            if (dropdown) {
-                dropdown.classList.toggle('hidden');
-            }
-        }
-
-        window.onclick = function (event) {
-            if (!event.target.closest('.dropdown')) {
-                document.querySelectorAll('.dropdown-content').forEach(d => {
-                    d.classList.add('hidden');
-                });
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', function () {
-            const toggle = document.getElementById('menu-toggle');
-            const links = document.getElementById('nav-links');
-
-            if (toggle && links) {
-                toggle.addEventListener('click', function () {
-                    if (links.classList.contains('active')) {
-                        links.classList.remove('active');
-                    } else {
-                        links.classList.add('active');
-                    }
-                });
-            }
-
-            if ('serviceWorker' in navigator) {
-                window.addEventListener('load', () => {
-                    navigator.serviceWorker.register('/static/sw.js')
-                        .then((registration) => {
-                            console.log('ServiceWorker registration successful with scope: ', registration.scope);
-                        })
-                        .catch((err) => {
-                            console.log('ServiceWorker registration failed: ', err);
-                        });
-                });
-            }
-        });
-    </script>
 
     <main class="container">

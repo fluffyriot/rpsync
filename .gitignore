@@ -33,6 +33,7 @@ outputs*
 # Editor/IDE
 # .idea/
 .vscode/
+.antigravity_rules
 
 sqlc.yaml
 

@@ -188,11 +188,8 @@
     }
 
     targetSelect.addEventListener("change", updateVisibility);
-
-    document.querySelectorAll('.dynamic-badge').forEach(el => {
-      el.style.backgroundColor = el.dataset.bgColor;
-    });
   });
+
 </script>
 
 {{ template "footer.html" . }}

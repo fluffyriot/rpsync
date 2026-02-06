@@ -2,84 +2,37 @@
 
 <footer class="container text-center" style="color: var(--color-text-muted); font-size: 0.85rem;">
     <p><a href="https://github.com/fluffyriot/rpsync" target="_blank">RPSync by Fluffy Riot.</a>
-        {{ if .update_available }}
-        <span style="color: var(--color-danger); font-weight: bold;">v.{{.app_version}}</span>
-        <a href="{{.update_url}}" target="_blank" style="color: var(--color-danger); font-weight: bold;">(outdated -
-            v.{{.update_version}} update available!)</a>
-        {{ else }}
-        v.{{.app_version}}
-        {{ end }}
+        App version: <a href="https://github.com/fluffyriot/rpsync/releases" target="_blank">v.{{.app_version}}</a>.
         &copy; 2026
     </p>
 </footer>
 
-{{ if .update_available }}
-<div id="update-toast" class="toast-notification">
-    <div class="toast-content">
-        <h4 class="toast-title">New Update Available!</h4>
-        <p class="toast-message">{{.update_desc}}</p>
-        <a href="{{.update_url}}" target="_blank" class="toast-link">Download v.{{.update_version}}</a>
+<div id="release-notes-overlay" class="drawer-overlay" onclick="closeReleaseNotes()"></div>
+<div id="release-notes-sidebar" class="drawer-sidebar">
+    <div class="drawer-header">
+        <h3>What's New in v<span id="release-notes-version"></span></h3>
+        <button onclick="closeReleaseNotes()" class="btn btn-ghost btn-icon"><i data-lucide="x"></i></button>
     </div>
-    <button onclick="document.getElementById('update-toast').remove()" class="toast-close">
-        <i data-lucide="x" style="width: 20px; height: 20px;"></i>
-    </button>
+    <div class="drawer-body" id="release-notes-body">
+        <div class="text-center">
+            <i data-lucide="loader-2" class="spin"></i> Loading release notes...
+        </div>
+    </div>
+    <div class="drawer-footer">
+        <a id="release-notes-link" href="#" target="_blank" class="btn btn-ghost">View on GitHub</a>
+        <button onclick="closeReleaseNotes()" class="btn btn-primary">Got it!</button>
+    </div>
 </div>
-<script>
-    setTimeout(() => {
-        const toast = document.getElementById('update-toast');
-        if (toast) toast.remove();
-    }, 10000);
-</script>
-{{ end }}
 
 <script>
-    lucide.createIcons();
+    window.rpsyncAppVersion = "{{.app_version}}";
+    window.rpsyncUserLastSeenVersion = "{{.user_last_seen_version}}";
 
-    function submitWithConfirm(form, message) {
-        if (message && !window.confirm(message)) {
-            return false;
+    document.addEventListener('DOMContentLoaded', () => {
+        if (window.rpsyncAppVersion && window.rpsyncAppVersion !== "unknown" &&
+            window.rpsyncUserLastSeenVersion && window.rpsyncAppVersion !== window.rpsyncUserLastSeenVersion) {
+            showReleaseNotes(window.rpsyncAppVersion, window.rpsyncUserLastSeenVersion);
         }
-
-        const btn = form.querySelector('button[type="submit"]');
-        const originalContent = btn ? btn.innerHTML : '';
-        if (btn) {
-            btn.disabled = true;
-            btn.classList.add('loading');
-            btn.innerHTML = '<i data-lucide="loader-2" class="spin"></i> Processing...';
-            lucide.createIcons();
-        }
-
-        fetch(form.action, {
-            method: form.method,
-            body: new FormData(form)
-        })
-            .then(res => {
-                if (res.ok) {
-                    window.location.reload();
-                } else {
-                    res.text().then(text => alert("Operation failed: " + text));
-                    if (btn) {
-                        btn.disabled = false;
-                        btn.innerHTML = originalContent;
-                        lucide.createIcons();
-                    }
-                }
-            })
-            .catch(err => {
-                console.error(err);
-                alert("Error performing operation");
-                if (btn) {
-                    btn.disabled = false;
-                    btn.innerHTML = originalContent;
-                    lucide.createIcons();
-                }
-            });
-
-        return false;
-    }
-
-    window.addEventListener('DOMContentLoaded', () => {
-        lucide.createIcons();
     });
 </script>
 

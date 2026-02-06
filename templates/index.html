@@ -221,25 +221,7 @@
 
 {{ template "footer.html" . }}
 
-<script>
-  document.addEventListener("DOMContentLoaded", function () {
-    const metrics = document.querySelectorAll('.formatted-metric');
-    metrics.forEach(el => {
-      let val = parseInt(el.textContent.trim());
-      if (isNaN(val)) return;
 
-      if (val >= 100000) {
-        let shortened = (val / 1000).toFixed(1);
-        if (shortened.endsWith('.0')) {
-          shortened = shortened.slice(0, -2);
-        }
-        el.textContent = shortened + 'k';
-      } else if (val >= 1000) {
-        el.textContent = val.toLocaleString();
-      }
-    });
-  });
-</script>
 
 <script>
   document.addEventListener("DOMContentLoaded", function () {
@@ -320,6 +302,7 @@
             },
             plugins: {
               legend: {
+                display: window.innerWidth >= 768,
                 position: 'bottom',
                 labels: { padding: 20, usePointStyle: true }
               },
@@ -432,6 +415,7 @@
             },
             plugins: {
               legend: {
+                display: window.innerWidth >= 768,
                 position: 'bottom',
                 labels: { padding: 20, usePointStyle: true }
               },
@@ -534,7 +518,7 @@
           },
           plugins: {
             legend: {
-              display: true,
+              display: window.innerWidth >= 768,
               position: 'bottom',
               labels: {
                 usePointStyle: true,

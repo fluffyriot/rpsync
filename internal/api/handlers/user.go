@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fluffyriot/rpsync/internal/authhelp"
 	"github.com/fluffyriot/rpsync/internal/database"
 	"github.com/gen2brain/webp"
 	"github.com/gin-contrib/sessions"
@@ -188,4 +189,53 @@ func (h *Handler) RemoveAvatarHandler(c *gin.Context) {
 	session.Save()
 
 	c.JSON(http.StatusOK, gin.H{"message": "Avatar removed successfully"})
+}
+
+func (h *Handler) UpdateUserPasswordHandler(c *gin.Context) {
+	currentPassword := c.PostForm("current_password")
+	newPassword := c.PostForm("new_password")
+	confirmPassword := c.PostForm("confirm_password")
+
+	user, loggedIn := h.GetAuthenticatedUser(c)
+	if !loggedIn {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not logged in"})
+		return
+	}
+
+	if !user.PasswordHash.Valid || user.PasswordHash.String == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Account has no password set"})
+		return
+	}
+
+	if !authhelp.CheckPasswordHash(user.PasswordHash.String, currentPassword) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Incorrect current password"})
+		return
+	}
+
+	if newPassword != confirmPassword {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "New passwords do not match"})
+		return
+	}
+
+	if err := authhelp.ValidatePasswordStrength(newPassword); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	hashedPassword, err := authhelp.HashPassword(newPassword)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
+		return
+	}
+
+	_, err = h.DB.UpdateUserPassword(c.Request.Context(), database.UpdateUserPasswordParams{
+		ID:           user.ID,
+		PasswordHash: sql.NullString{String: hashedPassword, Valid: true},
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update password: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Password updated successfully"})
 }

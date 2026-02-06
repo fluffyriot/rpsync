@@ -200,15 +200,16 @@ type Token struct {
 }
 
 type User struct {
-	ID           uuid.UUID
-	Username     string
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
-	SyncPeriod   string
-	PasswordHash sql.NullString
-	TotpSecret   sql.NullString
-	TotpEnabled  sql.NullBool
-	ProfileImage sql.NullString
+	ID              uuid.UUID
+	Username        string
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	SyncPeriod      string
+	PasswordHash    sql.NullString
+	TotpSecret      sql.NullString
+	TotpEnabled     sql.NullBool
+	ProfileImage    sql.NullString
+	LastSeenVersion string
 }
 
 type WebauthnCredential struct {
