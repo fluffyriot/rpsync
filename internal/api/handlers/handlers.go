@@ -43,8 +43,6 @@ func (h *Handler) CommonData(c *gin.Context, data gin.H) gin.H {
 		data["update_available"] = true
 		info := h.Updater.GetUpdateInfo()
 		data["update_version"] = info.Latest
-		data["update_url"] = info.Url
-		data["update_desc"] = info.ShortDescription
 	}
 
 	if val, exists := c.Get("username"); exists {
