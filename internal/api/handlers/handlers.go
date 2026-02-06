@@ -62,6 +62,9 @@ func (h *Handler) CommonData(c *gin.Context, data gin.H) gin.H {
 	if val, exists := c.Get("avatar_version"); exists {
 		data["avatar_version"] = val
 	}
+	if val, exists := c.Get("last_seen_version"); exists {
+		data["user_last_seen_version"] = val
+	}
 
 	networkColors := make(map[string]string)
 	for _, source := range helpers.AvailableSources {

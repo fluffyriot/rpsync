@@ -2,35 +2,94 @@
 
 <footer class="container text-center" style="color: var(--color-text-muted); font-size: 0.85rem;">
     <p><a href="https://github.com/fluffyriot/rpsync" target="_blank">RPSync by Fluffy Riot.</a>
-        {{ if .update_available }}
-        <span style="color: var(--color-danger); font-weight: bold;">v.{{.app_version}}</span>
-        <a href="{{.update_url}}" target="_blank" style="color: var(--color-danger); font-weight: bold;">(outdated -
-            v.{{.update_version}} update available!)</a>
-        {{ else }}
-        v.{{.app_version}}
-        {{ end }}
+        App version: <a href="https://github.com/fluffyriot/rpsync/releases" target="_blank">v.{{.app_version}}</a>.
         &copy; 2026
     </p>
 </footer>
 
-{{ if .update_available }}
-<div id="update-toast" class="toast-notification">
-    <div class="toast-content">
-        <h4 class="toast-title">New Update Available!</h4>
-        <p class="toast-message">{{.update_desc}}</p>
-        <a href="{{.update_url}}" target="_blank" class="toast-link">Download v.{{.update_version}}</a>
+<div id="release-notes-overlay" class="drawer-overlay" onclick="closeReleaseNotes()"></div>
+<div id="release-notes-sidebar" class="drawer-sidebar">
+    <div class="drawer-header">
+        <h3>What's New in v<span id="release-notes-version"></span></h3>
+        <button onclick="closeReleaseNotes()" class="btn btn-ghost btn-icon"><i data-lucide="x"></i></button>
     </div>
-    <button onclick="document.getElementById('update-toast').remove()" class="toast-close">
-        <i data-lucide="x" style="width: 20px; height: 20px;"></i>
-    </button>
+    <div class="drawer-body" id="release-notes-body">
+        <div class="text-center">
+            <i data-lucide="loader-2" class="spin"></i> Loading release notes...
+        </div>
+    </div>
+    <div class="drawer-footer">
+        <a id="release-notes-link" href="#" target="_blank" class="btn btn-ghost">View on GitHub</a>
+        <button onclick="closeReleaseNotes()" class="btn btn-primary">Got it!</button>
+    </div>
 </div>
+
 <script>
-    setTimeout(() => {
-        const toast = document.getElementById('update-toast');
-        if (toast) toast.remove();
-    }, 10000);
+    document.addEventListener('DOMContentLoaded', () => {
+        const appVersion = "{{.app_version}}";
+        const userLastSeenVersion = "{{.user_last_seen_version}}";
+
+        if (appVersion && appVersion !== "unknown" && userLastSeenVersion && appVersion !== userLastSeenVersion) {
+            showReleaseNotes(appVersion);
+        }
+    });
+
+    function showReleaseNotes(version) {
+        const overlay = document.getElementById('release-notes-overlay');
+        const sidebar = document.getElementById('release-notes-sidebar');
+        const versionSpan = document.getElementById('release-notes-version');
+        const bodyDiv = document.getElementById('release-notes-body');
+        const linkBtn = document.getElementById('release-notes-link');
+
+        if (!overlay || !sidebar) return;
+
+        overlay.classList.add('active');
+        sidebar.classList.add('active');
+
+        versionSpan.innerText = version;
+        fetch(`/api/updates/notes?version=${version}&last_seen={{.user_last_seen_version}}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.error) {
+                    bodyDiv.innerHTML = `<div class="text-danger">Failed to load notes: ${data.error}</div>`;
+                    return;
+                }
+
+                bodyDiv.innerHTML = marked.parse(data.notes || "_No release notes available._");
+
+                if (data.html_url) {
+                    linkBtn.href = data.html_url;
+                }
+
+                lucide.createIcons();
+            })
+            .catch(err => {
+                bodyDiv.innerHTML = `<div class="text-danger">Error fetching notes.</div>`;
+                console.error(err);
+            });
+    }
+
+    function closeReleaseNotes() {
+        const overlay = document.getElementById('release-notes-overlay');
+        const sidebar = document.getElementById('release-notes-sidebar');
+
+        if (overlay) overlay.classList.remove('active');
+        if (sidebar) sidebar.classList.remove('active');
+
+        const appVersion = "{{.app_version}}";
+        fetch('/api/user/ack-version', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ version: appVersion })
+        })
+            .then(res => {
+                if (!res.ok) console.error("Failed to ack version");
+            })
+            .catch(err => console.error(err));
+    }
 </script>
-{{ end }}
 
 <script>
     lucide.createIcons();

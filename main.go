@@ -234,6 +234,9 @@ func main() {
 	authorized.POST("/api/redirects", h.HandleCreateRedirect)
 	authorized.DELETE("/api/redirects/:id", h.HandleDeleteRedirect)
 
+	authorized.GET("/api/updates/notes", h.GetReleaseNotesHandler)
+	authorized.POST("/api/user/ack-version", h.UpdateLastSeenVersionHandler)
+
 	srv := &http.Server{
 		Addr:    ":" + cfg.AppPort,
 		Handler: r,
