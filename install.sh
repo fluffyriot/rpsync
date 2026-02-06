@@ -256,6 +256,14 @@ ${APP_PORTS_CONFIG}
     depends_on:
       - app
 
+  watchtower:
+    image: nickfedor/watchtower
+    container_name: rpsync_watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --interval 14400 --cleanup rpsync_app
+
 volumes:
   db_data:
 EOF
