@@ -30,6 +30,7 @@ certs*
 # --- Editor / IDE ---
 .vscode/
 .idea/
+.antigravity_rules
 
 # --- Tooling config not needed at build time ---
 sqlc.yaml

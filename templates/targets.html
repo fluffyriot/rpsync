@@ -192,6 +192,14 @@
     document.querySelectorAll('.dynamic-badge').forEach(el => {
       el.style.backgroundColor = el.dataset.bgColor;
     });
+
+    const syncingBadges = Array.from(document.querySelectorAll('.badge-warning')).filter(el => el.textContent.trim() === 'Syncing');
+    if (syncingBadges.length > 0) {
+      console.log("Sync in progress detected, scheduling reload...");
+      setTimeout(() => {
+        window.location.reload();
+      }, 5000);
+    }
   });
 </script>
 
