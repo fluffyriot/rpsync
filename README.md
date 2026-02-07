@@ -189,7 +189,6 @@ ${DOMAIN_NAME} {
 ```bash
 docker compose up -d
 ```
-</details>
 
 ### Environment Variables
 | Variable | Description |
@@ -201,6 +200,8 @@ docker compose up -d
 | `DOMAIN_NAME` | Required for public deployment (Let's Encrypt). |
 | `GIN_MODE` | Set to `debug` for detailed server logs, `release` for production. |
 | `*_KEY` | Security keys. Generate using `openssl rand -base64 32`. |
+
+</details>
 
 ---
 
