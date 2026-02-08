@@ -42,8 +42,8 @@
       <tbody>
         {{range .posts}}
         <tr data-network-id="{{.Post.NetworkInternalID}}"
-          data-likes="{{if .Post.Likes.Valid}}{{.Post.Likes.Int32}}{{else}}-{{end}}"
-          data-reposts="{{if .Post.Reposts.Valid}}{{.Post.Reposts.Int32}}{{else}}-{{end}}"
+          data-likes="{{if .Post.Likes.Valid}}{{.Post.Likes.Int64}}{{else}}-{{end}}"
+          data-reposts="{{if .Post.Reposts.Valid}}{{.Post.Reposts.Int64}}{{else}}-{{end}}"
           data-status="{{if .Post.IsArchived}}Archived{{else}}Active{{end}}"
           data-full-content="{{if .Post.Content.Valid}}{{.Post.Content.String}}{{else}}-{{end}}"
           data-author="{{.Post.Author}}">
@@ -59,7 +59,7 @@
           </td>
           <td>{{if .Post.PostType}}{{.Post.PostType}}{{else}}-{{end}}</td>
           <td>{{.Post.Interactions}}</td>
-          <td>{{if .Post.Views.Valid}}{{.Post.Views.Int32}}{{else}}-{{end}}</td>
+          <td>{{if .Post.Views.Valid}}{{.Post.Views.Int64}}{{else}}-{{end}}</td>
           <td>
             {{if .URL}}
             <a href="{{.URL}}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-ghost btn-icon"

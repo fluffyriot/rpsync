@@ -82,7 +82,9 @@ SELECT
     s.network AS network,
     r.likes,
     r.reposts,
-    COALESCE(r.likes, 0) + COALESCE(r.reposts, 0) AS interactions,
+    (
+        COALESCE(r.likes, 0) + COALESCE(r.reposts, 0)
+    )::bigint AS interactions,
     r.views
 FROM
     posts p
