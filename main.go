@@ -80,6 +80,16 @@ func main() {
 			return strings.TrimPrefix(s, "@")
 		},
 		"replace": strings.ReplaceAll,
+		"truncate": func(s string, length int) string {
+			runes := []rune(s)
+			if len(runes) <= length {
+				return s
+			}
+			return string(runes[:length]) + "..."
+		},
+		"add": func(a, b int32) int32 {
+			return a + b
+		},
 	})
 
 	r.LoadHTMLGlob("templates/*.html")
@@ -225,6 +235,8 @@ func main() {
 	authorized.GET("/analytics/engagement", h.AnalyticsEngagementHandler)
 	authorized.GET("/analytics/website", h.AnalyticsWebsiteHandler)
 	authorized.GET("/analytics/summary", h.AnalyticsDashboardSummaryHandler)
+
+	authorized.GET("/posts", h.PostsHandler)
 
 	authorized.GET("/api/sources", h.HandleGetSourcesAPI)
 	authorized.GET("/api/exclusions", h.HandleGetExclusions)
