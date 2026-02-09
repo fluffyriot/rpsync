@@ -79,6 +79,7 @@ SELECT
     p.post_type,
     p.author,
     p.is_archived,
+    p.source_id,
     s.network AS network,
     r.likes,
     r.reposts,

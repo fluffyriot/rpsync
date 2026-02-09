@@ -45,7 +45,7 @@
           data-reposts="{{if .Post.Reposts.Valid}}{{.Post.Reposts.Int64}}{{else}}-{{end}}"
           data-status="{{if .Post.IsArchived}}Archived{{else}}Active{{end}}"
           data-full-content="{{if .Post.Content.Valid}}{{.Post.Content.String}}{{else}}-{{end}}"
-          data-author="{{.Post.Author}}">
+          data-author="{{.Post.Author}}" data-url="{{.URL}}" data-source-id="{{.Post.SourceID}}">
           <td class="details-control"></td>
           <td data-order="{{.Post.CreatedAt.Unix}}">{{.Post.CreatedAt.Format "Jan 02, 2006 15:04"}}</td>
           <td data-search="{{if .Post.Network.Valid}}{{.Post.Network.String}}{{else}}-{{end}}">
@@ -96,17 +96,64 @@
       const reposts = tr.data('reposts');
       const status = tr.data('status');
       const fullContent = tr.data('full-content');
+      const url = tr.data('url');
+      const sourceId = tr.data('source-id');
 
-      return `
-        <div class="child-row-details">
-          <div><strong>Author:</strong> ${author || '-'}</div>
-          <div><strong>Network Internal ID:</strong> ${networkId}</div>
-          <div><strong>Likes:</strong> ${likes}</div>
-          <div><strong>Reposts:</strong> ${reposts}</div>
-          <div><strong>Status:</strong> <span class="badge badge-${status === 'Archived' ? 'warning' : 'success'} status-badge">${status}</span></div>
-          <div><strong>Full Content:</strong> ${fullContent}</div>
-        </div>
-      `;
+      const $div = $('<div/>').addClass('child-row-details');
+      const $info = $('<div/>').addClass('mb-4');
+
+      const createRow = (label, value) => {
+        const $row = $('<div/>');
+        $row.append($('<strong/>').text(label + ': '));
+        $row.append(document.createTextNode(' ' + (value || '-')));
+        return $row;
+      };
+
+      $info.append(createRow('Author', author));
+      $info.append(createRow('Internal ID', networkId));
+      $info.append(createRow('Likes', likes));
+      $info.append(createRow('Reposts', reposts));
+
+      const $statusRow = $('<div/>');
+      $statusRow.append($('<strong/>').text('Status: '));
+      const badgeClass = status === 'Archived' ? 'badge-warning' : 'badge-success';
+      const $badge = $('<span/>').addClass('badge status-badge ' + badgeClass).text(status);
+      $statusRow.append(document.createTextNode(' '));
+      $statusRow.append($badge);
+      $info.append($statusRow);
+
+      $info.append(createRow('Full Content', fullContent));
+      $div.append($info);
+
+      const $buttons = $('<div/>').addClass('flex gap-2');
+
+      if (url) {
+        const $link = $('<a/>', {
+          href: url,
+          target: '_blank',
+          rel: 'noopener noreferrer',
+          class: 'btn btn-secondary btn-sm',
+          text: ' Go to Post'
+        });
+        $link.prepend($('<i/>', { 'data-lucide': 'external-link', style: 'width: 16px; height: 16px;' }));
+        $buttons.append($link);
+      }
+
+      const $excludeBtn = $('<button/>', {
+        class: 'btn btn-danger btn-sm',
+        text: ' Remove from Sync'
+      });
+      $excludeBtn.prepend($('<i/>', { 'data-lucide': 'file-x', style: 'width: 16px; height: 16px;' }));
+      $excludeBtn.on('click', function () {
+        excludePost(sourceId, networkId);
+      });
+      $buttons.append($excludeBtn);
+
+      $div.append($buttons);
+
+      setTimeout(() => lucide.createIcons(), 0);
+
+      return $div;
     }
 
     const table = $('#postsTable').DataTable({
@@ -246,5 +293,34 @@
     });
 
   });
+
+  async function excludePost(sourceId, networkInternalId) {
+    if (!confirm('Are you sure you want to exclude this post? It will be deleted and not synced again.')) {
+      return;
+    }
+
+    const data = {
+      source_id: sourceId,
+      network_internal_id: networkInternalId
+    };
+
+    try {
+      const response = await fetch('/api/exclusions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to add exclusion');
+      }
+
+      alert('Exclude added successfully! The post has been deleted.');
+      window.location.reload();
+    } catch (error) {
+      alert('Error: ' + error.message);
+    }
+  }
 </script>
 {{end}}

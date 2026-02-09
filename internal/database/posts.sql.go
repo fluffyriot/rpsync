@@ -259,6 +259,7 @@ SELECT
     p.post_type,
     p.author,
     p.is_archived,
+    p.source_id,
     s.network AS network,
     r.likes,
     r.reposts,
@@ -289,6 +290,7 @@ type GetRecentPostsForUserRow struct {
 	PostType          string
 	Author            string
 	IsArchived        bool
+	SourceID          uuid.UUID
 	Network           sql.NullString
 	Likes             sql.NullInt64
 	Reposts           sql.NullInt64
@@ -312,6 +314,7 @@ func (q *Queries) GetRecentPostsForUser(ctx context.Context, userID uuid.UUID) (
 			&i.PostType,
 			&i.Author,
 			&i.IsArchived,
+			&i.SourceID,
 			&i.Network,
 			&i.Likes,
 			&i.Reposts,
