@@ -110,9 +110,9 @@ func SyncNoco(dbQueries *database.Queries, c *common.Client, encryptionKey []byt
 			PostType:          post.PostType,
 			Author:            post.Author,
 			Content:           post.Content.String,
-			Likes:             post.Likes.Int32,
-			Views:             post.Views.Int32,
-			Reposts:           post.Reposts.Int32,
+			Likes:             int(post.Likes.Int64),
+			Views:             int(post.Views.Int64),
+			Reposts:           int(post.Reposts.Int64),
 			URL:               url,
 		}
 
@@ -138,10 +138,7 @@ func SyncNoco(dbQueries *database.Queries, c *common.Client, encryptionKey []byt
 
 	for _, post := range removePosts {
 		v, _ := strconv.Atoi(post.TargetPostID)
-		intId, err := helpers.ToInt32(v)
-		if err != nil {
-			continue
-		}
+		intId := v
 
 		recordRemove = append(recordRemove, NocoDeleteRecord{
 			ID: intId,
@@ -185,10 +182,7 @@ func SyncNoco(dbQueries *database.Queries, c *common.Client, encryptionKey []byt
 			return fmt.Errorf("invalid target post id %s: %w", mappedPost.TargetPostID, err)
 		}
 
-		safeTargetID, err := helpers.ToInt32(targetPostIDVal)
-		if err != nil {
-			continue
-		}
+		safeTargetID := targetPostIDVal
 
 		fieldMap := NocoRecordFields{
 			ID:                post.ID.String(),
@@ -199,9 +193,9 @@ func SyncNoco(dbQueries *database.Queries, c *common.Client, encryptionKey []byt
 			PostType:          post.PostType,
 			Author:            post.Author,
 			Content:           post.Content.String,
-			Likes:             post.Likes.Int32,
-			Views:             post.Views.Int32,
-			Reposts:           post.Reposts.Int32,
+			Likes:             int(post.Likes.Int64),
+			Views:             int(post.Views.Int64),
+			Reposts:           int(post.Reposts.Int64),
 			URL:               url,
 		}
 
@@ -246,7 +240,7 @@ func processCreateBatch(
 	}
 
 	type postInfo struct {
-		nocoPostId int32
+		nocoPostId int
 		sourceId   uuid.UUID
 	}
 	postMapping := make(map[string]postInfo)
@@ -291,7 +285,7 @@ func processCreateBatch(
 		for _, post := range postsInBatch {
 			if post.ID == parsedCtId {
 				postMapping[ctId] = postInfo{
-					nocoPostId: int32(id),
+					nocoPostId: int(id),
 					sourceId:   post.SourceID,
 				}
 				break
@@ -299,7 +293,7 @@ func processCreateBatch(
 		}
 	}
 
-	postsBySource := make(map[uuid.UUID][]int32)
+	postsBySource := make(map[uuid.UUID][]int)
 	for _, info := range postMapping {
 		postsBySource[info.sourceId] = append(postsBySource[info.sourceId], info.nocoPostId)
 	}
@@ -318,11 +312,7 @@ func processCreateBatch(
 			log.Printf("Invalid source ID %s: %v", sourceMapping.TargetSourceID, err)
 			continue
 		}
-		sourceNocoId, err := helpers.ToInt32(sourceNocoIdInt)
-		if err != nil {
-			log.Printf("Source ID out of range %d: %v", sourceNocoIdInt, err)
-			continue
-		}
+		sourceNocoId := sourceNocoIdInt
 
 		err = linkChildrenToParent(
 			c,
@@ -408,10 +398,7 @@ func DeletePostsAndSourceNoco(dbQueries *database.Queries, c *common.Client, enc
 	if err != nil {
 		return fmt.Errorf("invalid target source id: %w", err)
 	}
-	sourceId32, err := helpers.ToInt32(sourceIdInt)
-	if err != nil {
-		return fmt.Errorf("target source id out of range: %w", err)
-	}
+	sourceId32 := sourceIdInt
 
 	sourceRecords := []NocoDeleteRecord{
 		{ID: sourceId32},
@@ -475,10 +462,7 @@ func DeletePostsAndSourceNoco(dbQueries *database.Queries, c *common.Client, enc
 
 	for _, post := range postsToDelete {
 		v, _ := strconv.Atoi(post.TargetPostID)
-		intId, err := helpers.ToInt32(v)
-		if err != nil {
-			continue
-		}
+		intId := v
 
 		recordRemove = append(recordRemove, NocoDeleteRecord{
 			ID: intId,

@@ -136,8 +136,8 @@ func FetchYouTubePosts(dbQueries *database.Queries, sourceId uuid.UUID, encrypti
 					ID:       uuid.New(),
 					SyncedAt: time.Now(),
 					PostID:   postID,
-					Views:    sql.NullInt32{Int32: int32(vStats.ViewCount), Valid: true},
-					Likes:    sql.NullInt32{Int32: int32(vStats.LikeCount), Valid: true},
+					Views:    sql.NullInt64{Int64: int64(vStats.ViewCount), Valid: true},
+					Likes:    sql.NullInt64{Int64: int64(vStats.LikeCount), Valid: true},
 				})
 				if err != nil {
 					log.Printf("Failed to sync reactions for %s: %v", videoId, err)

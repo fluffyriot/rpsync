@@ -170,7 +170,7 @@ type CreateAnalyticsPageStatParams struct {
 	ID       uuid.UUID
 	Date     time.Time
 	UrlPath  string
-	Views    int32
+	Views    int
 	SourceID uuid.UUID
 }
 
@@ -215,7 +215,7 @@ RETURNING
 type CreateAnalyticsSiteStatParams struct {
 	ID                 uuid.UUID
 	Date               time.Time
-	Visitors           int32
+	Visitors           int
 	AvgSessionDuration float64
 	SourceID           uuid.UUID
 }
@@ -282,7 +282,7 @@ type GetAllAnalyticsPageStatsForUserRow struct {
 	ID             uuid.UUID
 	Date           time.Time
 	UrlPath        string
-	Views          int32
+	Views          int
 	SourceID       uuid.UUID
 	SourceNetwork  string
 	SourceUserName string
@@ -335,7 +335,7 @@ ORDER BY s.date DESC
 type GetAllAnalyticsSiteStatsForUserRow struct {
 	ID                 uuid.UUID
 	Date               time.Time
-	Visitors           int32
+	Visitors           int
 	AvgSessionDuration float64
 	SourceID           uuid.UUID
 	SourceNetwork      string
@@ -392,7 +392,7 @@ type GetAllPageStatsWithTargetInfoRow struct {
 	ID             uuid.UUID
 	Date           time.Time
 	UrlPath        string
-	Views          int32
+	Views          int
 	SourceID       uuid.UUID
 	TargetRecordID sql.NullString
 }
@@ -445,7 +445,7 @@ type GetAllSiteStatsWithTargetInfoParams struct {
 type GetAllSiteStatsWithTargetInfoRow struct {
 	ID                 uuid.UUID
 	Date               time.Time
-	Visitors           int32
+	Visitors           int
 	AvgSessionDuration float64
 	SourceID           uuid.UUID
 	TargetRecordID     sql.NullString
@@ -641,8 +641,8 @@ type GetMonthlyEngagementStatsRow struct {
 	Network      string
 	UserName     string
 	YearMonth    string
-	TotalLikes   int64
-	TotalReposts int64
+	TotalLikes   int
+	TotalReposts int
 }
 
 func (q *Queries) GetMonthlyEngagementStats(ctx context.Context, userID uuid.UUID) ([]GetMonthlyEngagementStatsRow, error) {
@@ -689,7 +689,7 @@ ORDER BY year_month ASC
 
 type GetMonthlyPageViewsRow struct {
 	YearMonth  string
-	TotalViews int64
+	TotalViews int
 }
 
 func (q *Queries) GetMonthlyPageViews(ctx context.Context, userID uuid.UUID) ([]GetMonthlyPageViewsRow, error) {
@@ -731,7 +731,7 @@ ORDER BY year_month ASC
 
 type GetMonthlySiteVisitorsRow struct {
 	YearMonth     string
-	TotalVisitors int64
+	TotalVisitors int
 }
 
 func (q *Queries) GetMonthlySiteVisitors(ctx context.Context, userID uuid.UUID) ([]GetMonthlySiteVisitorsRow, error) {
@@ -778,7 +778,7 @@ type GetSyncedPageStatsForUpdateRow struct {
 	ID             uuid.UUID
 	Date           time.Time
 	UrlPath        string
-	Views          int32
+	Views          int
 	SourceID       uuid.UUID
 	TargetRecordID string
 }
@@ -833,7 +833,7 @@ type GetSyncedSiteStatsForUpdateParams struct {
 type GetSyncedSiteStatsForUpdateRow struct {
 	ID                 uuid.UUID
 	Date               time.Time
-	Visitors           int32
+	Visitors           int
 	AvgSessionDuration float64
 	SourceID           uuid.UUID
 	TargetRecordID     string

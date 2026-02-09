@@ -209,17 +209,16 @@ func FetchBlueskyPosts(dbQueries *database.Queries, c *common.Client, uid uuid.U
 				ID:       uuid.New(),
 				SyncedAt: time.Now(),
 				PostID:   postID,
-				Likes: sql.NullInt32{
-					Int32: int32(item.Post.LikeCount),
+				Likes: sql.NullInt64{
+					Int64: int64(item.Post.LikeCount),
 					Valid: true,
 				},
-				Reposts: sql.NullInt32{
-					Int32: int32(item.Post.RepostCount) + int32(item.Post.QuoteCount),
+				Reposts: sql.NullInt64{
+					Int64: int64(item.Post.RepostCount) + int64(item.Post.QuoteCount),
 					Valid: true,
 				},
-				Views: sql.NullInt32{
-					Int32: 0,
-					Valid: true,
+				Views: sql.NullInt64{
+					Valid: false,
 				},
 			})
 		}

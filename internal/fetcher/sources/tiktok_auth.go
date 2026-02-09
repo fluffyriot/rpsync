@@ -38,7 +38,7 @@ func init() {
 	GlobalTikTokManager = &TikTokManager{
 		sessions: make(map[string]*LoginSession),
 	}
-	if err := os.MkdirAll(cookiesDir, 0755); err != nil {
+	if err := os.MkdirAll(cookiesDir, 0700); err != nil {
 		log.Printf("Failed to create cookies directory: %v", err)
 	}
 }
@@ -208,7 +208,10 @@ func saveCookies(username string, cookies []*network.Cookie) error {
 		return err
 	}
 	path := filepath.Join(cookiesDir, fmt.Sprintf("tiktok_%s.json", safeUsername))
-	return os.WriteFile(path, data, 0644)
+	if err := os.WriteFile(path, data, 0600); err != nil {
+		return err
+	}
+	return os.Chmod(path, 0600)
 }
 
 func loadCookies(username string) ([]*network.Cookie, error) {

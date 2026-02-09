@@ -218,12 +218,12 @@ func FetchDiscordPosts(dbQueries *database.Queries, encryptionKey []byte, source
 					ID:       uuid.New(),
 					PostID:   postID,
 					SyncedAt: time.Now(),
-					Likes: sql.NullInt32{
-						Int32: int32(totalReactions),
+					Likes: sql.NullInt64{
+						Int64: int64(totalReactions),
 						Valid: true,
 					},
-					Reposts: sql.NullInt32{},
-					Views:   sql.NullInt32{},
+					Reposts: sql.NullInt64{},
+					Views:   sql.NullInt64{},
 				})
 				if err != nil {
 					log.Printf("Discord: Failed to sync reactions for message %s: %v", msgID, err)
@@ -305,16 +305,27 @@ func processForumThread(
 		return fmt.Errorf("failed to create/update thread post: %w", err)
 	}
 
+	totalReactions := 0
+	messages, err := session.ChannelMessages(threadID, 1, "", "0", "")
+	if err != nil {
+		log.Printf("Discord: Failed to fetch first message for thread %s: %v", threadID, err)
+	} else if len(messages) > 0 {
+		firstMsg := messages[0]
+		for _, reaction := range firstMsg.Reactions {
+			totalReactions += reaction.Count
+		}
+	}
+
 	_, err = dbQueries.SyncReactions(ctx, database.SyncReactionsParams{
 		ID:       uuid.New(),
 		PostID:   postID,
 		SyncedAt: time.Now(),
-		Likes: sql.NullInt32{
-			Int32: int32(thread.MessageCount),
+		Likes: sql.NullInt64{
+			Int64: int64(totalReactions),
 			Valid: true,
 		},
-		Reposts: sql.NullInt32{},
-		Views:   sql.NullInt32{},
+		Reposts: sql.NullInt64{},
+		Views:   sql.NullInt64{},
 	})
 	if err != nil {
 		return fmt.Errorf("failed to sync reactions: %w", err)

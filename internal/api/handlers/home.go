@@ -100,19 +100,25 @@ func (h *Handler) RootHandler(c *gin.Context) {
 
 	g.Go(func() error {
 		var err error
-		siteStats, err = h.DB.GetTotalSiteStats(ctx, user.ID)
+		var count int
+		count, err = h.DB.GetTotalSiteStats(ctx, user.ID)
+		siteStats = int64(count)
 		return err
 	})
 
 	g.Go(func() error {
 		var err error
-		pageViews, err = h.DB.GetTotalPageViews(ctx, user.ID)
+		var count int
+		count, err = h.DB.GetTotalPageViews(ctx, user.ID)
+		pageViews = int64(count)
 		return err
 	})
 
 	g.Go(func() error {
 		var err error
-		siteAvSession, err = h.DB.GetAverageWebsiteSession(ctx, user.ID)
+		var count int
+		count, err = h.DB.GetAverageWebsiteSession(ctx, user.ID)
+		siteAvSession = int64(count)
 		return err
 	})
 
@@ -158,8 +164,8 @@ func (h *Handler) RootHandler(c *gin.Context) {
 			ID:                src.ID,
 			UserName:          src.UserName,
 			Network:           src.Network,
-			TotalInteractions: src.TotalInteractions,
-			FollowersCount:    src.FollowersCount,
+			TotalInteractions: int64(src.TotalInteractions),
+			FollowersCount:    int64(src.FollowersCount),
 			ProfileURL:        profileURL,
 		})
 	}

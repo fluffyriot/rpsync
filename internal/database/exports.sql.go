@@ -15,9 +15,15 @@ import (
 
 const changeExportStatusById = `-- name: ChangeExportStatusById :one
 UPDATE exports
-SET export_status = $2, status_message = $3, download_url = $4, completed_at = $5
-WHERE id = $1
-RETURNING id, created_at, completed_at, export_status, status_message, user_id, download_url, export_method, target_id
+SET
+    export_status = $2,
+    status_message = $3,
+    download_url = $4,
+    completed_at = $5
+WHERE
+    id = $1
+RETURNING
+    id, created_at, completed_at, export_status, status_message, user_id, download_url, export_method, target_id
 `
 
 type ChangeExportStatusByIdParams struct {
@@ -52,19 +58,31 @@ func (q *Queries) ChangeExportStatusById(ctx context.Context, arg ChangeExportSt
 }
 
 const createExport = `-- name: CreateExport :one
-INSERT INTO exports (id, created_at, completed_at, export_status, status_message, user_id, download_url, export_method, target_id)
+INSERT INTO
+    exports (
+        id,
+        created_at,
+        completed_at,
+        export_status,
+        status_message,
+        user_id,
+        download_url,
+        export_method,
+        target_id
+    )
 VALUES (
-    $1,
-    $2,
-    $3,
-    $4,
-    $5,
-    $6,
-    $7,
-    $8,
-    $9
-)
-RETURNING id, created_at, completed_at, export_status, status_message, user_id, download_url, export_method, target_id
+        $1,
+        $2,
+        $3,
+        $4,
+        $5,
+        $6,
+        $7,
+        $8,
+        $9
+    )
+RETURNING
+    id, created_at, completed_at, export_status, status_message, user_id, download_url, export_method, target_id
 `
 
 type CreateExportParams struct {
@@ -107,8 +125,7 @@ func (q *Queries) CreateExport(ctx context.Context, arg CreateExportParams) (Exp
 }
 
 const deleteAllExportsByUserId = `-- name: DeleteAllExportsByUserId :exec
-DELETE FROM exports
-WHERE user_id = $1
+DELETE FROM exports WHERE user_id = $1
 `
 
 func (q *Queries) DeleteAllExportsByUserId(ctx context.Context, userID uuid.UUID) error {
@@ -117,9 +134,7 @@ func (q *Queries) DeleteAllExportsByUserId(ctx context.Context, userID uuid.UUID
 }
 
 const getAllExportsByUserId = `-- name: GetAllExportsByUserId :many
-SELECT id, created_at, completed_at, export_status, status_message, user_id, download_url, export_method, target_id FROM exports
-where user_id = $1
-ORDER BY created_at DESC
+SELECT id, created_at, completed_at, export_status, status_message, user_id, download_url, export_method, target_id FROM exports where user_id = $1 ORDER BY created_at DESC
 `
 
 func (q *Queries) GetAllExportsByUserId(ctx context.Context, userID uuid.UUID) ([]Export, error) {
@@ -155,9 +170,32 @@ func (q *Queries) GetAllExportsByUserId(ctx context.Context, userID uuid.UUID) (
 	return items, nil
 }
 
+const getExportById = `-- name: GetExportById :one
+SELECT id, created_at, completed_at, export_status, status_message, user_id, download_url, export_method, target_id FROM exports WHERE id = $1
+`
+
+func (q *Queries) GetExportById(ctx context.Context, id uuid.UUID) (Export, error) {
+	row := q.db.QueryRowContext(ctx, getExportById, id)
+	var i Export
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.CompletedAt,
+		&i.ExportStatus,
+		&i.StatusMessage,
+		&i.UserID,
+		&i.DownloadUrl,
+		&i.ExportMethod,
+		&i.TargetID,
+	)
+	return i, err
+}
+
 const getLast20ExportsByUserId = `-- name: GetLast20ExportsByUserId :many
-SELECT id, created_at, completed_at, export_status, status_message, user_id, download_url, export_method, target_id FROM exports
-where user_id = $1
+SELECT id, created_at, completed_at, export_status, status_message, user_id, download_url, export_method, target_id
+FROM exports
+where
+    user_id = $1
 ORDER BY created_at DESC
 LIMIT 20
 `

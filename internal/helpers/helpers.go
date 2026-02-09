@@ -2,7 +2,6 @@ package helpers
 
 import (
 	"fmt"
-	"math"
 	"strings"
 )
 
@@ -95,21 +94,4 @@ func ConvPostToURL(network, author, networkId string) (string, error) {
 	default:
 		return "", fmt.Errorf("network %v not recognized", network)
 	}
-}
-
-func ToInt32(v int) (int32, error) {
-	if v < math.MinInt32 || v > math.MaxInt32 {
-		return 0, fmt.Errorf("integer overflow: %d is out of int32 range", v)
-	}
-	return int32(v), nil
-}
-
-func ClampToInt32(v int) int32 {
-	if v > math.MaxInt32 {
-		return math.MaxInt32
-	}
-	if v < math.MinInt32 {
-		return math.MinInt32
-	}
-	return int32(v)
 }

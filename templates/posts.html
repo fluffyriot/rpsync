@@ -1,0 +1,250 @@
+{{ template "header.html" . }}
+
+<div class="flex justify-between items-center mb-4">
+  <div>
+    <h1>Posts</h1>
+    <p class="text-muted">All your synchronized posts across networks</p>
+  </div>
+
+  <div class="flex gap-2">
+    <form method="GET" action="/posts">
+      <button class="btn btn-secondary btn-icon" title="Refresh">
+        <i data-lucide="refresh-cw"></i> Refresh
+      </button>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">All Posts ({{len .posts}} total)</div>
+
+  {{if not .posts}}
+  <div class="text-center posts-empty-state">
+    <i data-lucide="file-text" class="posts-empty-icon"></i>
+    <p>No posts found.</p>
+  </div>
+  {{else}}
+  <div class="table-responsive">
+    <table id="postsTable" class="display">
+      <thead>
+        <tr>
+          <th></th>
+          <th>Date</th>
+          <th class="th-filterable">Source</th>
+          <th class="th-filterable">Post Type</th>
+          <th>Likes & Reposts</th>
+          <th>Views</th>
+          <th>Link</th>
+          <th>Content</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .posts}}
+        <tr data-network-id="{{.Post.NetworkInternalID}}"
+          data-likes="{{if .Post.Likes.Valid}}{{.Post.Likes.Int64}}{{else}}-{{end}}"
+          data-reposts="{{if .Post.Reposts.Valid}}{{.Post.Reposts.Int64}}{{else}}-{{end}}"
+          data-status="{{if .Post.IsArchived}}Archived{{else}}Active{{end}}"
+          data-full-content="{{if .Post.Content.Valid}}{{.Post.Content.String}}{{else}}-{{end}}"
+          data-author="{{.Post.Author}}">
+          <td class="details-control"></td>
+          <td data-order="{{.Post.CreatedAt.Unix}}">{{.Post.CreatedAt.Format "Jan 02, 2006 15:04"}}</td>
+          <td data-search="{{if .Post.Network.Valid}}{{.Post.Network.String}}{{else}}-{{end}}">
+            {{if .Post.Network.Valid}}
+            <span class="badge badge-neutral network-badge">
+              {{.Post.Network.String}}
+            </span>
+            {{else}}-{{end}}
+          </td>
+          <td data-search="{{if .Post.PostType}}{{.Post.PostType}}{{else}}-{{end}}">{{if
+            .Post.PostType}}{{.Post.PostType}}{{else}}-{{end}}</td>
+          <td>{{.Post.Interactions}}</td>
+          <td>{{if .Post.Views.Valid}}{{.Post.Views.Int64}}{{else}}-{{end}}</td>
+          <td>
+            {{if .URL}}
+            <a href="{{.URL}}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-ghost btn-icon"
+              title="View on {{.Post.Network.String}}">
+              <i data-lucide="external-link" class="external-link-icon"></i>
+            </a>
+            {{else}}-{{end}}
+          </td>
+          <td>{{if .Post.Content.Valid}}{{truncate .Post.Content.String 50}}{{else}}-{{end}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{end}}
+</div>
+
+{{ template "footer.html" . }}
+
+{{if .posts}}
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"
+  integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+<link rel="stylesheet" href="https://cdn.datatables.net/2.3.7/css/dataTables.dataTables.css"
+  integrity="sha384-Kpc+mQszh3/vUH/OusOZEQCoj2/fArR4w17g++67npFyTwNdldK7hGUdfHoHUX3b" crossorigin="anonymous" />
+<script src="https://cdn.datatables.net/2.3.7/js/dataTables.js"
+  integrity="sha384-2FgczAMyd99nlgHFfIt2rDxfzz+8hyAkY9ufMw3A0vLlvio4vKVimC/GMFkdkbAq" crossorigin="anonymous"></script>
+
+
+<script>
+  $(document).ready(function () {
+    function formatChildRow(tr) {
+      const networkId = tr.data('network-id');
+      const author = tr.data('author');
+      const likes = tr.data('likes');
+      const reposts = tr.data('reposts');
+      const status = tr.data('status');
+      const fullContent = tr.data('full-content');
+
+      return `
+        <div class="child-row-details">
+          <div><strong>Author:</strong> ${author || '-'}</div>
+          <div><strong>Network Internal ID:</strong> ${networkId}</div>
+          <div><strong>Likes:</strong> ${likes}</div>
+          <div><strong>Reposts:</strong> ${reposts}</div>
+          <div><strong>Status:</strong> <span class="badge badge-${status === 'Archived' ? 'warning' : 'success'} status-badge">${status}</span></div>
+          <div><strong>Full Content:</strong> ${fullContent}</div>
+        </div>
+      `;
+    }
+
+    const table = $('#postsTable').DataTable({
+      pageLength: 25,
+      order: [[1, 'desc']],
+      responsive: false,
+      searching: true,
+      ordering: true,
+      paging: true,
+      lengthChange: true,
+      lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
+      columnDefs: [
+        {
+          orderable: false,
+          className: 'details-control',
+          targets: 0
+        },
+        {
+          orderable: false,
+          targets: [2, 3, 6, 7]
+        }
+      ],
+      language: {
+        search: "Search posts: ",
+        lengthMenu: "Show _MENU_ posts per page",
+        info: "_START_ to _END_ of _TOTAL_ posts",
+        infoEmpty: "No posts found",
+        infoFiltered: "(out of _MAX_ posts)"
+      }
+    });
+
+    table.columns([2, 3]).every(function () {
+      const column = this;
+      const header = $(column.header());
+      const title = header.text();
+
+      const headerContent = $('<div class="filter-header-content"></div>');
+      const triggerIcon = $('<span class="filter-trigger"><i data-lucide="filter"></i></span>');
+      const titleSpan = $('<span></span>').text(title);
+
+      headerContent.append(triggerIcon).append(titleSpan);
+      header.empty().append(headerContent);
+      const dropdown = $('<div class="filter-dropdown"></div>');
+      const actionRow = $('<div class="filter-actions"></div>');
+      const selectAllBtn = $('<span class="filter-action-btn">Select All</span>');
+      const clearBtn = $('<span class="filter-action-btn">Clear</span>');
+
+      actionRow.append(selectAllBtn).append(clearBtn);
+      dropdown.append(actionRow);
+
+      const optionsContainer = $('<div></div>');
+      dropdown.append(optionsContainer);
+
+      const uniqueData = [];
+      column.data().unique().sort().each(function (d) {
+        if (!d) return;
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(d, 'text/html');
+        const val = doc.body.textContent.trim();
+        if (val && val !== '-' && !uniqueData.includes(val)) {
+          uniqueData.push(val);
+        }
+      });
+
+      uniqueData.forEach(val => {
+        const option = $('<label>').addClass('filter-option');
+        const input = $('<input>').attr('type', 'checkbox').val(val).prop('checked', true);
+        option.append(input).append(document.createTextNode(' ' + val));
+        optionsContainer.append(option);
+      });
+
+      header.find('.filter-header-content').append(dropdown);
+      lucide.createIcons();
+
+      const trigger = header.find('.filter-trigger');
+
+      trigger.on('click', function (e) {
+        e.stopPropagation();
+        $('.filter-dropdown').not(dropdown).removeClass('show');
+        dropdown.toggleClass('show');
+        trigger.toggleClass('active');
+      });
+      dropdown.on('click', function (e) {
+        e.stopPropagation();
+      });
+
+      function applyFilter() {
+        const checked = [];
+        optionsContainer.find('input:checked').each(function () {
+          checked.push($(this).val());
+        });
+
+        const searchStr = checked.map(v => {
+          return '^' + v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$';
+        }).join('|');
+
+        column.search(searchStr, true, false).draw();
+
+        if (optionsContainer.find('input:not(:checked)').length > 0) {
+          trigger.addClass('has-filter');
+        } else {
+          trigger.removeClass('has-filter');
+        }
+      }
+
+      optionsContainer.on('change', 'input', applyFilter);
+
+      selectAllBtn.on('click', function () {
+        optionsContainer.find('input').prop('checked', true);
+        applyFilter();
+      });
+
+      clearBtn.on('click', function () {
+        optionsContainer.find('input').prop('checked', false);
+        applyFilter();
+      });
+
+      $(document).on('click', function (e) {
+        if (!$(e.target).closest('.filter-header-content, .filter-dropdown').length) {
+          dropdown.removeClass('show');
+          trigger.removeClass('active');
+        }
+      });
+    });
+
+    $('#postsTable tbody').on('click', 'td.details-control', function () {
+      const tr = $(this).closest('tr');
+      const row = table.row(tr);
+
+      if (row.child.isShown()) {
+        row.child.hide();
+        tr.removeClass('shown');
+      } else {
+        row.child(formatChildRow(tr)).show();
+        tr.addClass('shown');
+      }
+    });
+
+  });
+</script>
+{{end}}

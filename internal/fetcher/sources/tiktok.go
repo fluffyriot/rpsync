@@ -235,9 +235,9 @@ func FetchTikTokPosts(dbQueries *database.Queries, c *common.Client, uid uuid.UU
 
 		err = common.ProcessScrapedPost(
 			context.Background(), dbQueries, sourceId, item.ID, "TikTok", createdAt, postType, username, content,
-			sql.NullInt32{Int32: int32(likesCount), Valid: likesCount >= 0},
-			sql.NullInt32{Int32: 0, Valid: false},
-			sql.NullInt32{Int32: int32(viewsCount), Valid: viewsCount > 0},
+			sql.NullInt64{Int64: int64(likesCount), Valid: likesCount >= 0},
+			sql.NullInt64{Int64: 0, Valid: false},
+			sql.NullInt64{Int64: int64(viewsCount), Valid: viewsCount > 0},
 		)
 		if err != nil {
 			log.Printf("Failed to process post %s: %v", item.ID, err)

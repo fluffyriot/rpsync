@@ -13,7 +13,7 @@ import (
 	"github.com/fluffyriot/rpsync/internal/pusher/common"
 )
 
-func linkChildrenToParent(c *common.Client, dbQueries *database.Queries, encryptionKey []byte, target database.Target, parentTableMapping database.TableMapping, columnName string, parentRecordID int32, childRecordIDs []int32) error {
+func linkChildrenToParent(c *common.Client, dbQueries *database.Queries, encryptionKey []byte, target database.Target, parentTableMapping database.TableMapping, columnName string, parentRecordID int, childRecordIDs []int) error {
 
 	colMapping, err := dbQueries.GetColumnMappingsByTableAndName(context.Background(), database.GetColumnMappingsByTableAndNameParams{
 		TableMappingID:   parentTableMapping.ID,
@@ -28,7 +28,7 @@ func linkChildrenToParent(c *common.Client, dbQueries *database.Queries, encrypt
 	}
 
 	type linkRecord struct {
-		ID int32 `json:"id"`
+		ID int `json:"id"`
 	}
 
 	linkRecords := make([]linkRecord, len(childRecordIDs))

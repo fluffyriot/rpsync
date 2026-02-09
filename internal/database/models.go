@@ -16,7 +16,7 @@ type AnalyticsPageStat struct {
 	ID       uuid.UUID
 	Date     time.Time
 	UrlPath  string
-	Views    int32
+	Views    int
 	SourceID uuid.UUID
 }
 
@@ -31,7 +31,7 @@ type AnalyticsPageStatsOnTarget struct {
 type AnalyticsSiteStat struct {
 	ID                 uuid.UUID
 	Date               time.Time
-	Visitors           int32
+	Visitors           int
 	AvgSessionDuration float64
 	SourceID           uuid.UUID
 }
@@ -110,9 +110,9 @@ type PostsReactionsHistory struct {
 	ID       uuid.UUID
 	SyncedAt time.Time
 	PostID   uuid.UUID
-	Likes    sql.NullInt32
-	Reposts  sql.NullInt32
-	Views    sql.NullInt32
+	Likes    sql.NullInt64
+	Reposts  sql.NullInt64
+	Views    sql.NullInt64
 }
 
 type Redirect struct {
@@ -147,9 +147,9 @@ type SourcesStat struct {
 	ID             uuid.UUID
 	Date           time.Time
 	SourceID       uuid.UUID
-	FollowersCount sql.NullInt32
-	FollowingCount sql.NullInt32
-	PostsCount     sql.NullInt32
+	FollowersCount sql.NullInt64
+	FollowingCount sql.NullInt64
+	PostsCount     sql.NullInt64
 	AverageLikes   sql.NullFloat64
 	AverageReposts sql.NullFloat64
 	AverageViews   sql.NullFloat64

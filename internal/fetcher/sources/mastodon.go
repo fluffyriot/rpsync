@@ -260,17 +260,16 @@ func FetchMastodonPosts(dbQueries *database.Queries, c *common.Client, uid uuid.
 				ID:       uuid.New(),
 				SyncedAt: time.Now(),
 				PostID:   postID,
-				Likes: sql.NullInt32{
-					Int32: int32(likes),
+				Likes: sql.NullInt64{
+					Int64: int64(likes),
 					Valid: true,
 				},
-				Reposts: sql.NullInt32{
-					Int32: int32(reposts),
+				Reposts: sql.NullInt64{
+					Int64: int64(reposts),
 					Valid: true,
 				},
-				Views: sql.NullInt32{
-					Int32: 0,
-					Valid: true,
+				Views: sql.NullInt64{
+					Valid: false,
 				},
 			})
 

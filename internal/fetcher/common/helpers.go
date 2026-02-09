@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/fluffyriot/rpsync/internal/database"
-	"github.com/fluffyriot/rpsync/internal/helpers"
 	"github.com/google/uuid"
 	"golang.org/x/net/html"
 )
@@ -52,17 +51,17 @@ func SaveOrUpdateSourceStats(ctx context.Context, dbQueries *database.Queries, s
 		Date:     today,
 	})
 
-	var followersCount, followingCount, postsCount sql.NullInt32
+	var followersCount, followingCount, postsCount sql.NullInt64
 	var avgLikes, avgReposts, avgViews sql.NullFloat64
 
 	if stats.FollowersCount != nil {
-		followersCount = sql.NullInt32{Int32: helpers.ClampToInt32(*stats.FollowersCount), Valid: true}
+		followersCount = sql.NullInt64{Int64: int64(*stats.FollowersCount), Valid: true}
 	}
 	if stats.FollowingCount != nil {
-		followingCount = sql.NullInt32{Int32: helpers.ClampToInt32(*stats.FollowingCount), Valid: true}
+		followingCount = sql.NullInt64{Int64: int64(*stats.FollowingCount), Valid: true}
 	}
 	if stats.PostsCount != nil {
-		postsCount = sql.NullInt32{Int32: helpers.ClampToInt32(*stats.PostsCount), Valid: true}
+		postsCount = sql.NullInt64{Int64: int64(*stats.PostsCount), Valid: true}
 	}
 	if stats.AverageLikes != nil {
 		avgLikes = sql.NullFloat64{Float64: *stats.AverageLikes, Valid: true}
@@ -198,7 +197,7 @@ func ProcessScrapedPost(
 	postType string,
 	author string,
 	content string,
-	likes, reposts, views sql.NullInt32,
+	likes, reposts, views sql.NullInt64,
 ) error {
 	postID, err := CreateOrUpdatePost(
 		ctx,

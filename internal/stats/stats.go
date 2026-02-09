@@ -44,8 +44,8 @@ func GetStats(dbQueries *database.Queries, userID uuid.UUID) ([]SourceStats, err
 
 		statsMap[row.ID].Points = append(statsMap[row.ID].Points, ValidationPoint{
 			Date:    row.YearMonth,
-			Likes:   row.TotalLikes,
-			Reposts: row.TotalReposts,
+			Likes:   int64(row.TotalLikes),
+			Reposts: int64(row.TotalReposts),
 		})
 	}
 
@@ -84,7 +84,7 @@ func GetAnalyticsStats(dbQueries *database.Queries, userID uuid.UUID) ([]Analyti
 	for _, v := range visitors {
 		visitorsPoints = append(visitorsPoints, AnalyticsPoint{
 			Date:  v.YearMonth,
-			Value: v.TotalVisitors,
+			Value: int64(v.TotalVisitors),
 		})
 	}
 
@@ -92,7 +92,7 @@ func GetAnalyticsStats(dbQueries *database.Queries, userID uuid.UUID) ([]Analyti
 	for _, v := range views {
 		viewsPoints = append(viewsPoints, AnalyticsPoint{
 			Date:  v.YearMonth,
-			Value: v.TotalViews,
+			Value: int64(v.TotalViews),
 		})
 	}
 
@@ -175,7 +175,7 @@ func GetDashboardSummary(dbQueries *database.Queries, userID uuid.UUID) (*Dashbo
 	for i, stat := range engStats {
 		point := ChartPoint{
 			Date:  stat.PeriodDate.Format("2006-01-02"),
-			Value: stat.TotalEngagement,
+			Value: int64(stat.TotalEngagement),
 		}
 		if i < 7 {
 			summary.Engagement.PreviousPeriod = append(summary.Engagement.PreviousPeriod, point)
@@ -187,7 +187,7 @@ func GetDashboardSummary(dbQueries *database.Queries, userID uuid.UUID) (*Dashbo
 	for i, stat := range followerStats {
 		point := ChartPoint{
 			Date:  stat.PeriodDate.Format("2006-01-02"),
-			Value: stat.TotalFollowers,
+			Value: int64(stat.TotalFollowers),
 		}
 		if i < 7 {
 			summary.Followers.PreviousPeriod = append(summary.Followers.PreviousPeriod, point)

@@ -113,7 +113,7 @@ func fetchAndSaveSiteStats(ctx context.Context, svc *analyticsdata.Service, db *
 		_, err = db.CreateAnalyticsSiteStat(ctx, database.CreateAnalyticsSiteStatParams{
 			ID:                 uuid.New(),
 			Date:               parsedDate,
-			Visitors:           int32(visitorsInt),
+			Visitors:           visitorsInt,
 			AvgSessionDuration: durationFloat,
 			SourceID:           sourceID,
 		})
@@ -157,7 +157,7 @@ func fetchAndSavePageStats(ctx context.Context, svc *analyticsdata.Service, db *
 		Date time.Time
 		Path string
 	}
-	consolidatedStats := make(map[PageStatKey]int32)
+	consolidatedStats := make(map[PageStatKey]int)
 
 	for _, row := range resp.Rows {
 		if len(row.DimensionValues) < 2 || len(row.MetricValues) < 1 {
@@ -182,7 +182,7 @@ func fetchAndSavePageStats(ctx context.Context, svc *analyticsdata.Service, db *
 		}
 
 		key := PageStatKey{Date: parsedDate, Path: pagePath}
-		consolidatedStats[key] += int32(viewsInt)
+		consolidatedStats[key] += viewsInt
 	}
 
 	for key, views := range consolidatedStats {

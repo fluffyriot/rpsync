@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/fluffyriot/rpsync/internal/database"
-	"github.com/fluffyriot/rpsync/internal/helpers"
 	"github.com/fluffyriot/rpsync/internal/pusher/common"
 	"github.com/google/uuid"
 )
@@ -72,15 +71,12 @@ func syncNocoAnalyticsSiteStats(dbQueries *database.Queries, c *common.Client, e
 
 		for _, stat := range syncedStats {
 			targetIDVal, _ := strconv.Atoi(stat.TargetRecordID)
-			safeTargetID, err := helpers.ToInt32(targetIDVal)
-			if err != nil {
-				continue
-			}
+			safeTargetID := targetIDVal
 
 			fieldMap := NocoRecordFields{
 				ID:                 stat.ID.String(),
 				Date:               stat.Date,
-				Visitors:           stat.Visitors,
+				Visitors:           int(stat.Visitors),
 				AvgSessionDuration: stat.AvgSessionDuration,
 			}
 			updateRecords = append(updateRecords, NocoTableRecord{
@@ -117,7 +113,7 @@ func syncNocoAnalyticsSiteStats(dbQueries *database.Queries, c *common.Client, e
 				return err
 			}
 
-			var createdIds []int32
+			var createdIds []int
 
 			for i, rec := range createdRecords {
 				var id float64
@@ -142,15 +138,11 @@ func syncNocoAnalyticsSiteStats(dbQueries *database.Queries, c *common.Client, e
 					return fmt.Errorf("failed to map site stat: %w", err)
 				}
 
-				createdIds = append(createdIds, int32(id))
+				createdIds = append(createdIds, int(id))
 			}
 
 			sourceNocoId, _ := strconv.Atoi(sourceMapping.TargetSourceID)
-			safeSourceNocoId, err := helpers.ToInt32(sourceNocoId)
-			if err != nil {
-				log.Printf("Invalid source Noco ID: %v", err)
-				return err
-			}
+			safeSourceNocoId := sourceNocoId
 
 			if err := linkChildrenToParent(c, dbQueries, encryptionKey, target, sourcesTableMapping, "site_stats", safeSourceNocoId, createdIds); err != nil {
 				log.Printf("Failed to link site stats to source: %v", err)
@@ -165,7 +157,7 @@ func syncNocoAnalyticsSiteStats(dbQueries *database.Queries, c *common.Client, e
 			fieldMap := NocoRecordFields{
 				ID:                 stat.ID.String(),
 				Date:               stat.Date,
-				Visitors:           stat.Visitors,
+				Visitors:           int(stat.Visitors),
 				AvgSessionDuration: stat.AvgSessionDuration,
 			}
 
@@ -258,10 +250,7 @@ func syncNocoAnalyticsPageStats(dbQueries *database.Queries, c *common.Client, e
 
 		for _, stat := range syncedStats {
 			targetIDVal, _ := strconv.Atoi(stat.TargetRecordID)
-			safeTargetID, err := helpers.ToInt32(targetIDVal)
-			if err != nil {
-				continue
-			}
+			safeTargetID := targetIDVal
 
 			fieldMap := NocoRecordFields{
 				ID:       stat.ID.String(),
@@ -304,7 +293,7 @@ func syncNocoAnalyticsPageStats(dbQueries *database.Queries, c *common.Client, e
 				return err
 			}
 
-			var createdIds []int32
+			var createdIds []int
 
 			for i, rec := range createdRecords {
 				var id float64
@@ -329,15 +318,11 @@ func syncNocoAnalyticsPageStats(dbQueries *database.Queries, c *common.Client, e
 					return fmt.Errorf("failed to map page stat: %w", err)
 				}
 
-				createdIds = append(createdIds, int32(id))
+				createdIds = append(createdIds, int(id))
 			}
 
 			sourceNocoId, _ := strconv.Atoi(sourceMapping.TargetSourceID)
-			safeSourceNocoId, err := helpers.ToInt32(sourceNocoId)
-			if err != nil {
-				log.Printf("Invalid source Noco ID: %v", err)
-				return err
-			}
+			safeSourceNocoId := sourceNocoId
 
 			if err := linkChildrenToParent(c, dbQueries, encryptionKey, target, sourcesTableMapping, "page_stats", safeSourceNocoId, createdIds); err != nil {
 				log.Printf("Failed to link page stats to source: %v", err)
@@ -393,11 +378,7 @@ func syncNocoAnalyticsPageStats(dbQueries *database.Queries, c *common.Client, e
 
 	for _, m := range deleteMappings {
 		targetIDVal, _ := strconv.Atoi(m.TargetRecordID)
-		safeTargetID, err := helpers.ToInt32(targetIDVal)
-		if err != nil {
-			log.Printf("Invalid target ID: %v", err)
-			continue
-		}
+		safeTargetID := targetIDVal
 
 		deleteRecords = append(deleteRecords, NocoDeleteRecord{
 			ID: safeTargetID,

@@ -171,10 +171,7 @@ func syncNocoSources(c *common.Client, dbQueries *database.Queries, encryptionKe
 
 	for _, source := range removeSources {
 		v, _ := strconv.Atoi(source.TargetSourceID)
-		intId, err := helpers.ToInt32(v)
-		if err != nil {
-			continue
-		}
+		intId := v
 
 		recordsDelete = append(recordsDelete, NocoDeleteRecord{
 			ID: intId,

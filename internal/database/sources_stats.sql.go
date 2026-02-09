@@ -45,9 +45,9 @@ type CreateSourceStatParams struct {
 	ID             uuid.UUID
 	Date           time.Time
 	SourceID       uuid.UUID
-	FollowersCount sql.NullInt32
-	FollowingCount sql.NullInt32
-	PostsCount     sql.NullInt32
+	FollowersCount sql.NullInt64
+	FollowingCount sql.NullInt64
+	PostsCount     sql.NullInt64
 	AverageLikes   sql.NullFloat64
 	AverageReposts sql.NullFloat64
 	AverageViews   sql.NullFloat64
@@ -129,10 +129,10 @@ WHERE
 `
 
 type GetSourceTotalsRow struct {
-	TotalPosts   int64
-	TotalLikes   int64
-	TotalReposts int64
-	TotalViews   int64
+	TotalPosts   int
+	TotalLikes   int
+	TotalReposts int
+	TotalViews   int
 }
 
 func (q *Queries) GetSourceTotals(ctx context.Context, sourceID uuid.UUID) (GetSourceTotalsRow, error) {
@@ -164,9 +164,9 @@ RETURNING
 `
 
 type UpdateSourceDayStatsParams struct {
-	FollowersCount sql.NullInt32
-	FollowingCount sql.NullInt32
-	PostsCount     sql.NullInt32
+	FollowersCount sql.NullInt64
+	FollowingCount sql.NullInt64
+	PostsCount     sql.NullInt64
 	AverageLikes   sql.NullFloat64
 	AverageReposts sql.NullFloat64
 	AverageViews   sql.NullFloat64

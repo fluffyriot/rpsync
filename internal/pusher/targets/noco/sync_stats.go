@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/fluffyriot/rpsync/internal/database"
-	"github.com/fluffyriot/rpsync/internal/helpers"
 	"github.com/fluffyriot/rpsync/internal/pusher/common"
 	"github.com/google/uuid"
 )
@@ -72,17 +71,14 @@ func syncNocoSourcesStats(dbQueries *database.Queries, c *common.Client, encrypt
 
 		for _, stat := range syncedStats {
 			targetIDVal, _ := strconv.Atoi(stat.TargetRecordID)
-			safeTargetID, err := helpers.ToInt32(targetIDVal)
-			if err != nil {
-				continue
-			}
+			safeTargetID := targetIDVal
 
 			fieldMap := NocoRecordFields{
 				ID:             stat.ID.String(),
 				Date:           stat.Date,
-				FollowersCount: int32(stat.FollowersCount.Int32),
-				FollowingCount: int32(stat.FollowingCount.Int32),
-				PostsCount:     int32(stat.PostsCount.Int32),
+				FollowersCount: int(stat.FollowersCount.Int64),
+				FollowingCount: int(stat.FollowingCount.Int64),
+				PostsCount:     int(stat.PostsCount.Int64),
 				AverageLikes:   stat.AverageLikes.Float64,
 				AverageReposts: stat.AverageReposts.Float64,
 				AverageViews:   stat.AverageViews.Float64,
@@ -122,7 +118,7 @@ func syncNocoSourcesStats(dbQueries *database.Queries, c *common.Client, encrypt
 				return err
 			}
 
-			var createdIds []int32
+			var createdIds []int
 
 			for i, rec := range createdRecords {
 				var id float64
@@ -147,15 +143,11 @@ func syncNocoSourcesStats(dbQueries *database.Queries, c *common.Client, encrypt
 					return fmt.Errorf("failed to map sources stat: %w", err)
 				}
 
-				createdIds = append(createdIds, int32(id))
+				createdIds = append(createdIds, int(id))
 			}
 
 			sourceNocoId, _ := strconv.Atoi(sourceMapping.TargetSourceID)
-			safeSourceNocoId, err := helpers.ToInt32(sourceNocoId)
-			if err != nil {
-				log.Printf("Invalid source Noco ID: %v", err)
-				return err
-			}
+			safeSourceNocoId := sourceNocoId
 
 			if err := linkChildrenToParent(c, dbQueries, encryptionKey, target, sourcesTableMapping, "sources_stats", safeSourceNocoId, createdIds); err != nil {
 				log.Printf("Failed to link sources stats to source: %v", err)
@@ -170,9 +162,9 @@ func syncNocoSourcesStats(dbQueries *database.Queries, c *common.Client, encrypt
 			fieldMap := NocoRecordFields{
 				ID:             stat.ID.String(),
 				Date:           stat.Date,
-				FollowersCount: int32(stat.FollowersCount.Int32),
-				FollowingCount: int32(stat.FollowingCount.Int32),
-				PostsCount:     int32(stat.PostsCount.Int32),
+				FollowersCount: int(stat.FollowersCount.Int64),
+				FollowingCount: int(stat.FollowingCount.Int64),
+				PostsCount:     int(stat.PostsCount.Int64),
 				AverageLikes:   stat.AverageLikes.Float64,
 				AverageReposts: stat.AverageReposts.Float64,
 				AverageViews:   stat.AverageViews.Float64,

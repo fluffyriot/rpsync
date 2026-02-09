@@ -120,9 +120,9 @@ type GetAllSourcesStatsWithTargetInfoRow struct {
 	ID             uuid.UUID
 	Date           time.Time
 	SourceID       uuid.UUID
-	FollowersCount sql.NullInt32
-	FollowingCount sql.NullInt32
-	PostsCount     sql.NullInt32
+	FollowersCount sql.NullInt64
+	FollowingCount sql.NullInt64
+	PostsCount     sql.NullInt64
 	AverageLikes   sql.NullFloat64
 	AverageReposts sql.NullFloat64
 	AverageViews   sql.NullFloat64
@@ -184,9 +184,9 @@ type GetSyncedSourcesStatsForUpdateRow struct {
 	ID             uuid.UUID
 	Date           time.Time
 	SourceID       uuid.UUID
-	FollowersCount sql.NullInt32
-	FollowingCount sql.NullInt32
-	PostsCount     sql.NullInt32
+	FollowersCount sql.NullInt64
+	FollowingCount sql.NullInt64
+	PostsCount     sql.NullInt64
 	AverageLikes   sql.NullFloat64
 	AverageReposts sql.NullFloat64
 	AverageViews   sql.NullFloat64

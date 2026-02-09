@@ -123,9 +123,9 @@ type SyncReactionsParams struct {
 	ID       uuid.UUID
 	SyncedAt time.Time
 	PostID   uuid.UUID
-	Likes    sql.NullInt32
-	Reposts  sql.NullInt32
-	Views    sql.NullInt32
+	Likes    sql.NullInt64
+	Reposts  sql.NullInt64
+	Views    sql.NullInt64
 }
 
 func (q *Queries) SyncReactions(ctx context.Context, arg SyncReactionsParams) (PostsReactionsHistory, error) {

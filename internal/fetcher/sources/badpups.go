@@ -16,7 +16,6 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"github.com/fluffyriot/rpsync/internal/database"
 	"github.com/fluffyriot/rpsync/internal/fetcher/common"
-	"github.com/fluffyriot/rpsync/internal/helpers"
 	"github.com/google/uuid"
 )
 
@@ -227,16 +226,15 @@ func FetchBadpupsPosts(uid uuid.UUID, dbQueries *database.Queries, c *common.Cli
 			ID:       uuid.New(),
 			SyncedAt: time.Now(),
 			PostID:   postID,
-			Likes: sql.NullInt32{
-				Int32: helpers.ClampToInt32(videoLikes),
+			Likes: sql.NullInt64{
+				Int64: int64(videoLikes),
 				Valid: true,
 			},
-			Reposts: sql.NullInt32{
-				Int32: 0,
-				Valid: true,
+			Reposts: sql.NullInt64{
+				Valid: false,
 			},
-			Views: sql.NullInt32{
-				Int32: helpers.ClampToInt32(videoViews),
+			Views: sql.NullInt64{
+				Int64: int64(videoViews),
 				Valid: true,
 			},
 		})

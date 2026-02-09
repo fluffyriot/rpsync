@@ -207,9 +207,9 @@ func FetchInstagramPosts(dbQueries *database.Queries, c *common.Client, sourceId
 
 			err = common.ProcessScrapedPost(
 				context.Background(), dbQueries, sourceId, item.Shortcode, "Instagram", timeParse, post_type, item.Username, item.Caption,
-				sql.NullInt32{Int32: int32(item.LikeCount), Valid: true},
-				sql.NullInt32{Int32: 0, Valid: true},
-				sql.NullInt32{Int32: int32(views), Valid: true},
+				sql.NullInt64{Int64: int64(item.LikeCount), Valid: true},
+				sql.NullInt64{Valid: false},
+				sql.NullInt64{Int64: int64(views), Valid: true},
 			)
 			if err != nil {
 				return err
@@ -313,9 +313,9 @@ func FetchInstagramTags(dbQueries *database.Queries, c *common.Client, sourceId 
 
 			err = common.ProcessScrapedPost(
 				context.Background(), dbQueries, sourceId, shortcode, "Instagram", timeParse, "tag", item.Username, item.Caption,
-				sql.NullInt32{Int32: int32(item.LikeCount), Valid: true},
-				sql.NullInt32{Int32: 0, Valid: true},
-				sql.NullInt32{Int32: 0, Valid: true},
+				sql.NullInt64{Int64: int64(item.LikeCount), Valid: true},
+				sql.NullInt64{Valid: false},
+				sql.NullInt64{Valid: false},
 			)
 			if err != nil {
 				return err

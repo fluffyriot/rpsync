@@ -71,6 +71,36 @@ FROM
 WHERE
     s.user_id = $1;
 
+-- name: GetRecentPostsForUser :many
+SELECT
+    p.created_at,
+    p.network_internal_id,
+    p.content,
+    p.post_type,
+    p.author,
+    p.is_archived,
+    s.network AS network,
+    r.likes,
+    r.reposts,
+    (
+        COALESCE(r.likes, 0) + COALESCE(r.reposts, 0)
+    )::bigint AS interactions,
+    r.views
+FROM
+    posts p
+    left join sources s ON p.source_id = s.id
+    LEFT JOIN posts_reactions_history r ON r.post_id = p.id
+    AND r.synced_at = (
+        SELECT MAX(prh.synced_at)
+        FROM posts_reactions_history prh
+        WHERE
+            prh.post_id = p.id
+    )
+WHERE
+    s.user_id = $1
+ORDER BY p.created_at DESC
+LIMIT 10000;
+
 -- name: DeletePostsByNetworkIdPrefix :exec
 DELETE FROM posts
 WHERE

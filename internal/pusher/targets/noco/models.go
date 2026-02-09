@@ -3,12 +3,12 @@ package noco
 import "time"
 
 type NocoTableRecord struct {
-	Id     int32            `json:"id,omitempty"`
+	Id     int              `json:"id,omitempty"`
 	Fields NocoRecordFields `json:"fields,omitempty"`
 }
 
 type NocoDeleteRecord struct {
-	ID int32 `json:"id"`
+	ID int `json:"id"`
 }
 
 type NocoRecordFields struct {
@@ -22,17 +22,17 @@ type NocoRecordFields struct {
 	PostType           string    `json:"post_type,omitempty"`
 	Author             string    `json:"author,omitempty"`
 	Content            string    `json:"content,omitempty"`
-	Likes              int32     `json:"likes,omitempty"`
-	Views              int32     `json:"views,omitempty"`
-	Reposts            int32     `json:"reposts,omitempty"`
+	Likes              int       `json:"likes,omitempty"`
+	Views              int       `json:"views,omitempty"`
+	Reposts            int       `json:"reposts,omitempty"`
 	URL                string    `json:"URL,omitempty"`
 	Date               time.Time `json:"date,omitempty"`
-	Visitors           int32     `json:"visitors,omitempty"`
+	Visitors           int       `json:"visitors,omitempty"`
 	AvgSessionDuration float64   `json:"avg_session_duration,omitempty"`
 	PagePath           string    `json:"page_path,omitempty"`
-	FollowersCount     int32     `json:"followers_count,omitempty"`
-	FollowingCount     int32     `json:"following_count,omitempty"`
-	PostsCount         int32     `json:"posts_count,omitempty"`
+	FollowersCount     int       `json:"followers_count,omitempty"`
+	FollowingCount     int       `json:"following_count,omitempty"`
+	PostsCount         int       `json:"posts_count,omitempty"`
 	AverageLikes       float64   `json:"average_likes,omitempty"`
 	AverageReposts     float64   `json:"average_reposts,omitempty"`
 	AverageViews       float64   `json:"average_views,omitempty"`
