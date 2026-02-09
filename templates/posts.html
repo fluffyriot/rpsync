@@ -203,6 +203,12 @@
         }).join('|');
 
         column.search(searchStr, true, false).draw();
+
+        if (optionsContainer.find('input:not(:checked)').length > 0) {
+          trigger.addClass('has-filter');
+        } else {
+          trigger.removeClass('has-filter');
+        }
       }
 
       optionsContainer.on('change', 'input', applyFilter);

@@ -1420,7 +1420,8 @@ html body .dt-container .dt-length select:focus {
 }
 
 .filter-trigger:hover,
-.filter-trigger.active {
+.filter-trigger.active,
+.filter-trigger.has-filter {
   background-color: var(--color-bg-surface-hover);
   color: var(--color-primary);
 }
