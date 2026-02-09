@@ -1,12 +1,12 @@
 package handlers
 
 import (
+	"database/sql"
 	"log"
 	"net/http"
 	"path/filepath"
 	"strings"
 
-	"github.com/fluffyriot/rpsync/internal/database"
 	"github.com/fluffyriot/rpsync/internal/exports"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -79,30 +79,61 @@ func (h *Handler) DownloadExportHandler(c *gin.Context) {
 	requestedFilename := c.Param("filepath")[1:]
 	requestedFilename = filepath.Clean(requestedFilename)
 
-	userExports, err := h.DB.GetAllExportsByUserId(ctx, user.ID)
-	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(c, gin.H{
-			"error": "Internal server error fetching exports",
+	parts := strings.Split(requestedFilename, "_")
+	if len(parts) < 3 || parts[0] != "export" || parts[1] != "id" {
+		c.HTML(http.StatusBadRequest, "error.html", h.CommonData(c, gin.H{
+			"error": "Invalid filename format",
 			"title": "Error",
 		}))
 		return
 	}
 
-	var matchedExport *database.Export
-	for _, exp := range userExports {
-		if exp.DownloadUrl.Valid {
-
-			storedPath := exp.DownloadUrl.String
-			storedFilename := filepath.Base(storedPath)
-
-			if storedFilename == requestedFilename {
-				matchedExport = &exp
-				break
-			}
-		}
+	exportIDStr := parts[2]
+	exportID, err := uuid.Parse(exportIDStr)
+	if err != nil {
+		c.HTML(http.StatusBadRequest, "error.html", h.CommonData(c, gin.H{
+			"error": "Invalid export ID",
+			"title": "Error",
+		}))
+		return
 	}
 
-	if matchedExport == nil {
+	export, err := h.DB.GetExportById(ctx, exportID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			c.HTML(http.StatusNotFound, "error.html", h.CommonData(c, gin.H{
+				"error": "Export not found",
+				"title": "Error",
+			}))
+		} else {
+			c.HTML(http.StatusInternalServerError, "error.html", h.CommonData(c, gin.H{
+				"error": "Internal server error",
+				"title": "Error",
+			}))
+		}
+		return
+	}
+
+	if export.UserID != user.ID {
+		c.HTML(http.StatusForbidden, "error.html", h.CommonData(c, gin.H{
+			"error": "Access denied",
+			"title": "Error",
+		}))
+		return
+	}
+
+	if !export.DownloadUrl.Valid {
+		c.HTML(http.StatusNotFound, "error.html", h.CommonData(c, gin.H{
+			"error": "Export file info missing",
+			"title": "Error",
+		}))
+		return
+	}
+
+	storedPath := export.DownloadUrl.String
+	storedFilename := filepath.Base(storedPath)
+
+	if storedFilename != requestedFilename {
 		c.HTML(http.StatusForbidden, "error.html", h.CommonData(c, gin.H{
 			"error": "Access denied",
 			"title": "Error",
