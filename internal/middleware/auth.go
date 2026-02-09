@@ -21,7 +21,6 @@ func AuthMiddleware(db *database.Queries) gin.HandlerFunc {
 		userID := session.Get("user_id")
 
 		if userID == nil {
-
 			users, err := db.GetAllUsers(c.Request.Context())
 			if err == nil && len(users) == 0 {
 				if c.Request.URL.Path != "/user/setup" && !strings.HasPrefix(c.Request.URL.Path, "/static") {
@@ -38,11 +37,6 @@ func AuthMiddleware(db *database.Queries) gin.HandlerFunc {
 			return
 		}
 
-		username := session.Get("username")
-		hasAvatar := session.Get("has_avatar")
-		avatarVersion := session.Get("avatar_version")
-		lastSeenVersion := session.Get("last_seen_version")
-
 		userIdStr, ok := userID.(string)
 		if !ok {
 			c.Redirect(http.StatusFound, "/login")
@@ -50,63 +44,47 @@ func AuthMiddleware(db *database.Queries) gin.HandlerFunc {
 			return
 		}
 
-		var currentUsername string
-		var currentHasAvatar bool
-		var currentAvatarVersion int64
-		var currentLastSeenVersion string
+		uid, err := uuid.Parse(userIdStr)
+		if err != nil {
+			session.Clear()
+			session.Save()
+			c.Redirect(http.StatusFound, "/login")
+			c.Abort()
+			return
+		}
 
-		if username != nil {
-			currentUsername = username.(string)
-			if hasAvatar != nil {
-				currentHasAvatar = hasAvatar.(bool)
-			}
-			if avatarVersion != nil {
-				switch v := avatarVersion.(type) {
-				case int64:
-					currentAvatarVersion = v
-				case int:
-					currentAvatarVersion = int64(v)
-				case float64:
-					currentAvatarVersion = int64(v)
-				}
-			}
-			if lastSeenVersion != nil {
-				currentLastSeenVersion = lastSeenVersion.(string)
-			}
-		} else {
-			users, err := db.GetAllUsers(c.Request.Context())
-			if err == nil {
-				targetUuid, _ := uuid.Parse(userIdStr)
-				for _, u := range users {
-					if u.ID == targetUuid {
-						currentUsername = u.Username
-						if u.ProfileImage.Valid && u.ProfileImage.String != "" {
-							currentHasAvatar = true
-						}
-						currentAvatarVersion = u.UpdatedAt.Unix()
-						currentLastSeenVersion = u.LastSeenVersion
-
-						if !u.PasswordHash.Valid || u.PasswordHash.String == "" {
-							if c.Request.URL.Path != "/setup/password" {
-								c.Redirect(http.StatusFound, "/setup/password")
-								c.Abort()
-								return
-							}
-						}
-						break
-					}
-				}
-			}
+		user, err := db.GetUserByID(c.Request.Context(), uid)
+		if err != nil {
+			session.Clear()
+			session.Save()
+			c.Redirect(http.StatusFound, "/login")
+			c.Abort()
+			return
 		}
 
 		c.Set("user_id", userIdStr)
-		c.Set("username", currentUsername)
-		c.Set("has_avatar", currentHasAvatar)
-		c.Set("avatar_version", currentAvatarVersion)
-		if len(currentUsername) > 0 {
-			c.Set("username_initial", strings.ToUpper(string(currentUsername[0])))
+		c.Set("username", user.Username)
+
+		hasAvatar := false
+		if user.ProfileImage.Valid && user.ProfileImage.String != "" {
+			hasAvatar = true
 		}
-		c.Set("last_seen_version", currentLastSeenVersion)
+		c.Set("has_avatar", hasAvatar)
+		c.Set("avatar_version", user.UpdatedAt.Unix())
+
+		if len(user.Username) > 0 {
+			c.Set("username_initial", strings.ToUpper(string(user.Username[0])))
+		}
+
+		c.Set("last_seen_version", user.LastSeenVersion)
+
+		if !user.PasswordHash.Valid || user.PasswordHash.String == "" {
+			if c.Request.URL.Path != "/setup/password" {
+				c.Redirect(http.StatusFound, "/setup/password")
+				c.Abort()
+				return
+			}
+		}
 
 		c.Next()
 	}

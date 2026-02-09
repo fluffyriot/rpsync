@@ -5,6 +5,7 @@ import (
 
 	"github.com/fluffyriot/rpsync/internal/config"
 	"github.com/fluffyriot/rpsync/internal/database"
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 )
 
@@ -58,6 +59,10 @@ func (h *Handler) UpdateLastSeenVersionHandler(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update user version"})
 		return
 	}
+
+	session := sessions.Default(c)
+	session.Set("last_seen_version", req.Version)
+	session.Save()
 
 	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
