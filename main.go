@@ -250,6 +250,7 @@ func main() {
 
 	authorized.GET("/api/updates/notes", h.GetReleaseNotesHandler)
 	authorized.POST("/api/user/ack-version", h.UpdateLastSeenVersionHandler)
+	authorized.POST("/api/user/intro-completed", h.UpdateUserIntroCompletedHandler)
 
 	srv := &http.Server{
 		Addr:    ":" + cfg.AppPort,

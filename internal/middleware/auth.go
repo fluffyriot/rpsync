@@ -77,6 +77,7 @@ func AuthMiddleware(db *database.Queries) gin.HandlerFunc {
 		}
 
 		c.Set("last_seen_version", user.LastSeenVersion)
+		c.Set("intro_completed", user.IntroCompleted)
 
 		if !user.PasswordHash.Valid || user.PasswordHash.String == "" {
 			if c.Request.URL.Path != "/setup/password" {

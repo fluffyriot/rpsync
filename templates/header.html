@@ -69,6 +69,9 @@
                         <a href="/settings/sync" class="dropdown-item-right">
                             <i data-lucide="settings"></i> Settings
                         </a>
+                        <button class="dropdown-item-right w-full text-left" onclick="startOnboarding()">
+                            <i data-lucide="play-circle"></i> Launch App Demo
+                        </button>
                         <form method="POST" action="/logout" style="margin: 0;">
                             <button type="submit" class="dropdown-item-right text-danger">
                                 <i data-lucide="log-out"></i> Logout
@@ -77,6 +80,76 @@
                     </div>
                 </div>
             </div>
+
+            <script>
+                function startOnboarding() {
+                    const scriptId = 'supademo-script';
+                    if (document.getElementById(scriptId)) {
+                        if (typeof Supademo !== 'undefined') {
+                            Supademo.open('cmlgkkc1x01n5zb0j41xg5bc2');
+                        }
+                        return;
+                    }
+
+                    const script = document.createElement('script');
+                    script.id = scriptId;
+                    script.src = 'https://script.supademo.com/supademo.js';
+                    script.onload = function () {
+                        Supademo.open('cmlgkkc1x01n5zb0j41xg5bc2');
+                    };
+                    document.body.appendChild(script);
+                }
+                function handleSupademoClose() {
+                    const modal = document.querySelector('.supademo-standalone-modal-overlay');
+                    if (modal) {
+                        modal.remove();
+                    }
+
+                    const script = document.getElementById('supademo-script');
+                    if (script) {
+                        script.remove();
+                    }
+                    if (typeof Supademo !== 'undefined') {
+                        delete window.Supademo;
+                    }
+
+                    markIntroCompleted();
+                }
+
+                window.addEventListener('message', function (event) {
+                    if (event.data && event.data.source === 'Supademo') {
+                        if (event.data.type === 'Supademo:completed') {
+                            markIntroCompleted();
+                        } else if (event.data.type === 'Supademo:close') {
+                            handleSupademoClose();
+                        }
+                    }
+                });
+
+                document.addEventListener('click', function (e) {
+                    if (e.target.classList.contains('supademo-standalone-modal-overlay') ||
+                        e.target.classList.contains('supademo-standalone-modal-close')) {
+                        handleSupademoClose();
+                    }
+                });
+
+                function markIntroCompleted() {
+                    fetch('/api/user/intro-completed', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    }).catch(console.error);
+                }
+            </script>
+
+            {{ if not .intro_completed }}
+            <script>
+                document.addEventListener('DOMContentLoaded', function () {
+                    setTimeout(startOnboarding, 1000);
+                });
+            </script>
+            {{ end }}
             {{ end }}
         </div>
     </nav>

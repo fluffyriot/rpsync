@@ -239,3 +239,22 @@ func (h *Handler) UpdateUserPasswordHandler(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Password updated successfully"})
 }
+
+func (h *Handler) UpdateUserIntroCompletedHandler(c *gin.Context) {
+	user, loggedIn := h.GetAuthenticatedUser(c)
+	if !loggedIn {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Not logged in"})
+		return
+	}
+
+	_, err := h.DB.UpdateUserIntroCompleted(c.Request.Context(), database.UpdateUserIntroCompletedParams{
+		ID:             user.ID,
+		IntroCompleted: true,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update intro status: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Intro status updated successfully"})
+}

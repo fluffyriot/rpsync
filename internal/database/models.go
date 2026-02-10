@@ -210,6 +210,7 @@ type User struct {
 	TotpEnabled     sql.NullBool
 	ProfileImage    sql.NullString
 	LastSeenVersion string
+	IntroCompleted  bool
 }
 
 type WebauthnCredential struct {

@@ -768,7 +768,7 @@ a:hover {
   top: 100%;
   margin-top: 0.25rem;
   background-color: var(--color-bg-surface);
-  min-width: 160px;
+  min-width: 200px;
   box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.2);
   z-index: 50;
   border: 1px solid var(--color-border);
