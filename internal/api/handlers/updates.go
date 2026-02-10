@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/fluffyriot/rpsync/internal/config"
@@ -20,7 +21,12 @@ func (h *Handler) GetReleaseNotesHandler(c *gin.Context) {
 		lastSeenVersion = "0.0.0"
 	}
 
-	notes, err := h.Updater.GetReleaseNotes(lastSeenVersion, currentVersion)
+	limit := 0
+	if l := c.Query("limit"); l != "" {
+		fmt.Sscanf(l, "%d", &limit)
+	}
+
+	notes, err := h.Updater.GetReleaseNotes(lastSeenVersion, currentVersion, limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

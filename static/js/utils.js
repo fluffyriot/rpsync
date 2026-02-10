@@ -52,7 +52,7 @@ function submitWithConfirm(form, message) {
     return false;
 }
 
-function showReleaseNotes(version, lastSeenVersion) {
+function showReleaseNotes(version, lastSeenVersion, limit) {
     const overlay = document.getElementById('release-notes-overlay');
     const sidebar = document.getElementById('release-notes-sidebar');
     const versionSpan = document.getElementById('release-notes-version');
@@ -66,12 +66,21 @@ function showReleaseNotes(version, lastSeenVersion) {
 
     if (versionSpan) versionSpan.innerText = version;
 
-    fetch(`/api/updates/notes?version=${version}&last_seen=${lastSeenVersion}`)
+    let url = `/api/updates/notes?version=${version}&last_seen=${lastSeenVersion}`;
+    if (limit) {
+        url += `&limit=${limit}`;
+    }
+
+    fetch(url)
         .then(res => res.json())
         .then(data => {
             if (data.error) {
                 bodyDiv.innerHTML = `<div class="text-danger">Failed to load notes: ${data.error}</div>`;
                 return;
+            }
+
+            if (data.name && versionSpan) {
+                versionSpan.innerText = data.name.replace("Updates up to ", "");
             }
 
             if (window.marked) {

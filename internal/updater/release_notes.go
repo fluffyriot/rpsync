@@ -16,7 +16,7 @@ type GitHubRelease struct {
 	HtmlUrl string `json:"html_url"`
 }
 
-func (u *Updater) GetReleaseNotes(fromVersion, toVersion string) (*GitHubRelease, error) {
+func (u *Updater) GetReleaseNotes(fromVersion, toVersion string, limit int) (*GitHubRelease, error) {
 	url := "https://api.github.com/repos/fluffyriot/rpsync/releases"
 
 	client := &http.Client{Timeout: 10 * time.Second}
@@ -42,20 +42,34 @@ func (u *Updater) GetReleaseNotes(fromVersion, toVersion string) (*GitHubRelease
 
 	var relevantReleases []GitHubRelease
 
-	if toVersion == "unknown" || toVersion == "" {
-		if len(releases) > 0 {
-			toVersion = strings.TrimPrefix(releases[0].TagName, "v.")
+	if limit > 0 {
+		count := 0
+		for _, rel := range releases {
+			v := strings.TrimPrefix(rel.TagName, "v.")
+			if !u.isNewer(v, toVersion) {
+				relevantReleases = append(relevantReleases, rel)
+				count++
+				if count >= limit {
+					break
+				}
+			}
 		}
-	}
+	} else {
+		if toVersion == "unknown" || toVersion == "" {
+			if len(releases) > 0 {
+				toVersion = strings.TrimPrefix(releases[0].TagName, "v.")
+			}
+		}
 
-	for _, rel := range releases {
-		v := strings.TrimPrefix(rel.TagName, "v.")
+		for _, rel := range releases {
+			v := strings.TrimPrefix(rel.TagName, "v.")
 
-		isNewerThanFrom := u.isNewer(v, fromVersion)
-		isOlderOrEqualToTo := !u.isNewer(v, toVersion)
+			isNewerThanFrom := u.isNewer(v, fromVersion)
+			isOlderOrEqualToTo := !u.isNewer(v, toVersion)
 
-		if isNewerThanFrom && isOlderOrEqualToTo {
-			relevantReleases = append(relevantReleases, rel)
+			if isNewerThanFrom && isOlderOrEqualToTo {
+				relevantReleases = append(relevantReleases, rel)
+			}
 		}
 	}
 
