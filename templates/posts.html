@@ -301,6 +301,8 @@
       }
     });
 
+    let isFiltering = false;
+
     function updateDateButtonState() {
       const hasFilter = $('#startDate').val() || $('#endDate').val();
       const $btn = $('#dateFilterBtn');
@@ -487,7 +489,11 @@
           return '^' + v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$';
         }).join('|');
 
+        isFiltering = true;
         column.search(searchStr, true, false).draw();
+        setTimeout(() => {
+          isFiltering = false;
+        }, 300);
 
         if (optionsContainer.find('input:not(:checked)').length > 0) {
           trigger.addClass('has-filter');
@@ -529,7 +535,9 @@
       }
     });
 
+    // Close filter dropdowns on table body scroll (DataTables 2)
     $('.dt-scroll-body, .dataTables_scrollBody').on('scroll', function () {
+      if (isFiltering) return;
       $('.filter-dropdown.show').removeClass('show');
       $('.filter-trigger.active').removeClass('active');
     });

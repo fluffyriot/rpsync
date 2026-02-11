@@ -355,8 +355,8 @@
 
         const ctx = document.getElementById('engagementChart').getContext('2d');
 
-        const datasets = [];
         const allDates = new Set();
+        const networkGroups = {};
 
         Chart.defaults.color = '#a0a0a0';
         Chart.defaults.borderColor = '#333';
@@ -368,39 +368,90 @@
           console.error("Failed to parse network colors", e);
         }
 
-        data.forEach((source, index) => {
+        data.forEach(source => {
+          if (!networkGroups[source.network]) {
+            networkGroups[source.network] = new Map();
+          }
           const points = source.points || [];
-          const dataPoints = points.map(p => {
-            const dateStr = p.date;
-            allDates.add(dateStr);
-            return {
-              x: dateStr,
-              y: p.likes + p.reposts
-            };
-          });
-
-          const color = networkColors[source.network] || '#9167e4';
-
-          datasets.push({
-            label: `  ${source.network} (${source.username})`,
-            data: dataPoints,
-            borderColor: color,
-            backgroundColor: color + '20',
-            fill: false,
-            tension: 0.3,
-            borderWidth: 2,
-            pointRadius: 3
+          points.forEach(p => {
+            allDates.add(p.date);
+            const current = networkGroups[source.network].get(p.date) || 0;
+            networkGroups[source.network].set(p.date, current + p.likes + p.reposts);
           });
         });
 
         const sortedDates = Array.from(allDates).sort();
 
+        const datasets = [];
+
+        Object.keys(networkGroups).forEach(network => {
+          const dateMap = networkGroups[network];
+          const dataPoints = [];
+
+          sortedDates.forEach(date => {
+            let val = 0;
+            if (dateMap.has(date)) {
+              val = dateMap.get(date);
+            }
+            dataPoints.push(val);
+          });
+
+          const color = networkColors[network] || '#9167e4';
+
+          datasets.push({
+            label: ' ' + network,
+            data: dataPoints,
+            backgroundColor: color,
+            borderColor: color,
+            borderWidth: 1,
+            fill: true,
+          });
+        });
+
+        const totalLabelsPlugin = {
+          id: 'totalLabels',
+          afterDatasetsDraw: (chart, args, options) => {
+            const { ctx, scales: { x, y } } = chart;
+            ctx.save();
+            ctx.font = 'bold 11px sans-serif';
+            ctx.fillStyle = '#a0a0a0';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+
+            chart.data.labels.forEach((label, index) => {
+              let total = 0;
+              let hasData = false;
+
+              chart.data.datasets.forEach((dataset, i) => {
+                if (chart.isDatasetVisible(i)) {
+                  const val = dataset.data[index];
+                  if (typeof val === 'number') {
+                    total += val;
+                    if (val > 0) hasData = true;
+                  }
+                }
+              });
+
+              if (hasData && total > 0) {
+                const meta = chart.getDatasetMeta(0);
+                if (meta.data[index]) {
+                  const xPos = meta.data[index].x;
+                  const yPos = y.getPixelForValue(total);
+                  ctx.fillText(total, xPos, yPos - 5);
+                }
+              }
+            });
+            ctx.restore();
+          }
+        };
+
         new Chart(ctx, {
-          type: 'line',
+          type: 'bar',
           data: {
             labels: sortedDates,
             datasets: datasets
           },
+          plugins: [totalLabelsPlugin],
           options: {
             responsive: true,
             maintainAspectRatio: false,
@@ -410,12 +461,15 @@
             },
             scales: {
               x: {
+                stacked: true,
                 type: 'category',
                 grid: { color: 'rgba(255, 255, 255, 0.05)' }
               },
               y: {
+                stacked: true,
                 beginAtZero: true,
-                title: { display: true, text: 'Total Engagement' },
+                grace: '5%',
+                title: { display: true, text: 'Posts Engagement' },
                 grid: { color: 'rgba(255, 255, 255, 0.05)' }
               }
             },
@@ -434,7 +488,7 @@
                 displayColors: true,
                 callbacks: {
                   label: function (context) {
-                    let label = context.dataset.label.trim() || '';
+                    let label = context.dataset.label || '';
                     if (label) {
                       label += ': ';
                     }
