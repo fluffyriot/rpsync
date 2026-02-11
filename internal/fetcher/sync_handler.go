@@ -78,10 +78,10 @@ func SyncBySource(sid uuid.UUID, dbQueries *database.Queries, c *common.Client, 
 			return sources.FetchBlueskyPosts(dbQueries, c, source.UserID, source.ID)
 
 		case "Instagram":
-			if err := sources.FetchInstagramPosts(dbQueries, c, source.ID, ver, encryptionKey); err != nil {
+			if err := sources.FetchInstagramTags(dbQueries, c, source.ID, ver, encryptionKey); err != nil {
 				return err
 			}
-			return sources.FetchInstagramTags(dbQueries, c, source.ID, ver, encryptionKey)
+			return sources.FetchInstagramPosts(dbQueries, c, source.ID, ver, encryptionKey)
 
 		case "Murrtube":
 			return sources.FetchMurrtubePosts(source.UserID, dbQueries, c, source.ID)
