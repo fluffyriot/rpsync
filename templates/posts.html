@@ -91,9 +91,7 @@
           data-reposts="{{if .Post.Reposts.Valid}}{{.Post.Reposts.Int64}}{{else}}-{{end}}"
           data-status="{{if .Post.IsArchived}}Archived{{else}}Active{{end}}"
           data-full-content="{{if .Post.Content.Valid}}{{.Post.Content.String}}{{else}}-{{end}}"
-          data-author="{{.Post.Author}}" data-url="{{.URL}}" data-source-id="{{.Post.SourceID}}"
-          data-network="{{if .Post.Network.Valid}}{{.Post.Network.String}}{{else}}{{end}}"
-          data-embed-url="{{ embedUrl .Post }}">
+          data-author="{{.Post.Author}}" data-url="{{.URL}}" data-source-id="{{.Post.SourceID}}">
           <td class="details-control"></td>
           <td data-order="{{.Post.CreatedAt.Unix}}">{{.Post.CreatedAt.Format "Jan 02, 2006 15:04"}}</td>
           <td data-search="{{if .Post.Network.Valid}}{{.Post.Network.String}}{{else}}-{{end}}">
@@ -187,20 +185,6 @@
         $buttons.append($link);
       }
 
-      const embedUrl = tr.data('embed-url');
-      const network = tr.data('network');
-
-      if (embedUrl) {
-        const $previewBtn = $('<button/>', {
-          class: 'btn btn-primary btn-sm',
-          text: ' Preview Post'
-        });
-        $previewBtn.prepend($('<i/>', { 'data-lucide': 'eye', class: 'icon-sm' }));
-        $previewBtn.on('click', function () {
-          openPreviewModal(network, embedUrl);
-        });
-        $buttons.append($previewBtn);
-      }
 
       const $excludeBtn = $('<button/>', {
         class: 'btn btn-danger btn-sm',
@@ -593,64 +577,5 @@
     }
   }
 
-  function createStandardIframe(url) {
-    return $('<iframe/>', {
-      class: 'preview-frame',
-      src: url,
-      title: 'Post Preview',
-      allowfullscreen: true
-    });
-  }
-
-  function getEmbedElement(network, url) {
-    switch (network) {
-      case 'YouTube':
-      case 'TikTok':
-        return createStandardIframe(url);
-      default:
-        return createStandardIframe(url);
-    }
-  }
-
-  function openPreviewModal(network, url) {
-    const modal = document.getElementById('previewPostModal');
-    const container = $(modal).find('.preview-frame-container');
-    container.empty();
-    const $embed = getEmbedElement(network, url);
-    container.append($embed);
-
-    modal.style.display = 'flex';
-  }
-
-  function closePreviewModal() {
-    const modal = document.getElementById('previewPostModal');
-    const container = $(modal).find('.preview-frame-container');
-    container.empty();
-    modal.style.display = 'none';
-  }
-
-  document.addEventListener('DOMContentLoaded', function () {
-    const modal = document.getElementById('previewPostModal');
-    if (modal) {
-      modal.addEventListener('click', function (e) {
-        if (e.target === modal) {
-          closePreviewModal();
-        }
-      });
-    }
-  });
 </script>
-
-<div id="previewPostModal" class="modal-overlay">
-  <div class="card modal-card preview-modal-card">
-    <div class="card-header flex justify-between items-center">
-      <span>Preview Post</span>
-      <button class="btn btn-ghost btn-icon" onclick="closePreviewModal()">
-        <i data-lucide="x"></i>
-      </button>
-    </div>
-    <div class="preview-frame-container">
-    </div>
-  </div>
-</div>
 {{end}}

@@ -96,14 +96,3 @@ func ConvPostToURL(network, author, networkId string) (string, error) {
 		return "", fmt.Errorf("network %v not recognized", network)
 	}
 }
-
-func ConvPostToEmbedURL(network, author, networkId string) (string, error) {
-	switch network {
-	case "YouTube":
-		return "https://www.youtube.com/embed/" + networkId, nil
-	case "TikTok":
-		return "https://www.tiktok.com/embed/v2/" + networkId, nil
-	default:
-		return "", fmt.Errorf("embed not supported for %s", network)
-	}
-}

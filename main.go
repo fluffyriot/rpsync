@@ -18,11 +18,9 @@ import (
 	_ "embed"
 
 	"github.com/fluffyriot/rpsync/internal/api/handlers"
-	"github.com/fluffyriot/rpsync/internal/database"
 	"github.com/fluffyriot/rpsync/internal/cli"
 	"github.com/fluffyriot/rpsync/internal/config"
 	fetcher_common "github.com/fluffyriot/rpsync/internal/fetcher/common"
-	"github.com/fluffyriot/rpsync/internal/helpers"
 	"github.com/fluffyriot/rpsync/internal/middleware"
 	"github.com/fluffyriot/rpsync/internal/pusher/common"
 	"github.com/fluffyriot/rpsync/internal/updater"
@@ -92,16 +90,6 @@ func main() {
 		},
 		"add": func(a, b int32) int32 {
 			return a + b
-		},
-		"embedUrl": func(post database.GetRecentPostsForUserRow) string {
-			if !post.Network.Valid {
-				return ""
-			}
-			url, err := helpers.ConvPostToEmbedURL(post.Network.String, post.Author, post.NetworkInternalID)
-			if err != nil {
-				return ""
-			}
-			return url
 		},
 	})
 
