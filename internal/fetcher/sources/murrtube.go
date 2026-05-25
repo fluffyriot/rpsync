@@ -8,8 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -39,7 +37,18 @@ type murrPageData struct {
 }
 
 type murrProps struct {
-	Medium murrMedium `json:"medium"`
+	Medium  murrMedium      `json:"medium"`
+	Profile murrProfile     `json:"profile"`
+	Media   []murrMediaItem `json:"media"`
+}
+
+type murrProfile struct {
+	FollowersCount  int `json:"followers_count"`
+	FollowingsCount int `json:"followings_count"`
+}
+
+type murrMediaItem struct {
+	ShortCode string `json:"short_code"`
 }
 
 type murrMedium struct {
@@ -168,35 +177,34 @@ func FetchMurrtubePosts(dbQueries *database.Queries, c *common.Client, sourceID 
 		return fmt.Errorf("Murrtube: failed to parse profile HTML: %w", err)
 	}
 
-	var followersCount, followingCount *int
-	doc.Find("ul li a").Each(func(_ int, s *goquery.Selection) {
-		text := strings.TrimSpace(s.Text())
-		if strings.HasPrefix(text, "Followers") {
-			if count, err := extractMurrNumber(text, `Followers \((\d+)\)`); err == nil {
-				followersCount = &count
-			}
-		} else if strings.HasPrefix(text, "Following") {
-			if count, err := extractMurrNumber(text, `Following \((\d+)\)`); err == nil {
-				followingCount = &count
-			}
-		}
-	})
+	profileDataPage, exists := doc.Find("#app").Attr("data-page")
+	if !exists {
+		return errors.New("Murrtube: data-page attribute not found on profile page")
+	}
 
-	linkPattern := regexp.MustCompile(`^/v/.{4}$`)
+	var profilePageData murrPageData
+	if err := json.Unmarshal([]byte(profileDataPage), &profilePageData); err != nil {
+		return fmt.Errorf("Murrtube: failed to parse profile data-page JSON: %w", err)
+	}
+
+	profile := profilePageData.Props.Profile
+	followersVal := profile.FollowersCount
+	followingVal := profile.FollowingsCount
+	followersCount := &followersVal
+	followingCount := &followingVal
+
 	var videoIDs []string
 	seen := make(map[string]struct{})
-	doc.Find("a").Each(func(_ int, s *goquery.Selection) {
-		href, exists := s.Attr("href")
-		if !exists || !linkPattern.MatchString(href) {
-			return
+	for _, item := range profilePageData.Props.Media {
+		if item.ShortCode == "" {
+			continue
 		}
-		id := strings.TrimPrefix(href, "/v/")
-		if _, ok := seen[id]; ok {
-			return
+		if _, ok := seen[item.ShortCode]; ok {
+			continue
 		}
-		seen[id] = struct{}{}
-		videoIDs = append(videoIDs, id)
-	})
+		seen[item.ShortCode] = struct{}{}
+		videoIDs = append(videoIDs, item.ShortCode)
+	}
 
 	if len(videoIDs) == 0 {
 		return errors.New("no videos found: session may have expired or age check cookie missing")
@@ -290,19 +298,4 @@ func FetchMurrtubePosts(dbQueries *database.Queries, c *common.Client, sourceID 
 	}
 
 	return nil
-}
-
-func extractMurrNumber(text, pattern string) (int, error) {
-	re := regexp.MustCompile(pattern)
-	match := re.FindStringSubmatch(text)
-	if len(match) < 2 {
-		return 0, fmt.Errorf("nothing matched")
-	}
-
-	clean := strings.ReplaceAll(match[1], ",", "")
-	value, err := strconv.Atoi(clean)
-	if err != nil {
-		return 0, nil
-	}
-	return value, nil
 }
