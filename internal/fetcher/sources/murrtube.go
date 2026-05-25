@@ -34,6 +34,27 @@ type murrCookieEntry struct {
 	ExpirationDate *float64 `json:"expirationDate"`
 }
 
+type murrPageData struct {
+	Props murrProps `json:"props"`
+}
+
+type murrProps struct {
+	Medium murrMedium `json:"medium"`
+}
+
+type murrMedium struct {
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	CreatedAt   time.Time `json:"created_at"`
+	ViewsCount  int       `json:"views_count"`
+	LikesCount  int       `json:"likes_count"`
+	Tags        []murrTag `json:"tags"`
+}
+
+type murrTag struct {
+	Name string `json:"name"`
+}
+
 func FetchMurrtubePosts(dbQueries *database.Queries, c *common.Client, sourceID uuid.UUID, encryptionKey []byte) error {
 	exclusionMap, err := common.LoadExclusionMap(dbQueries, sourceID)
 	if err != nil {
@@ -118,7 +139,6 @@ func FetchMurrtubePosts(dbQueries *database.Queries, c *common.Client, sourceID 
 		return fmt.Errorf("Murrtube: failed to navigate to profile: %w", err)
 	}
 
-	// Scroll to load lazy-loaded content
 	const maxScrolls = 30
 	sameHeightCount := 0
 	var prevHeight int64
@@ -204,12 +224,31 @@ func FetchMurrtubePosts(dbQueries *database.Queries, c *common.Client, sourceID 
 			continue
 		}
 
-		title, _ := videoDoc.Find(`meta[property="og:title"]`).Attr("content")
-		description, _ := videoDoc.Find(`meta[property="og:description"]`).Attr("content")
+		dataPage, exists := videoDoc.Find("#app").Attr("data-page")
+		if !exists {
+			log.Printf("Murrtube: data-page attribute not found for video %s", id)
+			continue
+		}
 
-		createdAt, err := extractMurrtubeCreatedAt(videoDoc)
-		if err != nil {
+		var pageData murrPageData
+		if err := json.Unmarshal([]byte(dataPage), &pageData); err != nil {
+			log.Printf("Murrtube: failed to parse data-page JSON for video %s: %v", id, err)
+			continue
+		}
+
+		medium := pageData.Props.Medium
+		createdAt := medium.CreatedAt
+		if createdAt.IsZero() {
 			createdAt = time.Now()
+		}
+
+		tagParts := make([]string, 0, len(medium.Tags))
+		for _, tag := range medium.Tags {
+			tagParts = append(tagParts, "#"+tag.Name)
+		}
+		content := medium.Title + "\n\n" + medium.Description
+		if len(tagParts) > 0 {
+			content += "\n\n" + strings.Join(tagParts, " ")
 		}
 
 		postID, err := common.CreateOrUpdatePost(
@@ -221,16 +260,15 @@ func FetchMurrtubePosts(dbQueries *database.Queries, c *common.Client, sourceID 
 			createdAt,
 			"video",
 			username,
-			fmt.Sprintf("%s\n\n%s", title, description),
+			content,
 		)
 		if err != nil {
 			log.Printf("Murrtube: failed to process video %s: %v", id, err)
 			continue
 		}
 
-		pageText := videoDoc.Text()
-		videoViews, _ := extractMurrNumber(pageText, `([\d,]+)\s+Views`)
-		videoLikes, _ := extractMurrNumber(pageText, `([\d,]+)\s+Likes`)
+		videoViews := medium.ViewsCount
+		videoLikes := medium.LikesCount
 
 		if _, err = dbQueries.SyncReactions(context.Background(), database.SyncReactionsParams{
 			ID:       uuid.New(),
@@ -252,25 +290,6 @@ func FetchMurrtubePosts(dbQueries *database.Queries, c *common.Client, sourceID 
 	}
 
 	return nil
-}
-
-func extractMurrtubeCreatedAt(doc *goquery.Document) (time.Time, error) {
-	span := doc.Find(`span[data-tooltip]`).First()
-	if span.Length() == 0 {
-		return time.Time{}, errors.New("created date not found")
-	}
-
-	raw, exists := span.Attr("data-tooltip")
-	if !exists || strings.TrimSpace(raw) == "" {
-		return time.Time{}, errors.New("created date empty")
-	}
-
-	t, err := time.Parse("January 2, 2006 - 15:04", raw)
-	if err != nil {
-		return time.Time{}, err
-	}
-
-	return t, nil
 }
 
 func extractMurrNumber(text, pattern string) (int, error) {
