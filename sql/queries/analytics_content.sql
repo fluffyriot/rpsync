@@ -650,3 +650,131 @@ WHERE s.user_id = @user_id
     AND (array_length(@tag_ids::uuid[], 1) IS NULL OR p.id IN (SELECT post_id FROM post_tags WHERE tag_id = ANY(@tag_ids::uuid[])))
 ORDER BY prh.post_id,
     prh.synced_at ASC;
+-- name: GetTopInteractedSince1Day :many
+WITH latest AS (
+    SELECT DISTINCT ON (post_id) post_id,
+        COALESCE(likes, 0) AS likes,
+        COALESCE(reposts, 0) AS reposts
+    FROM posts_reactions_history
+    ORDER BY post_id, synced_at DESC
+),
+before_cutoff AS (
+    SELECT DISTINCT ON (post_id) post_id,
+        COALESCE(likes, 0) AS likes,
+        COALESCE(reposts, 0) AS reposts
+    FROM posts_reactions_history
+    WHERE synced_at < NOW() - INTERVAL '1 day'
+    ORDER BY post_id, synced_at DESC
+)
+SELECT
+    p.id,
+    p.network_internal_id,
+    COALESCE(p.content, '')::TEXT AS content,
+    p.created_at,
+    p.author,
+    s.network,
+    (GREATEST(0, l.likes - COALESCE(b.likes, 0)) + GREATEST(0, l.reposts - COALESCE(b.reposts, 0)))::BIGINT AS engagement_delta,
+    (l.likes + l.reposts)::BIGINT AS engagement_total
+FROM posts p
+JOIN sources s ON p.source_id = s.id
+JOIN latest l ON p.id = l.post_id
+LEFT JOIN before_cutoff b ON p.id = b.post_id
+WHERE s.user_id = $1
+    AND p.post_type NOT IN ('tag', 'repost', 'quote')
+ORDER BY (GREATEST(0, l.likes - COALESCE(b.likes, 0)) + GREATEST(0, l.reposts - COALESCE(b.reposts, 0))) DESC
+LIMIT 10;
+-- name: GetTopInteractedSince1DayViews :many
+WITH latest AS (
+    SELECT DISTINCT ON (post_id) post_id,
+        COALESCE(views, 0) AS views
+    FROM posts_reactions_history
+    ORDER BY post_id, synced_at DESC
+),
+before_cutoff AS (
+    SELECT DISTINCT ON (post_id) post_id,
+        COALESCE(views, 0) AS views
+    FROM posts_reactions_history
+    WHERE synced_at < NOW() - INTERVAL '1 day'
+    ORDER BY post_id, synced_at DESC
+)
+SELECT
+    p.id,
+    p.network_internal_id,
+    COALESCE(p.content, '')::TEXT AS content,
+    p.created_at,
+    p.author,
+    s.network,
+    GREATEST(0, l.views - COALESCE(b.views, 0))::BIGINT AS engagement_delta,
+    l.views::BIGINT AS engagement_total
+FROM posts p
+JOIN sources s ON p.source_id = s.id
+JOIN latest l ON p.id = l.post_id
+LEFT JOIN before_cutoff b ON p.id = b.post_id
+WHERE s.user_id = $1
+    AND p.post_type NOT IN ('tag', 'repost', 'quote')
+ORDER BY GREATEST(0, l.views - COALESCE(b.views, 0)) DESC
+LIMIT 10;
+-- name: GetTopInteractedSince14Days :many
+WITH latest AS (
+    SELECT DISTINCT ON (post_id) post_id,
+        COALESCE(likes, 0) AS likes,
+        COALESCE(reposts, 0) AS reposts
+    FROM posts_reactions_history
+    ORDER BY post_id, synced_at DESC
+),
+before_cutoff AS (
+    SELECT DISTINCT ON (post_id) post_id,
+        COALESCE(likes, 0) AS likes,
+        COALESCE(reposts, 0) AS reposts
+    FROM posts_reactions_history
+    WHERE synced_at < NOW() - INTERVAL '14 days'
+    ORDER BY post_id, synced_at DESC
+)
+SELECT
+    p.id,
+    p.network_internal_id,
+    COALESCE(p.content, '')::TEXT AS content,
+    p.created_at,
+    p.author,
+    s.network,
+    (GREATEST(0, l.likes - COALESCE(b.likes, 0)) + GREATEST(0, l.reposts - COALESCE(b.reposts, 0)))::BIGINT AS engagement_delta,
+    (l.likes + l.reposts)::BIGINT AS engagement_total
+FROM posts p
+JOIN sources s ON p.source_id = s.id
+JOIN latest l ON p.id = l.post_id
+LEFT JOIN before_cutoff b ON p.id = b.post_id
+WHERE s.user_id = $1
+    AND p.post_type NOT IN ('tag', 'repost', 'quote')
+ORDER BY (GREATEST(0, l.likes - COALESCE(b.likes, 0)) + GREATEST(0, l.reposts - COALESCE(b.reposts, 0))) DESC
+LIMIT 10;
+-- name: GetTopInteractedSince14DaysViews :many
+WITH latest AS (
+    SELECT DISTINCT ON (post_id) post_id,
+        COALESCE(views, 0) AS views
+    FROM posts_reactions_history
+    ORDER BY post_id, synced_at DESC
+),
+before_cutoff AS (
+    SELECT DISTINCT ON (post_id) post_id,
+        COALESCE(views, 0) AS views
+    FROM posts_reactions_history
+    WHERE synced_at < NOW() - INTERVAL '14 days'
+    ORDER BY post_id, synced_at DESC
+)
+SELECT
+    p.id,
+    p.network_internal_id,
+    COALESCE(p.content, '')::TEXT AS content,
+    p.created_at,
+    p.author,
+    s.network,
+    GREATEST(0, l.views - COALESCE(b.views, 0))::BIGINT AS engagement_delta,
+    l.views::BIGINT AS engagement_total
+FROM posts p
+JOIN sources s ON p.source_id = s.id
+JOIN latest l ON p.id = l.post_id
+LEFT JOIN before_cutoff b ON p.id = b.post_id
+WHERE s.user_id = $1
+    AND p.post_type NOT IN ('tag', 'repost', 'quote')
+ORDER BY GREATEST(0, l.views - COALESCE(b.views, 0)) DESC
+LIMIT 10;

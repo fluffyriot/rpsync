@@ -861,3 +861,107 @@ func (h *Handler) AnalyticsWordCloudEngagementHandler(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, data)
 }
+
+func (h *Handler) AnalyticsTopInteractedHandler(c *gin.Context) {
+	user, loggedIn := h.GetAuthenticatedUser(c)
+	if !loggedIn {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	viewsMode := c.Query("mode") == "views"
+
+	type InteractedItem struct {
+		ID                interface{} `json:"id"`
+		NetworkInternalID string      `json:"network_internal_id"`
+		Content           string      `json:"content"`
+		CreatedAt         interface{} `json:"created_at"`
+		Author            string      `json:"author"`
+		Network           string      `json:"network"`
+		EngagementDelta   int64       `json:"engagement_delta"`
+		EngagementTotal   int64       `json:"engagement_total"`
+		URL               string      `json:"url"`
+	}
+
+	buildURL := func(network, author, networkInternalID string) string {
+		if network == "" || author == "" {
+			return ""
+		}
+		u, _ := helpers.ConvPostToURL(network, author, networkInternalID)
+		return u
+	}
+
+	var since1Day, since14Days []InteractedItem
+
+	if viewsMode {
+		rows1, err := h.DB.GetTopInteractedSince1DayViews(c.Request.Context(), user.ID)
+		if err != nil {
+			log.Printf("Error getting top interacted since 1 day views: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		for _, r := range rows1 {
+			since1Day = append(since1Day, InteractedItem{
+				ID: r.ID, NetworkInternalID: r.NetworkInternalID, Content: r.Content,
+				CreatedAt: r.CreatedAt, Author: r.Author, Network: r.Network,
+				EngagementDelta: r.EngagementDelta, EngagementTotal: r.EngagementTotal,
+				URL: buildURL(r.Network, r.Author, r.NetworkInternalID),
+			})
+		}
+		rows14, err := h.DB.GetTopInteractedSince14DaysViews(c.Request.Context(), user.ID)
+		if err != nil {
+			log.Printf("Error getting top interacted since 14 days views: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		for _, r := range rows14 {
+			since14Days = append(since14Days, InteractedItem{
+				ID: r.ID, NetworkInternalID: r.NetworkInternalID, Content: r.Content,
+				CreatedAt: r.CreatedAt, Author: r.Author, Network: r.Network,
+				EngagementDelta: r.EngagementDelta, EngagementTotal: r.EngagementTotal,
+				URL: buildURL(r.Network, r.Author, r.NetworkInternalID),
+			})
+		}
+	} else {
+		rows1, err := h.DB.GetTopInteractedSince1Day(c.Request.Context(), user.ID)
+		if err != nil {
+			log.Printf("Error getting top interacted since 1 day: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		for _, r := range rows1 {
+			since1Day = append(since1Day, InteractedItem{
+				ID: r.ID, NetworkInternalID: r.NetworkInternalID, Content: r.Content,
+				CreatedAt: r.CreatedAt, Author: r.Author, Network: r.Network,
+				EngagementDelta: r.EngagementDelta, EngagementTotal: r.EngagementTotal,
+				URL: buildURL(r.Network, r.Author, r.NetworkInternalID),
+			})
+		}
+		rows14, err := h.DB.GetTopInteractedSince14Days(c.Request.Context(), user.ID)
+		if err != nil {
+			log.Printf("Error getting top interacted since 14 days: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		for _, r := range rows14 {
+			since14Days = append(since14Days, InteractedItem{
+				ID: r.ID, NetworkInternalID: r.NetworkInternalID, Content: r.Content,
+				CreatedAt: r.CreatedAt, Author: r.Author, Network: r.Network,
+				EngagementDelta: r.EngagementDelta, EngagementTotal: r.EngagementTotal,
+				URL: buildURL(r.Network, r.Author, r.NetworkInternalID),
+			})
+		}
+	}
+
+	if since1Day == nil {
+		since1Day = []InteractedItem{}
+	}
+	if since14Days == nil {
+		since14Days = []InteractedItem{}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"since_1day":   since1Day,
+		"since_14days": since14Days,
+	})
+}
