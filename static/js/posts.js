@@ -127,10 +127,13 @@ function buildInlineTagFilter() {
       trigger.removeClass('active');
     } else {
       const rect = this.getBoundingClientRect();
+      const dropdownMaxWidth = 300;
+      const fitsRight = rect.left + dropdownMaxWidth <= window.innerWidth;
       dropdown.css({
         'position': 'fixed',
         'top': (rect.bottom + 5) + 'px',
-        'left': rect.left + 'px',
+        'left': fitsRight ? rect.left + 'px' : 'auto',
+        'right': fitsRight ? 'auto' : (window.innerWidth - rect.right) + 'px',
         'width': 'auto',
         'min-width': '200px',
         'max-width': '300px',
@@ -661,10 +664,13 @@ $(document).ready(function () {
         trigger.removeClass('active');
       } else {
         const rect = this.getBoundingClientRect();
+        const dropdownMaxWidth = 300;
+        const fitsRight = rect.left + dropdownMaxWidth <= window.innerWidth;
         dropdown.css({
           'position': 'fixed',
           'top': (rect.bottom + 5) + 'px',
-          'left': rect.left + 'px',
+          'left': fitsRight ? rect.left + 'px' : 'auto',
+          'right': fitsRight ? 'auto' : (window.innerWidth - rect.right) + 'px',
           'width': 'auto',
           'min-width': '200px',
           'max-width': '300px',

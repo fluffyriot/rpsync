@@ -1301,40 +1301,68 @@ document.addEventListener("DOMContentLoaded", function () {
     const tagsMenu = document.getElementById('analyticsTagsMenu');
 
     function closeAllFilterDropdowns() {
-        dateMenu && dateMenu.classList.remove('show');
-        ptMenu && ptMenu.classList.remove('show');
-        modeMenu && modeMenu.classList.remove('show');
-        tagsMenu && tagsMenu.classList.remove('show');
+        [dateMenu, ptMenu, modeMenu, tagsMenu].forEach(m => {
+            if (!m) return;
+            m.classList.remove('show');
+            m.style.right = '';
+            m.style.left = '';
+        });
     }
 
     function closeOtherDropdowns(except) {
         [dateMenu, ptMenu, modeMenu, tagsMenu].forEach(m => {
-            if (m && m !== except) m.classList.remove('show');
+            if (m && m !== except) {
+                m.classList.remove('show');
+                m.style.right = '';
+                m.style.left = '';
+            }
         });
+    }
+
+    function toggleFilterDropdown(menu) {
+        if (!menu) return;
+        if (menu.classList.contains('show')) {
+            menu.classList.remove('show');
+            menu.style.right = '';
+            menu.style.left = '';
+            return;
+        }
+        menu.style.right = '0';
+        menu.style.left = 'auto';
+        menu.classList.add('show');
+        const rect = menu.getBoundingClientRect();
+        if (rect.left < 8) {
+            menu.style.right = 'auto';
+            menu.style.left = '0';
+        }
+        if (rect.right > window.innerWidth - 8) {
+            menu.style.left = 'auto';
+            menu.style.right = '0';
+        }
     }
 
     dateBtn && dateBtn.addEventListener('click', e => {
         e.stopPropagation();
         closeOtherDropdowns(dateMenu);
-        dateMenu && dateMenu.classList.toggle('show');
+        toggleFilterDropdown(dateMenu);
     });
 
     ptBtn && ptBtn.addEventListener('click', e => {
         e.stopPropagation();
         closeOtherDropdowns(ptMenu);
-        ptMenu && ptMenu.classList.toggle('show');
+        toggleFilterDropdown(ptMenu);
     });
 
     modeBtn && modeBtn.addEventListener('click', e => {
         e.stopPropagation();
         closeOtherDropdowns(modeMenu);
-        modeMenu && modeMenu.classList.toggle('show');
+        toggleFilterDropdown(modeMenu);
     });
 
     tagsBtn && tagsBtn.addEventListener('click', e => {
         e.stopPropagation();
         closeOtherDropdowns(tagsMenu);
-        tagsMenu && tagsMenu.classList.toggle('show');
+        toggleFilterDropdown(tagsMenu);
     });
 
     dateMenu && dateMenu.addEventListener('click', e => e.stopPropagation());
