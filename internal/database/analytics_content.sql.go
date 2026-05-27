@@ -1353,3 +1353,311 @@ func (q *Queries) GetPerformanceDeviationPositiveViewsFiltered(ctx context.Conte
 	}
 	return items, nil
 }
+
+const getTopInteractedSince14Days = `-- name: GetTopInteractedSince14Days :many
+WITH latest AS (
+    SELECT DISTINCT ON (post_id) post_id,
+        COALESCE(likes, 0) AS likes,
+        COALESCE(reposts, 0) AS reposts
+    FROM posts_reactions_history
+    ORDER BY post_id, synced_at DESC
+),
+before_cutoff AS (
+    SELECT DISTINCT ON (post_id) post_id,
+        COALESCE(likes, 0) AS likes,
+        COALESCE(reposts, 0) AS reposts
+    FROM posts_reactions_history
+    WHERE synced_at < NOW() - INTERVAL '14 days'
+    ORDER BY post_id, synced_at DESC
+)
+SELECT
+    p.id,
+    p.network_internal_id,
+    COALESCE(p.content, '')::TEXT AS content,
+    p.created_at,
+    p.author,
+    s.network,
+    (GREATEST(0, l.likes - COALESCE(b.likes, 0)) + GREATEST(0, l.reposts - COALESCE(b.reposts, 0)))::BIGINT AS engagement_delta,
+    (l.likes + l.reposts)::BIGINT AS engagement_total
+FROM posts p
+JOIN sources s ON p.source_id = s.id
+JOIN latest l ON p.id = l.post_id
+LEFT JOIN before_cutoff b ON p.id = b.post_id
+WHERE s.user_id = $1
+    AND p.post_type NOT IN ('tag', 'repost', 'quote')
+ORDER BY (GREATEST(0, l.likes - COALESCE(b.likes, 0)) + GREATEST(0, l.reposts - COALESCE(b.reposts, 0))) DESC
+LIMIT 10
+`
+
+type GetTopInteractedSince14DaysRow struct {
+	ID                uuid.UUID `json:"id"`
+	NetworkInternalID string    `json:"network_internal_id"`
+	Content           string    `json:"content"`
+	CreatedAt         time.Time `json:"created_at"`
+	Author            string    `json:"author"`
+	Network           string    `json:"network"`
+	EngagementDelta   int64     `json:"engagement_delta"`
+	EngagementTotal   int64     `json:"engagement_total"`
+}
+
+func (q *Queries) GetTopInteractedSince14Days(ctx context.Context, userID uuid.UUID) ([]GetTopInteractedSince14DaysRow, error) {
+	rows, err := q.db.QueryContext(ctx, getTopInteractedSince14Days, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetTopInteractedSince14DaysRow
+	for rows.Next() {
+		var i GetTopInteractedSince14DaysRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.NetworkInternalID,
+			&i.Content,
+			&i.CreatedAt,
+			&i.Author,
+			&i.Network,
+			&i.EngagementDelta,
+			&i.EngagementTotal,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getTopInteractedSince14DaysViews = `-- name: GetTopInteractedSince14DaysViews :many
+WITH latest AS (
+    SELECT DISTINCT ON (post_id) post_id,
+        COALESCE(views, 0) AS views
+    FROM posts_reactions_history
+    ORDER BY post_id, synced_at DESC
+),
+before_cutoff AS (
+    SELECT DISTINCT ON (post_id) post_id,
+        COALESCE(views, 0) AS views
+    FROM posts_reactions_history
+    WHERE synced_at < NOW() - INTERVAL '14 days'
+    ORDER BY post_id, synced_at DESC
+)
+SELECT
+    p.id,
+    p.network_internal_id,
+    COALESCE(p.content, '')::TEXT AS content,
+    p.created_at,
+    p.author,
+    s.network,
+    GREATEST(0, l.views - COALESCE(b.views, 0))::BIGINT AS engagement_delta,
+    l.views::BIGINT AS engagement_total
+FROM posts p
+JOIN sources s ON p.source_id = s.id
+JOIN latest l ON p.id = l.post_id
+LEFT JOIN before_cutoff b ON p.id = b.post_id
+WHERE s.user_id = $1
+    AND p.post_type NOT IN ('tag', 'repost', 'quote')
+ORDER BY GREATEST(0, l.views - COALESCE(b.views, 0)) DESC
+LIMIT 10
+`
+
+type GetTopInteractedSince14DaysViewsRow struct {
+	ID                uuid.UUID `json:"id"`
+	NetworkInternalID string    `json:"network_internal_id"`
+	Content           string    `json:"content"`
+	CreatedAt         time.Time `json:"created_at"`
+	Author            string    `json:"author"`
+	Network           string    `json:"network"`
+	EngagementDelta   int64     `json:"engagement_delta"`
+	EngagementTotal   int64     `json:"engagement_total"`
+}
+
+func (q *Queries) GetTopInteractedSince14DaysViews(ctx context.Context, userID uuid.UUID) ([]GetTopInteractedSince14DaysViewsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getTopInteractedSince14DaysViews, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetTopInteractedSince14DaysViewsRow
+	for rows.Next() {
+		var i GetTopInteractedSince14DaysViewsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.NetworkInternalID,
+			&i.Content,
+			&i.CreatedAt,
+			&i.Author,
+			&i.Network,
+			&i.EngagementDelta,
+			&i.EngagementTotal,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getTopInteractedSince1Day = `-- name: GetTopInteractedSince1Day :many
+WITH latest AS (
+    SELECT DISTINCT ON (post_id) post_id,
+        COALESCE(likes, 0) AS likes,
+        COALESCE(reposts, 0) AS reposts
+    FROM posts_reactions_history
+    ORDER BY post_id, synced_at DESC
+),
+before_cutoff AS (
+    SELECT DISTINCT ON (post_id) post_id,
+        COALESCE(likes, 0) AS likes,
+        COALESCE(reposts, 0) AS reposts
+    FROM posts_reactions_history
+    WHERE synced_at < NOW() - INTERVAL '1 day'
+    ORDER BY post_id, synced_at DESC
+)
+SELECT
+    p.id,
+    p.network_internal_id,
+    COALESCE(p.content, '')::TEXT AS content,
+    p.created_at,
+    p.author,
+    s.network,
+    (GREATEST(0, l.likes - COALESCE(b.likes, 0)) + GREATEST(0, l.reposts - COALESCE(b.reposts, 0)))::BIGINT AS engagement_delta,
+    (l.likes + l.reposts)::BIGINT AS engagement_total
+FROM posts p
+JOIN sources s ON p.source_id = s.id
+JOIN latest l ON p.id = l.post_id
+LEFT JOIN before_cutoff b ON p.id = b.post_id
+WHERE s.user_id = $1
+    AND p.post_type NOT IN ('tag', 'repost', 'quote')
+ORDER BY (GREATEST(0, l.likes - COALESCE(b.likes, 0)) + GREATEST(0, l.reposts - COALESCE(b.reposts, 0))) DESC
+LIMIT 10
+`
+
+type GetTopInteractedSince1DayRow struct {
+	ID                uuid.UUID `json:"id"`
+	NetworkInternalID string    `json:"network_internal_id"`
+	Content           string    `json:"content"`
+	CreatedAt         time.Time `json:"created_at"`
+	Author            string    `json:"author"`
+	Network           string    `json:"network"`
+	EngagementDelta   int64     `json:"engagement_delta"`
+	EngagementTotal   int64     `json:"engagement_total"`
+}
+
+func (q *Queries) GetTopInteractedSince1Day(ctx context.Context, userID uuid.UUID) ([]GetTopInteractedSince1DayRow, error) {
+	rows, err := q.db.QueryContext(ctx, getTopInteractedSince1Day, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetTopInteractedSince1DayRow
+	for rows.Next() {
+		var i GetTopInteractedSince1DayRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.NetworkInternalID,
+			&i.Content,
+			&i.CreatedAt,
+			&i.Author,
+			&i.Network,
+			&i.EngagementDelta,
+			&i.EngagementTotal,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getTopInteractedSince1DayViews = `-- name: GetTopInteractedSince1DayViews :many
+WITH latest AS (
+    SELECT DISTINCT ON (post_id) post_id,
+        COALESCE(views, 0) AS views
+    FROM posts_reactions_history
+    ORDER BY post_id, synced_at DESC
+),
+before_cutoff AS (
+    SELECT DISTINCT ON (post_id) post_id,
+        COALESCE(views, 0) AS views
+    FROM posts_reactions_history
+    WHERE synced_at < NOW() - INTERVAL '1 day'
+    ORDER BY post_id, synced_at DESC
+)
+SELECT
+    p.id,
+    p.network_internal_id,
+    COALESCE(p.content, '')::TEXT AS content,
+    p.created_at,
+    p.author,
+    s.network,
+    GREATEST(0, l.views - COALESCE(b.views, 0))::BIGINT AS engagement_delta,
+    l.views::BIGINT AS engagement_total
+FROM posts p
+JOIN sources s ON p.source_id = s.id
+JOIN latest l ON p.id = l.post_id
+LEFT JOIN before_cutoff b ON p.id = b.post_id
+WHERE s.user_id = $1
+    AND p.post_type NOT IN ('tag', 'repost', 'quote')
+ORDER BY GREATEST(0, l.views - COALESCE(b.views, 0)) DESC
+LIMIT 10
+`
+
+type GetTopInteractedSince1DayViewsRow struct {
+	ID                uuid.UUID `json:"id"`
+	NetworkInternalID string    `json:"network_internal_id"`
+	Content           string    `json:"content"`
+	CreatedAt         time.Time `json:"created_at"`
+	Author            string    `json:"author"`
+	Network           string    `json:"network"`
+	EngagementDelta   int64     `json:"engagement_delta"`
+	EngagementTotal   int64     `json:"engagement_total"`
+}
+
+func (q *Queries) GetTopInteractedSince1DayViews(ctx context.Context, userID uuid.UUID) ([]GetTopInteractedSince1DayViewsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getTopInteractedSince1DayViews, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetTopInteractedSince1DayViewsRow
+	for rows.Next() {
+		var i GetTopInteractedSince1DayViewsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.NetworkInternalID,
+			&i.Content,
+			&i.CreatedAt,
+			&i.Author,
+			&i.Network,
+			&i.EngagementDelta,
+			&i.EngagementTotal,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

@@ -57,6 +57,7 @@ document.addEventListener("DOMContentLoaded", function () {
         switch (tabName) {
             case 'content':
                 loadHashtags();
+                loadTopInteracted();
                 loadPerformanceDeviation();
                 loadEngagementVelocity();
                 break;
@@ -912,6 +913,81 @@ document.addEventListener("DOMContentLoaded", function () {
                         }
                     }
                 });
+            });
+    }
+
+    function loadTopInteracted() {
+        const url = getFilteredUrl('/analytics/data/top-interacted');
+        fetch(url)
+            .then(res => res.json())
+            .then(data => {
+                if (!data) return;
+
+                const renderTable = (items, tableId) => {
+                    const tbody = document.querySelector(`#${tableId} tbody`);
+                    if (!tbody) return;
+                    tbody.replaceChildren();
+
+                    if (!items || items.length === 0) {
+                        const tr = document.createElement('tr');
+                        const td = document.createElement('td');
+                        td.colSpan = 5;
+                        td.className = 'p-6 text-center text-muted opacity-50';
+                        td.textContent = 'Not enough data';
+                        tr.appendChild(td);
+                        tbody.appendChild(tr);
+                        return;
+                    }
+
+                    items.forEach(d => {
+                        const row = document.createElement('tr');
+                        row.className = 'hover:bg-white/5 transition-colors';
+
+                        const dateCell = document.createElement('td');
+                        dateCell.className = 'p-2 border-b border-white/10 text-sm text-gray-400';
+                        dateCell.textContent = new Date(d.created_at).toLocaleDateString();
+                        row.appendChild(dateCell);
+
+                        const networkCell = document.createElement('td');
+                        networkCell.className = 'p-2 border-b border-white/10';
+                        const badge = document.createElement('span');
+                        badge.className = 'badge badge-outline';
+                        badge.textContent = d.network;
+                        networkCell.appendChild(badge);
+                        row.appendChild(networkCell);
+
+                        const contentCell = document.createElement('td');
+                        contentCell.className = 'p-2 border-b border-white/10 text-sm truncate max-w-xs';
+                        contentCell.title = d.content || '';
+                        if (d.url) {
+                            const link = document.createElement('a');
+                            link.href = d.url;
+                            link.target = '_blank';
+                            link.rel = 'noopener noreferrer';
+                            link.className = 'text-accent hover:underline';
+                            link.textContent = d.content ? d.content.substring(0, 50) + '...' : 'View Post';
+                            contentCell.appendChild(link);
+                        } else {
+                            contentCell.textContent = d.content ? d.content.substring(0, 50) + '...' : 'Media';
+                        }
+                        row.appendChild(contentCell);
+
+                        const deltaCell = document.createElement('td');
+                        deltaCell.className = 'p-2 border-b border-white/10 text-sm font-bold text-success';
+                        deltaCell.textContent = `+${d.engagement_delta}`;
+                        row.appendChild(deltaCell);
+
+                        const totalCell = document.createElement('td');
+                        totalCell.className = 'p-2 border-b border-white/10 text-sm';
+                        totalCell.textContent = d.engagement_total;
+                        row.appendChild(totalCell);
+
+                        tbody.appendChild(row);
+                    });
+                };
+
+                renderTable(data.since_1day, 'topInteracted1DayTable');
+                renderTable(data.since_14days, 'topInteracted14DaysTable');
             });
     }
 

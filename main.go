@@ -265,6 +265,7 @@ func main() {
 	authorized.GET("/analytics/data/velocity", h.AnalyticsVelocityHandler)
 	authorized.GET("/analytics/data/collaborations", h.AnalyticsCollaborationsHandler)
 	authorized.GET("/analytics/data/wordcloud/engagement", h.AnalyticsWordCloudEngagementHandler)
+	authorized.GET("/analytics/data/top-interacted", h.AnalyticsTopInteractedHandler)
 
 	authorized.GET("/posts", h.PostsHandler)
 

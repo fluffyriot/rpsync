@@ -8,8 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -32,6 +30,38 @@ type murrCookieEntry struct {
 	HTTPOnly       bool     `json:"httpOnly"`
 	SameSite       *string  `json:"sameSite"`
 	ExpirationDate *float64 `json:"expirationDate"`
+}
+
+type murrPageData struct {
+	Props murrProps `json:"props"`
+}
+
+type murrProps struct {
+	Medium  murrMedium      `json:"medium"`
+	Profile murrProfile     `json:"profile"`
+	Media   []murrMediaItem `json:"media"`
+}
+
+type murrProfile struct {
+	FollowersCount  int `json:"followers_count"`
+	FollowingsCount int `json:"followings_count"`
+}
+
+type murrMediaItem struct {
+	ShortCode string `json:"short_code"`
+}
+
+type murrMedium struct {
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	CreatedAt   time.Time `json:"created_at"`
+	ViewsCount  int       `json:"views_count"`
+	LikesCount  int       `json:"likes_count"`
+	Tags        []murrTag `json:"tags"`
+}
+
+type murrTag struct {
+	Name string `json:"name"`
 }
 
 func FetchMurrtubePosts(dbQueries *database.Queries, c *common.Client, sourceID uuid.UUID, encryptionKey []byte) error {
@@ -118,7 +148,6 @@ func FetchMurrtubePosts(dbQueries *database.Queries, c *common.Client, sourceID 
 		return fmt.Errorf("Murrtube: failed to navigate to profile: %w", err)
 	}
 
-	// Scroll to load lazy-loaded content
 	const maxScrolls = 30
 	sameHeightCount := 0
 	var prevHeight int64
@@ -148,35 +177,34 @@ func FetchMurrtubePosts(dbQueries *database.Queries, c *common.Client, sourceID 
 		return fmt.Errorf("Murrtube: failed to parse profile HTML: %w", err)
 	}
 
-	var followersCount, followingCount *int
-	doc.Find("ul li a").Each(func(_ int, s *goquery.Selection) {
-		text := strings.TrimSpace(s.Text())
-		if strings.HasPrefix(text, "Followers") {
-			if count, err := extractMurrNumber(text, `Followers \((\d+)\)`); err == nil {
-				followersCount = &count
-			}
-		} else if strings.HasPrefix(text, "Following") {
-			if count, err := extractMurrNumber(text, `Following \((\d+)\)`); err == nil {
-				followingCount = &count
-			}
-		}
-	})
+	profileDataPage, exists := doc.Find("#app").Attr("data-page")
+	if !exists {
+		return errors.New("Murrtube: data-page attribute not found on profile page")
+	}
 
-	linkPattern := regexp.MustCompile(`^/v/.{4}$`)
+	var profilePageData murrPageData
+	if err := json.Unmarshal([]byte(profileDataPage), &profilePageData); err != nil {
+		return fmt.Errorf("Murrtube: failed to parse profile data-page JSON: %w", err)
+	}
+
+	profile := profilePageData.Props.Profile
+	followersVal := profile.FollowersCount
+	followingVal := profile.FollowingsCount
+	followersCount := &followersVal
+	followingCount := &followingVal
+
 	var videoIDs []string
 	seen := make(map[string]struct{})
-	doc.Find("a").Each(func(_ int, s *goquery.Selection) {
-		href, exists := s.Attr("href")
-		if !exists || !linkPattern.MatchString(href) {
-			return
+	for _, item := range profilePageData.Props.Media {
+		if item.ShortCode == "" {
+			continue
 		}
-		id := strings.TrimPrefix(href, "/v/")
-		if _, ok := seen[id]; ok {
-			return
+		if _, ok := seen[item.ShortCode]; ok {
+			continue
 		}
-		seen[id] = struct{}{}
-		videoIDs = append(videoIDs, id)
-	})
+		seen[item.ShortCode] = struct{}{}
+		videoIDs = append(videoIDs, item.ShortCode)
+	}
 
 	if len(videoIDs) == 0 {
 		return errors.New("no videos found: session may have expired or age check cookie missing")
@@ -204,12 +232,31 @@ func FetchMurrtubePosts(dbQueries *database.Queries, c *common.Client, sourceID 
 			continue
 		}
 
-		title, _ := videoDoc.Find(`meta[property="og:title"]`).Attr("content")
-		description, _ := videoDoc.Find(`meta[property="og:description"]`).Attr("content")
+		dataPage, exists := videoDoc.Find("#app").Attr("data-page")
+		if !exists {
+			log.Printf("Murrtube: data-page attribute not found for video %s", id)
+			continue
+		}
 
-		createdAt, err := extractMurrtubeCreatedAt(videoDoc)
-		if err != nil {
+		var pageData murrPageData
+		if err := json.Unmarshal([]byte(dataPage), &pageData); err != nil {
+			log.Printf("Murrtube: failed to parse data-page JSON for video %s: %v", id, err)
+			continue
+		}
+
+		medium := pageData.Props.Medium
+		createdAt := medium.CreatedAt
+		if createdAt.IsZero() {
 			createdAt = time.Now()
+		}
+
+		tagParts := make([]string, 0, len(medium.Tags))
+		for _, tag := range medium.Tags {
+			tagParts = append(tagParts, "#"+tag.Name)
+		}
+		content := medium.Title + "\n\n" + medium.Description
+		if len(tagParts) > 0 {
+			content += "\n\n" + strings.Join(tagParts, " ")
 		}
 
 		postID, err := common.CreateOrUpdatePost(
@@ -221,16 +268,15 @@ func FetchMurrtubePosts(dbQueries *database.Queries, c *common.Client, sourceID 
 			createdAt,
 			"video",
 			username,
-			fmt.Sprintf("%s\n\n%s", title, description),
+			content,
 		)
 		if err != nil {
 			log.Printf("Murrtube: failed to process video %s: %v", id, err)
 			continue
 		}
 
-		pageText := videoDoc.Text()
-		videoViews, _ := extractMurrNumber(pageText, `([\d,]+)\s+Views`)
-		videoLikes, _ := extractMurrNumber(pageText, `([\d,]+)\s+Likes`)
+		videoViews := medium.ViewsCount
+		videoLikes := medium.LikesCount
 
 		if _, err = dbQueries.SyncReactions(context.Background(), database.SyncReactionsParams{
 			ID:       uuid.New(),
@@ -252,38 +298,4 @@ func FetchMurrtubePosts(dbQueries *database.Queries, c *common.Client, sourceID 
 	}
 
 	return nil
-}
-
-func extractMurrtubeCreatedAt(doc *goquery.Document) (time.Time, error) {
-	span := doc.Find(`span[data-tooltip]`).First()
-	if span.Length() == 0 {
-		return time.Time{}, errors.New("created date not found")
-	}
-
-	raw, exists := span.Attr("data-tooltip")
-	if !exists || strings.TrimSpace(raw) == "" {
-		return time.Time{}, errors.New("created date empty")
-	}
-
-	t, err := time.Parse("January 2, 2006 - 15:04", raw)
-	if err != nil {
-		return time.Time{}, err
-	}
-
-	return t, nil
-}
-
-func extractMurrNumber(text, pattern string) (int, error) {
-	re := regexp.MustCompile(pattern)
-	match := re.FindStringSubmatch(text)
-	if len(match) < 2 {
-		return 0, fmt.Errorf("nothing matched")
-	}
-
-	clean := strings.ReplaceAll(match[1], ",", "")
-	value, err := strconv.Atoi(clean)
-	if err != nil {
-		return 0, nil
-	}
-	return value, nil
 }

@@ -2,6 +2,7 @@
 package handlers
 
 import (
+	"errors"
 	"log"
 	"net/http"
 	"time"
@@ -9,6 +10,7 @@ import (
 	"github.com/fluffyriot/rpsync/internal/database"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 type CreateClassificationRequest struct {
@@ -143,6 +145,11 @@ func (h *Handler) HandleCreateClassification(c *gin.Context) {
 		Name:      req.Name,
 	})
 	if err != nil {
+		var pqErr *pq.Error
+		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
+			c.JSON(http.StatusConflict, ErrorResponse{Error: "A classification with this name already exists"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
 		return
 	}
@@ -189,6 +196,11 @@ func (h *Handler) HandleUpdateClassification(c *gin.Context) {
 		UpdatedAt: time.Now(),
 	})
 	if err != nil {
+		var pqErr *pq.Error
+		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
+			c.JSON(http.StatusConflict, ErrorResponse{Error: "A classification with this name already exists"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
 		return
 	}
@@ -310,6 +322,11 @@ func (h *Handler) HandleCreateTag(c *gin.Context) {
 		Name:             req.Name,
 	})
 	if err != nil {
+		var pqErr *pq.Error
+		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
+			c.JSON(http.StatusConflict, ErrorResponse{Error: "A tag with this name already exists"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
 		return
 	}
@@ -373,6 +390,11 @@ func (h *Handler) HandleUpdateTag(c *gin.Context) {
 		ClassificationID: classificationID,
 	})
 	if err != nil {
+		var pqErr *pq.Error
+		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
+			c.JSON(http.StatusConflict, ErrorResponse{Error: "A tag with this name already exists"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: err.Error()})
 		return
 	}
