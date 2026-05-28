@@ -78,7 +78,7 @@ func FetchE621Posts(dbQueries *database.Queries, encryptionKey []byte, sourceId 
 		defer resp.Body.Close()
 
 		if resp.StatusCode == 503 {
-			log.Printf("E621: Rate limited (503), waiting longer...")
+			log.Printf("e621: Rate limited (503), waiting longer...")
 			time.Sleep(common.RateLimitWait)
 			continue
 		}
@@ -115,7 +115,7 @@ func FetchE621Posts(dbQueries *database.Queries, encryptionKey []byte, sourceId 
 
 			postedAt, err := time.Parse(time.RFC3339, post.CreatedAt)
 			if err != nil {
-				log.Printf("E621: Failed to parse time for post %d: %v", post.ID, err)
+				log.Printf("e621: Failed to parse time for post %d: %v", post.ID, err)
 				postedAt = time.Now()
 			}
 
@@ -131,7 +131,7 @@ func FetchE621Posts(dbQueries *database.Queries, encryptionKey []byte, sourceId 
 				post.Description,
 			)
 			if err != nil {
-				log.Printf("E621: Failed to save post %s: %v", postID, err)
+				log.Printf("e621: Failed to save post %s: %v", postID, err)
 				continue
 			}
 
@@ -149,7 +149,7 @@ func FetchE621Posts(dbQueries *database.Queries, encryptionKey []byte, sourceId 
 				Views:   sql.NullInt64{Valid: false},
 			})
 			if err != nil {
-				log.Printf("E621: Failed to sync reactions for post %s: %v", postID, err)
+				log.Printf("e621: Failed to sync reactions for post %s: %v", postID, err)
 			}
 		}
 
@@ -162,13 +162,13 @@ func FetchE621Posts(dbQueries *database.Queries, encryptionKey []byte, sourceId 
 
 	avgStats, err := common.CalculateAverageStats(context.Background(), dbQueries, sourceId)
 	if err != nil {
-		log.Printf("E621: Failed to calculate average stats: %v", err)
+		log.Printf("e621: Failed to calculate average stats: %v", err)
 	} else {
 		avgStats.FollowersCount = nil
 		avgStats.FollowingCount = nil
 
 		if err := common.SaveOrUpdateSourceStats(context.Background(), dbQueries, sourceId, avgStats); err != nil {
-			log.Printf("E621: Failed to save stats: %v", err)
+			log.Printf("e621: Failed to save stats: %v", err)
 		}
 	}
 
