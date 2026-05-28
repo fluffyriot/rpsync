@@ -166,7 +166,7 @@ func FetchRedditPosts(dbQueries *database.Queries, encryptionKey []byte, sourceI
 	handleSubredditChanges(ctx, dbQueries, sourceId, subreddits)
 
 	opts := append(chromedp.DefaultExecAllocatorOptions[:],
-		chromedp.UserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"),
+		chromedp.UserAgent(common.UserAgentChrome),
 		chromedp.WindowSize(1920, 1080),
 		chromedp.Flag("headless", true),
 		chromedp.Flag("no-sandbox", true),

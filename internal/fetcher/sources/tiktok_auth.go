@@ -15,6 +15,7 @@ import (
 
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/chromedp"
+	"github.com/fluffyriot/rpsync/internal/fetcher/common"
 )
 
 type TikTokManager struct {
@@ -55,7 +56,7 @@ func (tm *TikTokManager) StartLoginSession(username string) ([]byte, error) {
 	tm.mu.Unlock()
 
 	allocCtx, allocCancel := chromedp.NewExecAllocator(context.Background(), append(chromedp.DefaultExecAllocatorOptions[:],
-		chromedp.UserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"),
+		chromedp.UserAgent(common.UserAgentChrome),
 		chromedp.Flag("headless", true),
 		chromedp.Flag("disable-gpu", true),
 		chromedp.Flag("no-sandbox", true),

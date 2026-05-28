@@ -282,7 +282,7 @@ func FetchTelegramWebStats(channel string, messageID int, c *common.Client) (int
 
 	req.Header.Set(
 		"User-Agent",
-		"Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)",
+		common.UserAgentBingbot,
 	)
 	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
 	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
