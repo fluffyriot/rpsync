@@ -341,7 +341,7 @@ func CreateSourceFromForm(dbQueries *database.Queries, params SourceCreationPara
 		err = authhelp.InsertSourceToken(context.Background(), dbQueries, s.ID, params.Field2, params.Field1, nil, params.EncryptionKey)
 
 	case "Reddit":
-		err = authhelp.InsertSourceToken(context.Background(), dbQueries, s.ID, "public", params.Field1, nil, params.EncryptionKey)
+		err = authhelp.InsertSourceToken(context.Background(), dbQueries, s.ID, params.FieldLong, params.Field1, nil, params.EncryptionKey)
 
 	case "Twitch":
 		err = authhelp.InsertSourceToken(context.Background(), dbQueries, s.ID, params.Field2, params.Field1, nil, params.EncryptionKey)

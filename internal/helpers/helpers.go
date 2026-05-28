@@ -27,7 +27,7 @@ var AvailableSources = []SourceNetwork{
 	{Name: "YouTube", Color: "#ff0033", EngagementSupported: true, ViewsSupported: true, FollowersTracked: true},
 	{Name: "TikTok", Color: "#fe2c55", EngagementSupported: true, ViewsSupported: true, FollowersTracked: true},
 	{Name: "Twitch", Color: "#9146ff", EngagementSupported: false, ViewsSupported: true, FollowersTracked: true},
-	{Name: "Reddit", Color: "#ff4500", EngagementSupported: true, ViewsSupported: false, FollowersTracked: false},
+	{Name: "Reddit", Color: "#ff4500", EngagementSupported: true, ViewsSupported: false, FollowersTracked: true},
 	{Name: "Mastodon", Color: "#563acc", EngagementSupported: true, ViewsSupported: false, FollowersTracked: true},
 	{Name: "Discord", Color: "#5662f6", EngagementSupported: true, ViewsSupported: false, FollowersTracked: true},
 	{Name: "Telegram", Color: "#26a4e3", EngagementSupported: true, ViewsSupported: true, FollowersTracked: true},

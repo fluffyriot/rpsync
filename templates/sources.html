@@ -232,6 +232,20 @@
                         {{end}}
 
                         {{if eq .Network "Reddit"}}
+                        <div class="dropdown">
+                            <button type="button" class="btn btn-secondary btn-icon" title="Update Cookies"
+                                onclick="toggleDropdown('dd_token_{{.ID}}')">
+                                <i data-lucide="key-round"></i>
+                            </button>
+                            <div id="dd_token_{{.ID}}" class="dropdown-content hidden">
+                                <form method="POST" action="/sources/token" class="flex flex-col gap-2 p-2">
+                                    <input type="hidden" name="source_id" value="{{.ID}}">
+                                    <textarea name="new_token" class="form-input text-xs" rows="4"
+                                        placeholder="Paste new Cookie-Editor JSON export" required autocomplete="off"></textarea>
+                                    <button type="submit" class="btn btn-primary btn-sm">Update Cookies</button>
+                                </form>
+                            </div>
+                        </div>
                         <button type="button" class="btn btn-secondary btn-icon"
                             onclick="showRedditSubreddits('{{.ID}}')" title="View / Update Subreddits">
                             <i data-lucide="hash"></i>
@@ -368,7 +382,8 @@
             "Reddit": {
                 userPlaceholder: "Reddit Username (no u/)",
                 fields: {
-                    1: { label: "Subreddits (optional, comma-separated)", placeholder: "golang, programming", desc: "Leave empty to sync posts from all subreddits. You can change this later.", required: false }
+                    1: { label: "Subreddits (optional, comma-separated)", placeholder: "gaming, aww", desc: "Leave empty to sync posts from all subreddits. You can change this later.", required: false },
+                    long: { label: "Cookie JSON", placeholder: '[{"name":"reddit_session","value":"..."},...]', desc: 'Log in to reddit.com, then export all cookies using the Cookie-Editor browser extension (Export → JSON) and paste the result here.', required: true }
                 }
             },
             "Twitch": {
