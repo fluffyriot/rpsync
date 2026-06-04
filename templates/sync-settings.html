@@ -1224,8 +1224,9 @@
             infoDiv.appendChild(document.createElement('br'));
             const span = document.createElement('span');
             span.className = 'text-muted text-xs';
-            const created = new Date(token.created_at).toLocaleDateString();
-            const lastUsed = token.last_used_at ? new Date(token.last_used_at).toLocaleDateString() : 'Never';
+            const fmtDate = d => { const dt = new Date(d); return dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }); };
+            const created = fmtDate(token.created_at);
+            const lastUsed = token.last_used_at ? fmtDate(token.last_used_at) : 'Never';
             span.textContent = `Created: ${created} · Last used: ${lastUsed}`;
             infoDiv.appendChild(span);
 
