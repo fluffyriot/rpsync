@@ -25,7 +25,7 @@
 | Youtube | ✅ | ❌ | ❌ | ✅ | ✅ | Requires Google API Access |
 | Bluesky | ✅ | ❌ | ❌ | ✅ | ✅ | |
 | Mastodon | ✅ | ❌ | ❌ | ✅ | ✅ | |
-| Reddit | ❌ | ⚠️ | ❌ | ✅ | ✅ | Might unreliable on large accounts |
+| Reddit | ❌ | ❌ | ✅ | ✅ | ✅ | |
 | Twitch | ✅ | ❌ | ❌ | ✅ | ⚠️ | |
 | Telegram | ✅ | ✅ | ❌ | ✅ | ✅ | Requires Telegram App & Bot setup |
 | Discord | ✅ | ❌ | ❌ | ✅ | ✅ | Reuqires Discord Bot setup |
@@ -395,4 +395,3 @@ Contributions are welcome! Please open an issue or submit a PR on GitHub.
 
 *   **Issues**: Report bugs or request features.
 *   **Pull Requests**: Submit improvements.
-
