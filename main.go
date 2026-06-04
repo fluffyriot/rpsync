@@ -313,6 +313,13 @@ func main() {
 	extAPI.Use(middleware.BearerTokenMiddleware(dbQueries))
 	extAPI.POST("/stats", h.ExternalAPIStatsHandler)
 	extAPI.GET("/status", h.ExternalAPIStatusHandler)
+	extAPI.GET("/sources", h.ExternalAPISourcesHandler)
+	extAPI.GET("/targets", h.ExternalAPITargetsHandler)
+	extAPI.POST("/startSync", h.ExternalAPISyncHandler)
+	extAPI.POST("/startWorker", h.ExternalAPIStartWorkerHandler)
+	extAPI.POST("/stopWorker", h.ExternalAPIStopWorkerHandler)
+	extAPI.POST("/exclusions/create", h.ExternalAPICreateExclusionHandler)
+	extAPI.POST("/redirects/create", h.ExternalAPICreateRedirectHandler)
 
 	srv := &http.Server{
 		Addr:    ":" + cfg.AppPort,

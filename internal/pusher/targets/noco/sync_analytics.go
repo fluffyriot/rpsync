@@ -281,7 +281,6 @@ func syncNocoAnalyticsPageStats(dbQueries *database.Queries, c *common.Client, e
 			continue
 		}
 
-		// Step 1: Update synced stats from last 2 days
 		syncedStats, err := dbQueries.GetSyncedPageStatsForUpdate(context.Background(), database.GetSyncedPageStatsForUpdateParams{
 			TargetID: target.ID,
 			SourceID: source.ID,

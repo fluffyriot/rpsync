@@ -116,65 +116,7 @@ func (h *Handler) HandleCreateRedirect(c *gin.Context) {
 		return
 	}
 
-	go func() {
-		bgCtx := context.Background()
-		stats, err := h.DB.GetAnalyticsPageStatsBySource(bgCtx, sourceID)
-		if err != nil {
-			log.Printf("Error fetching stats for merge: %v", err)
-			return
-		}
-
-		for _, stat := range stats {
-			if stat.UrlPath != req.FromPath {
-				continue
-			}
-
-			newViews := stat.Views
-			newImpressions := stat.Impressions
-			analyticsType := stat.AnalyticsType
-
-			targetStat, found := findStatByDateAndPath(stats, stat.Date, req.ToPath)
-			if found {
-				newViews = targetStat.Views + stat.Views
-				if targetStat.Impressions.Valid || stat.Impressions.Valid {
-					newImpressions = sql.NullInt64{
-						Int64: targetStat.Impressions.Int64 + stat.Impressions.Int64,
-						Valid: true,
-					}
-				}
-				// Delete the to_path stat so its NocoDB mapping stat_id is NULLed
-				// (via ON DELETE SET NULL), ensuring the old NocoDB record is cleaned
-				// up on the next sync regardless of how old the entry is.
-				if err := h.DB.DeleteAnalyticsPageStat(bgCtx, targetStat.ID); err != nil {
-					log.Printf("Error deleting to_path stat during merge: %v", err)
-				}
-			}
-
-			// Delete the from_path stat, again triggering the ON DELETE SET NULL
-			// cascade so the existing NocoDB record is queued for cleanup.
-			if err := h.DB.DeleteAnalyticsPageStat(bgCtx, stat.ID); err != nil {
-				log.Printf("Error deleting from_path stat: %v", err)
-				continue
-			}
-
-			// Re-create the stat at the new path with a fresh UUID. Because there
-			// is no analytics_page_stats_on_target mapping for this new UUID,
-			// GetUnsyncedPageStatsForTarget (which has no date filter) will pick it
-			// up on the next sync and create a correct NocoDB record.
-			_, err = h.DB.CreateAnalyticsPageStat(bgCtx, database.CreateAnalyticsPageStatParams{
-				ID:            uuid.New(),
-				Date:          stat.Date,
-				UrlPath:       req.ToPath,
-				Views:         newViews,
-				SourceID:      sourceID,
-				AnalyticsType: analyticsType,
-				Impressions:   newImpressions,
-			})
-			if err != nil {
-				log.Printf("Error creating stat at new path: %v", err)
-			}
-		}
-	}()
+	go h.mergeRedirectPageStats(sourceID, req.FromPath, req.ToPath)
 
 	c.JSON(http.StatusCreated, RedirectResponse{
 		ID:        redirect.ID.String(),
@@ -183,6 +125,57 @@ func (h *Handler) HandleCreateRedirect(c *gin.Context) {
 		ToPath:    redirect.ToPath,
 		CreatedAt: redirect.CreatedAt.Format(time.RFC3339),
 	})
+}
+
+func (h *Handler) mergeRedirectPageStats(sourceID uuid.UUID, fromPath, toPath string) {
+	ctx := context.Background()
+	stats, err := h.DB.GetAnalyticsPageStatsBySource(ctx, sourceID)
+	if err != nil {
+		log.Printf("Error fetching stats for merge: %v", err)
+		return
+	}
+
+	for _, stat := range stats {
+		if stat.UrlPath != fromPath {
+			continue
+		}
+
+		newViews := stat.Views
+		newImpressions := stat.Impressions
+		analyticsType := stat.AnalyticsType
+
+		targetStat, found := findStatByDateAndPath(stats, stat.Date, toPath)
+		if found {
+			newViews = targetStat.Views + stat.Views
+			if targetStat.Impressions.Valid || stat.Impressions.Valid {
+				newImpressions = sql.NullInt64{
+					Int64: targetStat.Impressions.Int64 + stat.Impressions.Int64,
+					Valid: true,
+				}
+			}
+
+			if err := h.DB.DeleteAnalyticsPageStat(ctx, targetStat.ID); err != nil {
+				log.Printf("Error deleting to_path stat during merge: %v", err)
+			}
+		}
+
+		if err := h.DB.DeleteAnalyticsPageStat(ctx, stat.ID); err != nil {
+			log.Printf("Error deleting from_path stat: %v", err)
+			continue
+		}
+
+		if _, err = h.DB.CreateAnalyticsPageStat(ctx, database.CreateAnalyticsPageStatParams{
+			ID:            uuid.New(),
+			Date:          stat.Date,
+			UrlPath:       toPath,
+			Views:         newViews,
+			SourceID:      sourceID,
+			AnalyticsType: analyticsType,
+			Impressions:   newImpressions,
+		}); err != nil {
+			log.Printf("Error creating stat at new path: %v", err)
+		}
+	}
 }
 
 func findStatByDateAndPath(stats []database.AnalyticsPageStat, date time.Time, path string) (database.AnalyticsPageStat, bool) {

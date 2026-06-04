@@ -107,12 +107,7 @@ func (h *Handler) HandleCreateExclusion(c *gin.Context) {
 			continue
 		}
 
-		exclusion, err := h.DB.CreateExclusion(ctx, database.CreateExclusionParams{
-			ID:                uuid.New(),
-			CreatedAt:         time.Now(),
-			SourceID:          sourceID,
-			NetworkInternalID: networkInternalID,
-		})
+		exclusion, err := h.createExclusionForNetworkID(ctx, sourceID, networkInternalID)
 		if err != nil {
 			if err.Error() == "pq: duplicate key value violates unique constraint \"unique_exclusion\"" {
 				log.Printf("Info: Exclusion already exists for %s", networkInternalID)
@@ -120,14 +115,6 @@ func (h *Handler) HandleCreateExclusion(c *gin.Context) {
 			}
 			errors = append(errors, fmt.Sprintf("Failed to exclude %s: %v", networkInternalID, err))
 			continue
-		}
-
-		err = h.DB.DeletePostBySourceAndNetworkId(ctx, database.DeletePostBySourceAndNetworkIdParams{
-			SourceID:          sourceID,
-			NetworkInternalID: networkInternalID,
-		})
-		if err != nil {
-			log.Printf("Warning: Failed to delete post for exclusion: %v", err)
 		}
 
 		createdExclusions = append(createdExclusions, ExclusionResponse{
@@ -168,4 +155,25 @@ func (h *Handler) HandleDeleteExclusion(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, SuccessResponse{Message: "Exclusion deleted successfully"})
+}
+
+func (h *Handler) createExclusionForNetworkID(ctx context.Context, sourceID uuid.UUID, networkInternalID string) (database.Exclusion, error) {
+	exclusion, err := h.DB.CreateExclusion(ctx, database.CreateExclusionParams{
+		ID:                uuid.New(),
+		CreatedAt:         time.Now(),
+		SourceID:          sourceID,
+		NetworkInternalID: networkInternalID,
+	})
+	if err != nil {
+		return database.Exclusion{}, err
+	}
+
+	if err := h.DB.DeletePostBySourceAndNetworkId(ctx, database.DeletePostBySourceAndNetworkIdParams{
+		SourceID:          sourceID,
+		NetworkInternalID: networkInternalID,
+	}); err != nil {
+		log.Printf("Warning: Failed to delete post for exclusion: %v", err)
+	}
+
+	return exclusion, nil
 }

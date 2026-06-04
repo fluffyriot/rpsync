@@ -139,6 +139,28 @@ func syncSourceInternal(sid uuid.UUID, db *database.Queries, f *fetcher_common.C
 	}
 }
 
+func SyncSelective(ctx context.Context, sourceIDs, targetIDs []uuid.UUID, db *database.Queries, f *fetcher_common.Client, p *common.Client, cfg *config.AppConfig) {
+	var sourceWG sync.WaitGroup
+	for _, sid := range sourceIDs {
+		sourceWG.Add(1)
+		go func(sid uuid.UUID) {
+			defer sourceWG.Done()
+			syncSourceInternal(sid, db, f, cfg)
+		}(sid)
+	}
+	sourceWG.Wait()
+
+	var targetWG sync.WaitGroup
+	for _, tid := range targetIDs {
+		targetWG.Add(1)
+		go func(tid uuid.UUID) {
+			defer targetWG.Done()
+			syncTargetInternal(tid, db, p, cfg)
+		}(tid)
+	}
+	targetWG.Wait()
+}
+
 func syncTargetInternal(tid uuid.UUID, db *database.Queries, p *common.Client, cfg *config.AppConfig) {
 	const maxRetries = 5
 

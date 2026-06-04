@@ -115,7 +115,6 @@ func ImportUserData(ctx context.Context, db *database.Queries, dbConn *sql.DB, z
 		return nil, fmt.Errorf("invalid site stats data: %w", err)
 	}
 
-	// Build ID remap tables
 	idMap := make(map[string]uuid.UUID)
 	targetUserID := currentUserID
 
@@ -193,10 +192,8 @@ func ImportUserData(ctx context.Context, db *database.Queries, dbConn *sql.DB, z
 		createdAt, _ := time.Parse(timeFormat, backupUser.CreatedAt)
 		finalUsername := backupUser.Username
 
-		// Check if username already exists
 		_, err := qtx.GetUserByUsername(ctx, backupUser.Username)
 		if err == nil {
-			// Username exists, generate a new one
 			timestamp := time.Now().Format("20060102150405")
 			finalUsername = fmt.Sprintf("%s_%s", backupUser.Username, timestamp)
 		}
@@ -548,7 +545,6 @@ func ImportUserData(ctx context.Context, db *database.Queries, dbConn *sql.DB, z
 }
 
 func deleteAllUserData(ctx context.Context, qtx *database.Queries, userID uuid.UUID) error {
-	// Delete in FK-safe order
 	deletions := []struct {
 		name string
 		fn   func(context.Context, uuid.UUID) error

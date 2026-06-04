@@ -14,8 +14,6 @@ function formatUTCTooltip(isoString) {
     return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} UTC`;
 }
 
-// Escape raw HTML tokens in marked output so external content cannot inject scripts.
-// Called once after marked loads (see header.html script onload or DOMContentLoaded).
 function configureMarkedSafe() {
     if (window.marked) {
         marked.use({ renderer: { html(token) { return token.text.replace(/</g, '&lt;').replace(/>/g, '&gt;'); } } });

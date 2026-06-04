@@ -143,6 +143,35 @@ func (w *Worker) SyncSource(sid uuid.UUID) {
 	RunSyncSource(sid, w.DB, w.Fetcher, w.Config)
 }
 
+func (w *Worker) TrySyncSelective(userID uuid.UUID, sourceIDs, targetIDs []uuid.UUID) bool {
+	w.mu.Lock()
+	if w.activeManualSync {
+		w.mu.Unlock()
+		return false
+	}
+	w.activeManualSync = true
+	w.mu.Unlock()
+
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("panic in selective sync: %v", r)
+			}
+			w.mu.Lock()
+			w.activeManualSync = false
+			w.mu.Unlock()
+		}()
+
+		if len(sourceIDs) == 0 && len(targetIDs) == 0 {
+			SyncUser(context.Background(), userID, w.DB, w.Fetcher, w.Puller, w.Config)
+		} else {
+			SyncSelective(context.Background(), sourceIDs, targetIDs, w.DB, w.Fetcher, w.Puller, w.Config)
+		}
+	}()
+
+	return true
+}
+
 func (w *Worker) SyncUserManual(userID uuid.UUID) {
 	w.mu.Lock()
 	if w.activeManualSync {

@@ -402,7 +402,49 @@
                         <div class="card exclusion-item p-3">
                             <div>
                                 <strong class="font-mono-sm">GET /ext/v1/status</strong>
-                                <br><span class="text-muted text-xs">Source/target health, enabled and disabled counts, user info and worker status</span>
+                                <br><span class="text-muted text-xs">Source/target health, enabled and disabled counts, user info and worker status.</span>
+                            </div>
+                        </div>
+                        <div class="card exclusion-item p-3">
+                            <div>
+                                <strong class="font-mono-sm">GET /ext/v1/sources</strong>
+                                <br><span class="text-muted text-xs">All sources with id, network, username, status, sync info.</span>
+                            </div>
+                        </div>
+                        <div class="card exclusion-item p-3">
+                            <div>
+                                <strong class="font-mono-sm">GET /ext/v1/targets</strong>
+                                <br><span class="text-muted text-xs">All targets with id, type, db_id, status, sync info.</span>
+                            </div>
+                        </div>
+                        <div class="card exclusion-item p-3">
+                            <div>
+                                <strong class="font-mono-sm">POST /ext/v1/startSync</strong>
+                                <br><span class="text-muted text-xs">Trigger a manual sync. Optional body: {"sourceIds": [...], "targetIds": [...]}. Omit body for full sync. Returns 409 if sync already running.</span>
+                            </div>
+                        </div>
+                        <div class="card exclusion-item p-3">
+                            <div>
+                                <strong class="font-mono-sm">POST /ext/v1/startWorker</strong>
+                                <br><span class="text-muted text-xs">Start the background sync worker.</span>
+                            </div>
+                        </div>
+                        <div class="card exclusion-item p-3">
+                            <div>
+                                <strong class="font-mono-sm">POST /ext/v1/stopWorker</strong>
+                                <br><span class="text-muted text-xs">Stop the background sync worker.</span>
+                            </div>
+                        </div>
+                        <div class="card exclusion-item p-3">
+                            <div>
+                                <strong class="font-mono-sm">POST /ext/v1/exclusions/create</strong>
+                                <br><span class="text-muted text-xs">Add post exclusions. Body: {"sourceId": "...", "networkInternalIDs": [...]}.</span>
+                            </div>
+                        </div>
+                        <div class="card exclusion-item p-3">
+                            <div>
+                                <strong class="font-mono-sm">POST /ext/v1/redirects/create</strong>
+                                <br><span class="text-muted text-xs">Add page redirects with stats merge. Body: {"sourceIDs": [...], "fromPage": "...", "toPage": "..."}.</span>
                             </div>
                         </div>
                     </div>

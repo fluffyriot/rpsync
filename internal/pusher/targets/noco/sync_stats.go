@@ -98,7 +98,6 @@ func syncNocoSourcesStats(dbQueries *database.Queries, c *common.Client, encrypt
 			return err
 		}
 
-		// Step 2: Create unsynced stats (all dates)
 		unsyncedStats, err := dbQueries.GetUnsyncedSourcesStatsForTarget(context.Background(), database.GetUnsyncedSourcesStatsForTargetParams{
 			SourceID: source.ID,
 			TargetID: target.ID,
