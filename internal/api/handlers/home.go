@@ -4,6 +4,7 @@ package handlers
 import (
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/fluffyriot/rpsync/internal/database"
 	"github.com/fluffyriot/rpsync/internal/helpers"
@@ -196,7 +197,7 @@ func (h *Handler) DashboardLogsHandler(c *gin.Context) {
 	for _, r := range rows {
 		item := DashboardLogItem{
 			ID:        r.ID.String(),
-			CreatedAt: r.CreatedAt.Format("Jan 02 15:04"),
+			CreatedAt: r.CreatedAt.UTC().Format(time.RFC3339),
 			Message:   r.Message,
 		}
 		if r.SourceNetwork.Valid {

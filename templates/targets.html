@@ -100,7 +100,7 @@
               {{end}}
 
               {{if .LastSynced.Valid}}
-              <span>last run: {{.LastSynced.Time.Format "Jan 02 15:04"}}</span>
+              <span data-utc="{{.LastSynced.Time.UTC.Format "2006-01-02T15:04:05Z"}}" data-prefix="last run: "></span>
               {{end}}
 
               {{if .StatusReason.Valid}}

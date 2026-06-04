@@ -1,3 +1,19 @@
+function relativeTime(isoString) {
+    const diff = Math.floor((Date.now() - new Date(isoString)) / 1000);
+    if (diff < 60) return 'just now';
+    if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+    if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+    if (diff < 2592000) return Math.floor(diff / 86400) + 'd ago';
+    if (diff < 31536000) return Math.floor(diff / 2592000) + 'mo ago';
+    return Math.floor(diff / 31536000) + 'y ago';
+}
+
+function formatUTCTooltip(isoString) {
+    const d = new Date(isoString);
+    const pad = n => String(n).padStart(2, '0');
+    return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} UTC`;
+}
+
 // Escape raw HTML tokens in marked output so external content cannot inject scripts.
 // Called once after marked loads (see header.html script onload or DOMContentLoaded).
 function configureMarkedSafe() {
@@ -229,6 +245,12 @@ document.addEventListener("DOMContentLoaded", function () {
             window.location.reload();
         }, 5000);
     }
+
+    document.querySelectorAll('[data-utc]').forEach(el => {
+        const iso = el.dataset.utc;
+        el.textContent = el.dataset.prefix ? el.dataset.prefix + relativeTime(iso) : relativeTime(iso);
+        el.title = formatUTCTooltip(iso);
+    });
 
     const metrics = document.querySelectorAll('.formatted-metric');
     metrics.forEach(el => {

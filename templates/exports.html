@@ -53,9 +53,9 @@
                 </div>
 
                 <div class="source-meta">
-                    <span>Created: {{.CreatedAt.Format "Jan 02 15:04"}}</span>
+                    <span data-utc="{{.CreatedAt.UTC.Format "2006-01-02T15:04:05Z"}}" data-prefix="Created: "></span>
                     {{if not .CompletedAt.IsZero}}
-                    · <span>Completed: {{.CompletedAt.Format "Jan 02 15:04"}}</span>
+                    · <span data-utc="{{.CompletedAt.UTC.Format "2006-01-02T15:04:05Z"}}" data-prefix="Completed: "></span>
                     {{end}}
 
                     {{if .StatusMessage.Valid}}

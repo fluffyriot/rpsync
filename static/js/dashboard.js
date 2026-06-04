@@ -352,7 +352,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
       const tdTime = document.createElement('td');
       tdTime.className = 'p-3 whitespace-nowrap text-muted';
-      tdTime.textContent = log.created_at;
+      tdTime.textContent = typeof relativeTime === 'function' ? relativeTime(log.created_at) : log.created_at;
+      if (typeof formatUTCTooltip === 'function') tdTime.title = formatUTCTooltip(log.created_at);
 
       const tdSource = document.createElement('td');
       tdSource.className = 'p-3';
