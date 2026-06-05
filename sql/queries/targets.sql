@@ -16,7 +16,15 @@ RETURNING *;
 
 -- name: GetUserTargets :many
 SELECT * FROM targets
-where user_id = $1;
+where user_id = $1
+ORDER BY
+  CASE sync_status
+    WHEN 'Initialized' THEN 1
+    WHEN 'Deactivated' THEN 2
+    WHEN 'Syncing' THEN 3
+    ELSE 4
+  END,
+  last_synced DESC;
 
 -- name: GetUserActiveTargets :many
 SELECT * FROM targets

@@ -192,6 +192,14 @@ func (q *Queries) GetUserActiveTargets(ctx context.Context, userID uuid.UUID) ([
 const getUserTargets = `-- name: GetUserTargets :many
 SELECT id, created_at, updated_at, target_type, user_id, db_id, is_active, sync_frequency, sync_status, status_reason, last_synced, host_url FROM targets
 where user_id = $1
+ORDER BY
+  CASE sync_status
+    WHEN 'Initialized' THEN 1
+    WHEN 'Deactivated' THEN 2
+    WHEN 'Syncing' THEN 3
+    ELSE 4
+  END,
+  last_synced DESC
 `
 
 func (q *Queries) GetUserTargets(ctx context.Context, userID uuid.UUID) ([]Target, error) {
