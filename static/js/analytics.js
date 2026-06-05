@@ -945,7 +945,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
                         const dateCell = document.createElement('td');
                         dateCell.className = 'p-2 border-b border-white/10 text-sm text-gray-400';
-                        dateCell.textContent = new Date(d.created_at).toLocaleDateString();
+                        dateCell.textContent = new Date(d.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
                         row.appendChild(dateCell);
 
                         const networkCell = document.createElement('td');
@@ -1016,7 +1016,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         const row = document.createElement('tr');
                         row.className = 'hover:bg-white/5 transition-colors';
 
-                        const date = new Date(d.created_at).toLocaleDateString();
+                        const date = new Date(d.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
                         const engagement = isViewsMode() ? d.views : d.likes + d.reposts;
                         const baseline = d.expected_engagement;
                         const deviation = isViewsMode() ? d.views - d.expected_engagement : d.deviation;
@@ -1150,7 +1150,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
                     const dateCell = document.createElement('td');
                     dateCell.className = 'p-2 border-b border-white/10 text-sm text-gray-400';
-                    dateCell.textContent = p.date.toLocaleDateString();
+                    dateCell.textContent = p.date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
                     row.appendChild(dateCell);
 
                     const contentCell = document.createElement('td');
