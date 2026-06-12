@@ -17,10 +17,10 @@ require (
 	github.com/pquerna/otp v1.5.0
 	github.com/pressly/goose/v3 v3.27.1
 	golang.org/x/crypto v0.52.0
-	golang.org/x/image v0.41.0
+	golang.org/x/image v0.42.0
 	golang.org/x/net v0.55.0
 	golang.org/x/oauth2 v0.36.0
-	golang.org/x/sync v0.20.0
+	golang.org/x/sync v0.21.0
 	golang.org/x/term v0.43.0
 	google.golang.org/api v0.281.0
 )
@@ -110,7 +110,7 @@ require (
 	golang.org/x/exp v0.0.0-20260527015227-08cc5374adb3 // indirect
 	golang.org/x/mod v0.36.0 // indirect
 	golang.org/x/sys v0.45.0 // indirect
-	golang.org/x/text v0.37.0 // indirect
+	golang.org/x/text v0.38.0 // indirect
 	golang.org/x/tools v0.45.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260526163538-3dc84a4a5aaa // indirect
 	google.golang.org/grpc v1.81.1 // indirect
