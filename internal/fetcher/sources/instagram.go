@@ -126,9 +126,9 @@ func getInstagramApiString(dbQueries *database.Queries, sid uuid.UUID, next stri
 
 	var apiString string
 	if noInsights {
-		apiString = fmt.Sprintf("https://graph.facebook.com/%v/%v/media?fields=id,caption,shortcode,like_count,timestamp,media_type,username,reposts_count,shares_count&access_token=%v&limit=25", version, pid, token)
+		apiString = fmt.Sprintf("https://graph.facebook.com/%v/%v/media?fields=id,caption,shortcode,like_count,timestamp,media_type,username,reposts_count,shares_count&access_token=%v&limit=10", version, pid, token)
 	} else {
-		apiString = fmt.Sprintf("https://graph.facebook.com/%v/%v/media?fields=id,caption,shortcode,like_count,timestamp,media_type,username,reposts_count,shares_count,insights.metric(views)&access_token=%v&limit=25", version, pid, token)
+		apiString = fmt.Sprintf("https://graph.facebook.com/%v/%v/media?fields=id,caption,shortcode,like_count,timestamp,media_type,username,reposts_count,shares_count,insights.metric(views)&access_token=%v&limit=10", version, pid, token)
 	}
 
 	if next != "" {
@@ -146,7 +146,7 @@ func getInstagramTagstring(dbQueries *database.Queries, sid uuid.UUID, next stri
 		return "", err
 	}
 
-	apiString := fmt.Sprintf("https://graph.facebook.com/%v/%v/tags?fields=id,caption,like_count,timestamp,media_type,username,permalink,reposts_count,shares_count&access_token=%v&limit=25", version, pid, token)
+	apiString := fmt.Sprintf("https://graph.facebook.com/%v/%v/tags?fields=id,caption,like_count,timestamp,media_type,username,permalink,reposts_count,shares_count&access_token=%v&limit=10", version, pid, token)
 
 	if next != "" {
 		apiString = next
@@ -163,7 +163,7 @@ func getInstagramCollabsString(dbQueries *database.Queries, sid uuid.UUID, next 
 		return "", err
 	}
 
-	apiString := fmt.Sprintf("https://graph.facebook.com/%v/%v/collaborative_media?fields=id,caption,total_like_count,timestamp,media_type,username,permalink,reposts_count,shares_count,total_views_count&access_token=%v&limit=25", version, pid, token)
+	apiString := fmt.Sprintf("https://graph.facebook.com/%v/%v/collaborative_media?fields=id,caption,total_like_count,timestamp,media_type,username,permalink,reposts_count,shares_count,total_views_count&access_token=%v&limit=10", version, pid, token)
 
 	if next != "" {
 		apiString = next
