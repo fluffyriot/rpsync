@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -258,6 +259,29 @@ func FetchTwitterPosts(dbQueries *database.Queries, c *common.Client, username s
 		}
 	}
 
+	var followersCount, followingCount *int
+
+	var pageHTML string
+	if err := chromedp.Run(ctx, chromedp.OuterHTML("html", &pageHTML)); err == nil {
+		followersRegex := regexp.MustCompile(`"followers_count"\s*:\s*(\d+)`)
+		friendsRegex := regexp.MustCompile(`"friends_count"\s*:\s*(\d+)`)
+
+		if matches := followersRegex.FindStringSubmatch(pageHTML); len(matches) > 1 {
+			if fc, err := strconv.Atoi(matches[1]); err == nil {
+				followersCount = &fc
+			}
+		}
+
+		if matches := friendsRegex.FindStringSubmatch(pageHTML); len(matches) > 1 {
+			if fng, err := strconv.Atoi(matches[1]); err == nil {
+				followingCount = &fng
+			}
+		}
+
+	} else {
+		log.Printf("Twitter: failed to get page HTML: %v", err)
+	}
+
 	drainChan := func(allEntries *[]twitterEntry) {
 		for {
 			select {
@@ -310,7 +334,6 @@ func FetchTwitterPosts(dbQueries *database.Queries, c *common.Client, username s
 	drainChan(&allEntries)
 
 	processedLinks := make(map[string]struct{})
-	var followersCount, followingCount *int
 
 	for _, entry := range allEntries {
 		if !strings.HasPrefix(entry.EntryID, "tweet-") || entry.Content.ItemContent == nil {
