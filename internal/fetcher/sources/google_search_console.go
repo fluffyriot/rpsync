@@ -12,6 +12,7 @@ import (
 
 	"github.com/fluffyriot/rpsync/internal/authhelp"
 	"github.com/fluffyriot/rpsync/internal/database"
+	"github.com/fluffyriot/rpsync/internal/fetcher/common"
 	"github.com/google/uuid"
 
 	"golang.org/x/oauth2/google"
@@ -147,8 +148,20 @@ func fetchGSCPageStats(ctx context.Context, svc *webmasters.Service, db *databas
 	}
 	redirectMap := make(map[string]string)
 	for _, r := range redirects {
-		redirectMap[r.FromPath] = r.ToPath
+		redirectMap[common.NormalizePagePath(r.FromPath)] = common.NormalizePagePath(r.ToPath)
 	}
+
+	type PageStatKey struct {
+		Date time.Time
+		Path string
+	}
+
+	type PageStat struct {
+		Clicks      int64
+		Impressions int64
+	}
+
+	consolidated := make(map[PageStatKey]PageStat)
 
 	for _, row := range resp.Rows {
 		if len(row.Keys) < 2 {
@@ -172,20 +185,35 @@ func fetchGSCPageStats(ctx context.Context, svc *webmasters.Service, db *databas
 			pagePath = toPath
 		}
 
+		pagePath = common.NormalizePagePath(pagePath)
+
 		clicks := int64(row.Clicks)
 		impressions := int64(row.Impressions)
 
+		key := PageStatKey{
+			Date: parsedDate,
+			Path: pagePath,
+		}
+
+		stat := consolidated[key]
+		stat.Clicks += clicks
+		stat.Impressions += impressions
+		consolidated[key] = stat
+
+	}
+
+	for key, stat := range consolidated {
 		_, err = db.CreateAnalyticsPageStat(ctx, database.CreateAnalyticsPageStatParams{
 			ID:            uuid.New(),
-			Date:          parsedDate,
-			UrlPath:       pagePath,
-			Views:         clicks,
+			Date:          key.Date,
+			UrlPath:       key.Path,
+			Views:         stat.Clicks,
 			SourceID:      sourceID,
 			AnalyticsType: "gsc",
-			Impressions:   sql.NullInt64{Int64: impressions, Valid: true},
+			Impressions:   sql.NullInt64{Int64: stat.Impressions, Valid: true},
 		})
 		if err != nil {
-			log.Printf("GSC: Error saving page stat for %s %s: %v", dateStr, pagePath, err)
+			log.Printf("GSC: Error saving page stat for %s %s: %v", key.Date.Format("2006-01-02"), key.Path, err)
 		}
 	}
 

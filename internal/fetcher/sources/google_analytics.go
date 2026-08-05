@@ -9,6 +9,7 @@ import (
 
 	"github.com/fluffyriot/rpsync/internal/authhelp"
 	"github.com/fluffyriot/rpsync/internal/database"
+	"github.com/fluffyriot/rpsync/internal/fetcher/common"
 	"github.com/google/uuid"
 	"golang.org/x/oauth2/google"
 	analyticsdata "google.golang.org/api/analyticsdata/v1beta"
@@ -152,7 +153,7 @@ func fetchAndSavePageStats(ctx context.Context, svc *analyticsdata.Service, db *
 	}
 	redirectMap := make(map[string]string)
 	for _, r := range redirects {
-		redirectMap[r.FromPath] = r.ToPath
+		redirectMap[common.NormalizePagePath(r.FromPath)] = common.NormalizePagePath(r.ToPath)
 	}
 
 	type PageStatKey struct {
@@ -178,6 +179,8 @@ func fetchAndSavePageStats(ctx context.Context, svc *analyticsdata.Service, db *
 
 		var viewsInt int
 		fmt.Sscanf(views, "%d", &viewsInt)
+
+		pagePath = common.NormalizePagePath(pagePath)
 
 		if toPath, ok := redirectMap[pagePath]; ok {
 			pagePath = toPath

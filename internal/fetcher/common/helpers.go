@@ -22,6 +22,19 @@ const (
 	UserAgentChrome  = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.7727.102 Safari/537.36"
 )
 
+func NormalizePagePath(path string) string {
+	if path == "/" {
+		return path
+	}
+
+	path = strings.TrimRight(path, "/")
+	if path == "" {
+		return "/"
+	}
+
+	return path
+}
+
 func StripHTMLToText(input string) string {
 	doc, err := html.Parse(strings.NewReader(input))
 	if err != nil {
