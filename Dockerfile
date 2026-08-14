@@ -1,5 +1,5 @@
 # Stage 1: Builder
-FROM --platform=$BUILDPLATFORM golang:1.26.5 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.26.6 AS builder
 
 ARG TARGETOS
 ARG TARGETARCH
