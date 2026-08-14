@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -86,10 +85,10 @@ type twitterTweetCore struct {
 			Core struct {
 				ScreenName string `json:"screen_name"`
 			} `json:"core"`
-			Legacy struct {
-				FollowersCount int `json:"followers_count"`
-				FriendsCount   int `json:"friends_count"`
-			} `json:"legacy"`
+			RelationshipCounts struct {
+				Followers int `json:"followers"`
+				Following int `json:"following"`
+			} `json:"relationship_counts"`
 		} `json:"result"`
 	} `json:"user_results"`
 }
@@ -188,7 +187,9 @@ func FetchTwitterPosts(dbQueries *database.Queries, c *common.Client, username s
 	chromedp.ListenTarget(ctx, func(ev interface{}) {
 		switch e := ev.(type) {
 		case *network.EventResponseReceived:
-			if strings.Contains(e.Response.URL, "UserTweets") {
+			if strings.Contains(e.Response.URL, "UserTweets") ||
+				strings.Contains(e.Response.URL, "UserOriginalsTimeline") ||
+				strings.Contains(e.Response.URL, "UserRepostsTimeline") {
 				trackedRequests.Store(e.RequestID, struct{}{})
 			}
 		case *network.EventLoadingFinished:
@@ -259,29 +260,6 @@ func FetchTwitterPosts(dbQueries *database.Queries, c *common.Client, username s
 		}
 	}
 
-	var followersCount, followingCount *int
-
-	var pageHTML string
-	if err := chromedp.Run(ctx, chromedp.OuterHTML("html", &pageHTML)); err == nil {
-		followersRegex := regexp.MustCompile(`"followers_count"\s*:\s*(\d+)`)
-		friendsRegex := regexp.MustCompile(`"friends_count"\s*:\s*(\d+)`)
-
-		if matches := followersRegex.FindStringSubmatch(pageHTML); len(matches) > 1 {
-			if fc, err := strconv.Atoi(matches[1]); err == nil {
-				followersCount = &fc
-			}
-		}
-
-		if matches := friendsRegex.FindStringSubmatch(pageHTML); len(matches) > 1 {
-			if fng, err := strconv.Atoi(matches[1]); err == nil {
-				followingCount = &fng
-			}
-		}
-
-	} else {
-		log.Printf("Twitter: failed to get page HTML: %v", err)
-	}
-
 	drainChan := func(allEntries *[]twitterEntry) {
 		for {
 			select {
@@ -307,33 +285,48 @@ func FetchTwitterPosts(dbQueries *database.Queries, c *common.Client, username s
 		}
 	}
 
-	var allEntries []twitterEntry
-	previousCount := 0
-	sameCountIterations := 0
-	const maxScrolls = 50
+	scrollAndCollect := func(allEntries *[]twitterEntry) {
+		previousCount := len(*allEntries)
+		sameCountIterations := 0
+		const maxScrolls = 50
 
-	for i := 0; i < maxScrolls; i++ {
-		time.Sleep(common.ScraperRateLimit)
-		drainChan(&allEntries)
+		for i := 0; i < maxScrolls; i++ {
+			time.Sleep(common.ScraperRateLimit)
+			drainChan(allEntries)
 
-		currentCount := len(allEntries)
-		if currentCount == previousCount {
-			sameCountIterations++
-			if sameCountIterations >= 4 {
-				break
+			currentCount := len(*allEntries)
+			if currentCount == previousCount {
+				sameCountIterations++
+				if sameCountIterations >= 4 {
+					break
+				}
+			} else {
+				sameCountIterations = 0
 			}
-		} else {
-			sameCountIterations = 0
-		}
-		previousCount = currentCount
+			previousCount = currentCount
 
-		chromedp.Run(ctx, chromedp.Evaluate(`window.scrollTo(0, document.body.scrollHeight)`, nil)) //nolint:errcheck
+			chromedp.Run(ctx, chromedp.Evaluate(`window.scrollTo(0, document.body.scrollHeight)`, nil)) //nolint:errcheck
+		}
+
+		time.Sleep(common.ScraperRateLimit)
+		drainChan(allEntries)
 	}
 
-	time.Sleep(common.ScraperRateLimit)
-	drainChan(&allEntries)
+	var allEntries []twitterEntry
+	scrollAndCollect(&allEntries)
+
+	repostsURL := profileURL + "/reposts"
+	if err := chromedp.Run(ctx,
+		chromedp.Navigate(repostsURL),
+		chromedp.Sleep(common.ScraperRateLimit),
+	); err != nil {
+		log.Printf("Twitter: failed to navigate to reposts tab for %s: %v", username, err)
+	} else {
+		scrollAndCollect(&allEntries)
+	}
 
 	processedLinks := make(map[string]struct{})
+	var followersCount, followingCount *int
 
 	for _, entry := range allEntries {
 		if !strings.HasPrefix(entry.EntryID, "tweet-") || entry.Content.ItemContent == nil {
@@ -422,8 +415,8 @@ func FetchTwitterPosts(dbQueries *database.Queries, c *common.Client, username s
 		}
 
 		if followersCount == nil {
-			fc := tweet.Core.UserResults.Result.Legacy.FollowersCount
-			fng := tweet.Core.UserResults.Result.Legacy.FriendsCount
+			fc := tweet.Core.UserResults.Result.RelationshipCounts.Followers
+			fng := tweet.Core.UserResults.Result.RelationshipCounts.Following
 			followersCount = &fc
 			followingCount = &fng
 		}
