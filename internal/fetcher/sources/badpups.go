@@ -44,6 +44,8 @@ func buildHashtags(genres []string, keywords string) string {
 	var tags []string
 
 	normalize := func(s string) string {
+		s = strings.TrimSpace(s)
+		s = strings.TrimLeft(s, "#")
 		s = strings.ToLower(strings.TrimSpace(s))
 		s = strings.ReplaceAll(s, " ", "-")
 		return s
@@ -170,10 +172,10 @@ func FetchBadpupsPosts(dbQueries *database.Queries, c *common.Client, sourceId u
 	}
 
 	var followersCount *int
-	doc.Find("div.profile-stat").Each(func(_ int, s *goquery.Selection) {
-		label := strings.TrimSpace(s.Find("div.stat-label").Text())
+	doc.Find(".profile-stats > div, div.profile-stat").Each(func(_ int, s *goquery.Selection) {
+		label := strings.TrimSpace(s.Find("span, .stat-label").Last().Text())
 		if label == "Followers" {
-			numText := strings.TrimSpace(s.Find("div.stat-num").Text())
+			numText := strings.ReplaceAll(strings.TrimSpace(s.Find("strong, .stat-num").First().Text()), ",", "")
 			if num, err := strconv.Atoi(numText); err == nil {
 				followersCount = &num
 			}
