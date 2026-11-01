@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/fluffyriot/rpsync/internal/authhelp"
 	"github.com/fluffyriot/rpsync/internal/database"
 	"github.com/fluffyriot/rpsync/internal/fetcher/common"
 	"github.com/google/uuid"
@@ -25,6 +26,17 @@ type VideoObjectLD struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	UploadDate  string `json:"uploadDate"`
+}
+
+type badpupsCookieEntry struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
+}
+
+func addBadpupsCookies(req *http.Request, cookies []badpupsCookieEntry) {
+	for _, cookie := range cookies {
+		req.AddCookie(&http.Cookie{Name: cookie.Name, Value: cookie.Value})
+	}
 }
 
 func buildHashtags(genres []string, keywords string) string {
@@ -111,7 +123,7 @@ func extractVideoObjectLD(doc *goquery.Document) (*VideoObjectLD, error) {
 	return result, nil
 }
 
-func FetchBadpupsPosts(uid uuid.UUID, dbQueries *database.Queries, c *common.Client, sourceId uuid.UUID) error {
+func FetchBadpupsPosts(dbQueries *database.Queries, c *common.Client, sourceId uuid.UUID, encryptionKey []byte) error {
 
 	exclusionMap, err := common.LoadExclusionMap(dbQueries, sourceId)
 	if err != nil {
@@ -124,6 +136,14 @@ func FetchBadpupsPosts(uid uuid.UUID, dbQueries *database.Queries, c *common.Cli
 	if err != nil {
 		return err
 	}
+	cookieJSON, _, _, _, err := authhelp.GetSourceToken(context.Background(), dbQueries, encryptionKey, sourceId)
+	if err != nil {
+		return fmt.Errorf("failed to load BadPups cookies: %w", err)
+	}
+	var cookies []badpupsCookieEntry
+	if err := json.Unmarshal([]byte(cookieJSON), &cookies); err != nil {
+		return fmt.Errorf("failed to parse BadPups cookie JSON: %w", err)
+	}
 
 	req, err := http.NewRequest("GET", profileURL, nil)
 	if err != nil {
@@ -132,15 +152,17 @@ func FetchBadpupsPosts(uid uuid.UUID, dbQueries *database.Queries, c *common.Cli
 
 	req.Header.Set(
 		"User-Agent",
-		common.UserAgentBingbot,
+		common.UserAgentChrome,
 	)
 	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
 	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
+	addBadpupsCookies(req, cookies)
 
 	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 
 	doc, err := goquery.NewDocumentFromReader(resp.Body)
 	if err != nil {
@@ -179,15 +201,17 @@ func FetchBadpupsPosts(uid uuid.UUID, dbQueries *database.Queries, c *common.Cli
 		}
 		videoReq.Header.Set(
 			"User-Agent",
-			common.UserAgentBingbot,
+			common.UserAgentChrome,
 		)
 		videoReq.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
 		videoReq.Header.Set("Accept-Language", "en-US,en;q=0.9")
+		addBadpupsCookies(videoReq, cookies)
 
 		videoResp, err := c.HTTPClient.Do(videoReq)
 		if err != nil {
 			return
 		}
+		defer videoResp.Body.Close()
 
 		videoDoc, err := goquery.NewDocumentFromReader(videoResp.Body)
 		if err != nil {
@@ -219,6 +243,13 @@ func FetchBadpupsPosts(uid uuid.UUID, dbQueries *database.Queries, c *common.Cli
 				categories = append(categories, t)
 			}
 		})
+		if len(categories) == 0 {
+			videoDoc.Find(`a[href*="/category/"]`).Each(func(_ int, s *goquery.Selection) {
+				if t := strings.TrimSpace(s.Text()); t != "" {
+					categories = append(categories, t)
+				}
+			})
+		}
 
 		var tags []string
 		videoDoc.Find("div.post-tags a.taxonomy-label").Each(func(_ int, s *goquery.Selection) {
@@ -226,6 +257,13 @@ func FetchBadpupsPosts(uid uuid.UUID, dbQueries *database.Queries, c *common.Cli
 				tags = append(tags, t)
 			}
 		})
+		if len(tags) == 0 {
+			videoDoc.Find(`a[href*="/tag/"]`).Each(func(_ int, s *goquery.Selection) {
+				if t := strings.TrimSpace(s.Text()); t != "" {
+					tags = append(tags, t)
+				}
+			})
+		}
 
 		hashtags := buildHashtags(categories, strings.Join(tags, ","))
 		content := fmt.Sprintf("%s\n\n%s", title, description)
@@ -248,44 +286,41 @@ func FetchBadpupsPosts(uid uuid.UUID, dbQueries *database.Queries, c *common.Cli
 			return
 		}
 
-		likesText := strings.TrimSpace(
-			videoDoc.Find("span.likes_count").First().Text(),
-		)
-
-		dislikesText := strings.TrimSpace(
-			videoDoc.Find("span.dislikes_count").First().Text(),
-		)
-
-		likes := 0
-		dislikes := 0
-
-		if likesText != "" {
-			likes, _ = strconv.Atoi(likesText)
-		}
-
-		if dislikesText != "" {
-			dislikes, _ = strconv.Atoi(dislikesText)
-		}
-
-		videoLikes := likes - dislikes
-
-		videoViews := 0
-		videoDoc.Find("div span").EachWithBreak(func(_ int, s *goquery.Selection) bool {
-			if m := viewsRe.FindStringSubmatch(s.Text()); m != nil {
-				videoViews, _ = strconv.Atoi(strings.ReplaceAll(m[1], ",", ""))
+		var videoLikes sql.NullInt64
+		videoDoc.Find("button.video-action").EachWithBreak(func(_ int, s *goquery.Selection) bool {
+			if s.Find("i.fa-heart").Length() == 0 {
+				return true
+			}
+			if likes, err := strconv.ParseInt(strings.ReplaceAll(strings.TrimSpace(s.Find("span").First().Text()), ",", ""), 10, 64); err == nil {
+				videoLikes = sql.NullInt64{Int64: likes, Valid: true}
 				return false
 			}
 			return true
 		})
+		if !videoLikes.Valid {
+			if likes, err := strconv.ParseInt(strings.ReplaceAll(strings.TrimSpace(videoDoc.Find("span.likes_count").First().Text()), ",", ""), 10, 64); err == nil {
+				videoLikes = sql.NullInt64{Int64: likes, Valid: true}
+			}
+		}
+
+		videoViews := 0
+		if views, err := strconv.Atoi(strings.ReplaceAll(strings.TrimSpace(videoDoc.Find("span[data-video-view-count]").First().Text()), ",", "")); err == nil {
+			videoViews = views
+		} else {
+			videoDoc.Find("div span").EachWithBreak(func(_ int, s *goquery.Selection) bool {
+				if m := viewsRe.FindStringSubmatch(s.Text()); m != nil {
+					videoViews, _ = strconv.Atoi(strings.ReplaceAll(m[1], ",", ""))
+					return false
+				}
+				return true
+			})
+		}
 
 		_, err = dbQueries.SyncReactions(context.Background(), database.SyncReactionsParams{
 			ID:       uuid.New(),
 			SyncedAt: time.Now(),
 			PostID:   postID,
-			Likes: sql.NullInt64{
-				Int64: int64(videoLikes),
-				Valid: true,
-			},
+			Likes:    videoLikes,
 			Reposts: sql.NullInt64{
 				Valid: false,
 			},

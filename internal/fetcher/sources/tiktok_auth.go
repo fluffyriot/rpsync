@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/chromedp"
 	"github.com/fluffyriot/rpsync/internal/fetcher/common"
@@ -81,34 +82,32 @@ func (tm *TikTokManager) StartLoginSession(username string) ([]byte, error) {
 		defer ctxCancel()
 
 		var screenshot []byte
-		var title string
 
-		if err := chromedp.Run(ctx,
-			chromedp.ActionFunc(func(ctx context.Context) error {
-				var res []byte
-				err := chromedp.Evaluate(`Object.defineProperty(navigator, 'webdriver', {get: () => undefined})`, &res).Do(ctx)
-				return err
-			}),
+		if err := chromedp.Do(ctx,
+			chromedp.Evaluate[chromedp.Void](`Object.defineProperty(navigator, 'webdriver', {get: () => undefined})`),
 			chromedp.Navigate("https://www.tiktok.com/login/qrcode"),
-			chromedp.Title(&title),
 		); err != nil {
 			log.Printf("Failed to navigate: %v", err)
 		}
 
-		err := chromedp.Run(ctx,
-			chromedp.WaitVisible(`div[data-e2e="qr-code"]`, chromedp.ByQuery),
+		err := chromedp.Do(ctx,
+			chromedp.WaitVisible(`div[data-e2e="qr-code"]`),
 			chromedp.Sleep(2*time.Second),
-			chromedp.Screenshot(`div[data-e2e="qr-code"] canvas`, &screenshot, chromedp.NodeVisible),
 		)
+		if err == nil {
+			screenshot, err = chromedp.Run(ctx, chromedp.Screenshot(`div[data-e2e="qr-code"] canvas`, chromedp.NodeVisible))
+		}
 
 		if err != nil {
-			err = chromedp.Run(ctx,
+			err = chromedp.Do(ctx,
 				chromedp.Navigate("https://www.tiktok.com/login"),
-				chromedp.WaitVisible(`//a[contains(text(), "Use QR code")]`, chromedp.BySearch),
-				chromedp.Click(`//a[contains(text(), "Use QR code")]`, chromedp.BySearch),
-				chromedp.WaitVisible(`canvas`, chromedp.ByQuery),
-				chromedp.Screenshot(`canvas`, &screenshot, chromedp.NodeVisible),
+				chromedp.WaitVisible(`//a[contains(text(), "Use QR code")]`),
+				chromedp.Click(`//a[contains(text(), "Use QR code")]`),
+				chromedp.WaitVisible(`canvas`),
 			)
+			if err == nil {
+				screenshot, err = chromedp.Run(ctx, chromedp.Screenshot(`canvas`, chromedp.NodeVisible))
+			}
 		}
 
 		if err != nil {
@@ -132,18 +131,15 @@ func (tm *TikTokManager) StartLoginSession(username string) ([]byte, error) {
 
 		loginSuccess := false
 		var networkCookies []*network.Cookie
+		target := chromedp.FromContext(ctx).Target
 
 		for time.Now().Before(deadline) {
-			if err := chromedp.Run(ctx,
-				chromedp.ActionFunc(func(ctx context.Context) error {
-					var err error
-					networkCookies, err = network.GetCookies().Do(ctx)
-					return err
-				}),
-			); err != nil {
+			result, err := cdp.Call(ctx, target, network.GetCookies, network.GetCookiesParams{})
+			if err != nil {
 				time.Sleep(2 * time.Second)
 				continue
 			}
+			networkCookies = result.Cookies
 
 			hasSession := false
 			for _, c := range networkCookies {

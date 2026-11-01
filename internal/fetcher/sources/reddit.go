@@ -131,9 +131,8 @@ func handleSubredditChanges(ctx context.Context, dbQueries *database.Queries, so
 }
 
 func redditXHR(chromeCtx context.Context, url string) (string, error) {
-	var body string
-	err := chromedp.Run(chromeCtx,
-		chromedp.Evaluate(fmt.Sprintf(`
+	return chromedp.Run(chromeCtx,
+		chromedp.Evaluate[string](fmt.Sprintf(`
 			(function() {
 				var xhr = new XMLHttpRequest();
 				xhr.open('GET', %q, false);
@@ -141,9 +140,8 @@ func redditXHR(chromeCtx context.Context, url string) (string, error) {
 				xhr.send(null);
 				return xhr.responseText;
 			})()
-		`, url), &body),
+		`, url)),
 	)
-	return body, err
 }
 
 func FetchRedditPosts(dbQueries *database.Queries, encryptionKey []byte, sourceId uuid.UUID, _ *common.Client) error {
@@ -183,33 +181,38 @@ func FetchRedditPosts(dbQueries *database.Queries, encryptionKey []byte, sourceI
 	chromeCtx, ctxCancel := chromedp.NewContext(allocCtx)
 	defer ctxCancel()
 
-	if err := chromedp.Run(chromeCtx,
-		network.Enable(),
-		chromedp.ActionFunc(func(ctx context.Context) error {
+	if err := chromedp.Do(chromeCtx,
+		chromedp.Func(func(ctx context.Context, target *chromedp.Target) error {
+			if _, err := cdp.Call(ctx, target, network.Enable, network.EnableParams{}); err != nil {
+				return err
+			}
 			for _, cookie := range cookies {
-				params := network.SetCookie(cookie.Name, cookie.Value).
-					WithDomain(cookie.Domain).
-					WithPath(cookie.Path).
-					WithSecure(cookie.Secure).
-					WithHTTPOnly(cookie.HTTPOnly)
+				secure, httpOnly := cookie.Secure, cookie.HTTPOnly
+				params := network.SetCookieParams{
+					Name:     cookie.Name,
+					Value:    cookie.Value,
+					Domain:   cookie.Domain,
+					Path:     cookie.Path,
+					Secure:   &secure,
+					HTTPOnly: &httpOnly,
+				}
 
 				if cookie.SameSite != nil {
 					switch strings.ToLower(*cookie.SameSite) {
 					case "no_restriction", "none":
-						params = params.WithSameSite(network.CookieSameSiteNone)
+						params.SameSite = network.CookieSameSiteNone
 					case "lax":
-						params = params.WithSameSite(network.CookieSameSiteLax)
+						params.SameSite = network.CookieSameSiteLax
 					case "strict":
-						params = params.WithSameSite(network.CookieSameSiteStrict)
+						params.SameSite = network.CookieSameSiteStrict
 					}
 				}
 
 				if cookie.ExpirationDate != nil {
-					ts := cdp.TimeSinceEpoch(time.Unix(int64(*cookie.ExpirationDate), 0))
-					params = params.WithExpires(&ts)
+					params.Expires = cdp.TimeSinceEpoch(*cookie.ExpirationDate)
 				}
 
-				if err := params.Do(ctx); err != nil {
+				if _, err := cdp.Call(ctx, target, network.SetCookie, params); err != nil {
 					return err
 				}
 			}

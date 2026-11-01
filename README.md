@@ -29,7 +29,7 @@
 | Twitch | ✅ | ❌ | ❌ | ✅ | ⚠️ | |
 | Telegram | ✅ | ✅ | ❌ | ✅ | ✅ | Requires Telegram App & Bot setup |
 | Discord | ✅ | ❌ | ❌ | ✅ | ✅ | Reuqires Discord Bot setup |
-| BadPups.com | ❌ | ✅ | ❌ | ✅ | ✅ | |
+| BadPups.com | ❌ | ❌ | ✅ | ✅ | ✅ | Requires Cookie-Editor browser extension |
 | Murrtube.net | ❌ | ✅ | ❌ | ✅ | ✅ | |
 | FurTrack.com | ❌ | ✅ | ❌ | ✅ | ✅ | Requires albums to be created |
 | e621.net | ✅ | ❌ | ❌ | ❌ | ✅ | |

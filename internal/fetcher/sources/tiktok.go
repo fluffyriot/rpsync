@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/chromedp"
 	"github.com/fluffyriot/rpsync/internal/database"
@@ -61,17 +62,15 @@ func FetchTikTokPosts(dbQueries *database.Queries, c *common.Client, uid uuid.UU
 	ctx, cancel := chromedp.NewContext(allocCtx)
 	defer cancel()
 
-	err = chromedp.Run(ctx,
-		chromedp.ActionFunc(func(ctx context.Context) error {
+	err = chromedp.Do(ctx,
+		chromedp.Func(func(ctx context.Context, target *chromedp.Target) error {
 			for _, cookie := range cookies {
-				err := network.SetCookie(cookie.Name, cookie.Value).
-					WithDomain(cookie.Domain).
-					WithPath(cookie.Path).
-					WithSecure(cookie.Secure).
-					WithHTTPOnly(cookie.HTTPOnly).
-					WithSameSite(cookie.SameSite).
-					Do(ctx)
-				if err != nil {
+				secure, httpOnly := cookie.Secure, cookie.HTTPOnly
+				params := network.SetCookieParams{
+					Name: cookie.Name, Value: cookie.Value, Domain: cookie.Domain, Path: cookie.Path,
+					Secure: &secure, HTTPOnly: &httpOnly, SameSite: cookie.SameSite,
+				}
+				if _, err := cdp.Call(ctx, target, network.SetCookie, params); err != nil {
 					return err
 				}
 			}
@@ -129,12 +128,12 @@ func FetchTikTokPosts(dbQueries *database.Queries, c *common.Client, uid uuid.UU
 		})()
 	`
 
-	err = chromedp.Run(ctx,
+	err = chromedp.Do(ctx,
 		chromedp.Navigate(url),
 		chromedp.Sleep(5*time.Second),
-		chromedp.ActionFunc(func(ctx context.Context) error {
-			var currentURL string
-			if err := chromedp.Location(&currentURL).Do(ctx); err != nil {
+		chromedp.Func(func(ctx context.Context, target *chromedp.Target) error {
+			currentURL, err := chromedp.Location()(ctx, target)
+			if err != nil {
 				return err
 			}
 			if strings.Contains(currentURL, "login") || strings.Contains(currentURL, "signup") {
@@ -144,13 +143,9 @@ func FetchTikTokPosts(dbQueries *database.Queries, c *common.Client, uid uuid.UU
 			var loginElementExists bool
 			ctxTimeout, cancel := context.WithTimeout(ctx, 2*time.Second)
 			defer cancel()
-			_ = chromedp.Run(ctxTimeout,
-				chromedp.WaitVisible(`div[data-e2e="login-modal"]`, chromedp.ByQuery),
-			)
+			_, _ = chromedp.WaitVisible(`div[data-e2e="login-modal"]`)(ctxTimeout, target)
 
-			if err := chromedp.Evaluate(`document.querySelector('div[data-e2e="login-modal"]') !== null`, &loginElementExists).Do(ctx); err != nil {
-
-			}
+			loginElementExists, _ = chromedp.Evaluate[bool](`document.querySelector('div[data-e2e="login-modal"]') !== null`)(ctx, target)
 			if loginElementExists {
 				return fmt.Errorf("session expired: login modal detected")
 			}
@@ -160,8 +155,8 @@ func FetchTikTokPosts(dbQueries *database.Queries, c *common.Client, uid uuid.UU
 			maxScrolls := 50
 
 			for i := 0; i < maxScrolls; i++ {
-				var batch []ScrapedPost
-				if err := chromedp.Evaluate(scrapeJs, &batch).Do(ctx); err != nil {
+				batch, err := chromedp.Evaluate[[]ScrapedPost](scrapeJs)(ctx, target)
+				if err != nil {
 					log.Printf("Error scraping batch %d: %v", i, err)
 				} else {
 					newCount := 0
@@ -184,14 +179,14 @@ func FetchTikTokPosts(dbQueries *database.Queries, c *common.Client, uid uuid.UU
 				}
 				previousPostCount = currentPostCount
 
-				if err := chromedp.Evaluate(`
+				if _, err := chromedp.Evaluate[chromedp.Void](`
 					(function(){
 						const rows = document.querySelectorAll('div[data-tt="components_RowLayout_FlexRow"]');
 						if (rows.length > 0) {
 							rows[rows.length-1].scrollIntoView({behavior: "smooth", block: "end"});
 						}
 					})()
-				`, nil).Do(ctx); err != nil {
+				`)(ctx, target); err != nil {
 					log.Printf("Scroll failed: %v", err)
 				}
 
@@ -248,29 +243,27 @@ func FetchTikTokPosts(dbQueries *database.Queries, c *common.Client, uid uuid.UU
 
 	var followersCount *int
 	var followingCount *int
-	err = chromedp.Run(ctx,
+	err = chromedp.Do(ctx,
 		chromedp.Navigate(fmt.Sprintf("https://www.tiktok.com/@%s", username)),
 		chromedp.Sleep(3*time.Second),
-		chromedp.ActionFunc(func(ctx context.Context) error {
-			var followerText string
-			err := chromedp.Evaluate(`
+		chromedp.Func(func(ctx context.Context, target *chromedp.Target) error {
+			followerText, err := chromedp.Evaluate[string](`
 				(function() {
 					const el = document.querySelector('strong[data-e2e="followers-count"]');
 					return el ? el.innerText : '';
 				})()
-			`, &followerText).Do(ctx)
+			`)(ctx, target)
 			if err == nil && followerText != "" {
 				count := parseCount(followerText)
 				followersCount = &count
 			}
 
-			var followingText string
-			err = chromedp.Evaluate(`
+			followingText, err := chromedp.Evaluate[string](`
 				(function() {
 					const el = document.querySelector('strong[data-e2e="following-count"]');
 					return el ? el.innerText : '';
 				})()
-			`, &followingText).Do(ctx)
+			`)(ctx, target)
 			if err == nil && followingText != "" {
 				count := parseCount(followingText)
 				followingCount = &count

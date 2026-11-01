@@ -224,6 +224,23 @@
                         </div>
                         {{end}}
 
+                        {{if eq .Network "BadPups"}}
+                        <div class="dropdown">
+                            <button type="button" class="btn btn-secondary btn-icon" title="Update Cookies"
+                                onclick="toggleDropdown('dd_token_{{.ID}}')">
+                                <i data-lucide="key-round"></i>
+                            </button>
+                            <div id="dd_token_{{.ID}}" class="dropdown-content hidden">
+                                <form method="POST" action="/sources/token" class="flex flex-col gap-2 p-2">
+                                    <input type="hidden" name="source_id" value="{{.ID}}">
+                                    <textarea name="new_token" class="form-input text-xs" rows="4"
+                                        placeholder="Paste new Cookie-Editor JSON export" required autocomplete="off"></textarea>
+                                    <button type="submit" class="btn btn-primary btn-sm">Update Cookies</button>
+                                </form>
+                            </div>
+                        </div>
+                        {{end}}
+
                         {{if eq .Network "Discord"}}
                         <button type="button" class="btn btn-secondary btn-icon"
                             onclick="showDiscordChannels('{{.ID}}')" title="View / Update Channels">
@@ -407,6 +424,12 @@
                 userPlaceholder: "username (no @)",
                 fields: {
                     long: { label: "Cookie JSON", placeholder: '[{"name":"_murrtube_ultra_session","value":"..."},{"name":"age_check","value":"..."}]', desc: 'Log in to murrtube.net, then export all cookies using the Cookie-Editor browser extension (Export \u2192 JSON) and paste the result here. Make sure the age_check cookie is included.', required: true }
+                }
+            },
+            "BadPups": {
+                userPlaceholder: "username (no @)",
+                fields: {
+                    long: { label: "Cookie JSON", placeholder: '[{"name":"badpups-session","value":"..."}]', desc: 'Log in to badpups.com, then export cookies using the Cookie-Editor browser extension (Export → JSON) and paste the result here.', required: true }
                 }
             },
             "Threads": {

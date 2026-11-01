@@ -13,6 +13,7 @@ import (
 
 	_ "github.com/lib/pq"
 
+	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/chromedp"
 	"github.com/fluffyriot/rpsync/internal/database"
@@ -83,39 +84,35 @@ func FetchFurTrackPosts(dbQueries *database.Queries, c *common.Client, uid uuid.
 
 	url := fmt.Sprintf("https://www.furtrack.com/user/%s/photography", username)
 
-	mainPostsChan := make(chan string, 1)
-
-	var mainPageJSON string
-	err = chromedp.Run(ctx,
-		network.Enable(),
-		chromedp.ActionFunc(func(ctx context.Context) error {
-			chromedp.ListenTarget(ctx, func(ev interface{}) {
-				if evt, ok := ev.(*network.EventResponseReceived); ok {
-					if strings.Contains(evt.Response.URL, "solar.furtrack.com/get/a/") {
-						go func(reqID network.RequestID) {
-							tCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-							defer cancel()
-							body, err := network.GetResponseBody(reqID).Do(tCtx)
-							if err == nil {
-								select {
-								case mainPostsChan <- string(body):
-								default:
-								}
-							}
-						}(evt.RequestID)
-					}
-				}
-			})
-			return nil
-		}),
-		chromedp.Navigate(url),
-	)
+	err = chromedp.Do(ctx, chromedp.Func(func(ctx context.Context, target *chromedp.Target) error {
+		_, err := cdp.Call(ctx, target, network.Enable, network.EnableParams{})
+		return err
+	}))
 	if err != nil {
+		return fmt.Errorf("FurTrack: Failed to enable network events: %w", err)
+	}
+	target := chromedp.FromContext(ctx).Target
+	responseBodies := common.ListenResponseBodies(ctx, target, func(responseURL string) bool {
+		return strings.Contains(responseURL, "solar.furtrack.com/get/a/")
+	})
+	drainResponseBodies := func() {
+		for {
+			select {
+			case <-responseBodies:
+			default:
+				return
+			}
+		}
+	}
+	if err := chromedp.Do(ctx, chromedp.Navigate(url)); err != nil {
 		return fmt.Errorf("FurTrack: Browser navigation failed: %w", err)
 	}
 
+	var mainPageJSON string
+
 	select {
-	case mainPageJSON = <-mainPostsChan:
+	case body := <-responseBodies:
+		mainPageJSON = string(body)
 	case <-time.After(20 * time.Second):
 		return fmt.Errorf("FurTrack: Timed out waiting for album list")
 	}
@@ -145,38 +142,16 @@ func FetchFurTrackPosts(dbQueries *database.Queries, c *common.Client, uid uuid.
 		log.Printf("FurTrack: Syncing Album %s (%d)", album.AlbumTitle, album.AlbumID)
 
 		var albumDataJSON string
-		albumChan := make(chan string, 1)
-
-		err = chromedp.Run(ctx,
-			chromedp.ActionFunc(func(ctx context.Context) error {
-				chromedp.ListenTarget(ctx, func(ev interface{}) {
-					if evt, ok := ev.(*network.EventResponseReceived); ok {
-						if strings.Contains(evt.Response.URL, "solar.furtrack.com/get/a/") {
-							go func(reqID network.RequestID) {
-								tCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-								defer cancel()
-								body, err := network.GetResponseBody(reqID).Do(tCtx)
-								if err == nil {
-									select {
-									case albumChan <- string(body):
-									default:
-									}
-								}
-							}(evt.RequestID)
-						}
-					}
-				})
-				return nil
-			}),
-			chromedp.Navigate(albumURL),
-		)
+		drainResponseBodies()
+		err = chromedp.Do(ctx, chromedp.Navigate(albumURL))
 		if err != nil {
 			log.Printf("FurTrack: Failed to navigate to album %d: %v", album.AlbumID, err)
 			continue
 		}
 
 		select {
-		case albumDataJSON = <-albumChan:
+		case body := <-responseBodies:
+			albumDataJSON = string(body)
 		case <-time.After(15 * time.Second):
 			log.Printf("FurTrack: Timeout waiting for data for album %d", album.AlbumID)
 			continue

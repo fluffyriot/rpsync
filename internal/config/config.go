@@ -279,6 +279,30 @@ func CreateSourceFromForm(dbQueries *database.Queries, params SourceCreationPara
 		}
 	}
 
+	if params.Network == "BadPups" && params.FieldLong == "" {
+		return "", "", fmt.Errorf("Cookie JSON is required for BadPups")
+	}
+
+	if params.Network == "BadPups" {
+		var rawCookies []struct {
+			Name  string `json:"name"`
+			Value string `json:"value"`
+		}
+		if err := json.Unmarshal([]byte(params.FieldLong), &rawCookies); err != nil {
+			return "", "", fmt.Errorf("Invalid cookie JSON for BadPups: %v", err)
+		}
+		hasSession := false
+		for _, c := range rawCookies {
+			if c.Name == "badpups-session" && c.Value != "" {
+				hasSession = true
+				break
+			}
+		}
+		if !hasSession {
+			return "", "", fmt.Errorf("Cookie JSON must contain a badpups-session cookie")
+		}
+	}
+
 	if params.Network == "Twitter" && params.FieldLong == "" {
 		return "", "", fmt.Errorf("Cookie JSON is required for Twitter")
 	}
@@ -359,6 +383,9 @@ func CreateSourceFromForm(dbQueries *database.Queries, params SourceCreationPara
 		err = authhelp.InsertSourceToken(context.Background(), dbQueries, s.ID, params.Field1, "", nil, params.EncryptionKey)
 
 	case "Murrtube":
+		err = authhelp.InsertSourceToken(context.Background(), dbQueries, s.ID, params.FieldLong, "", nil, params.EncryptionKey)
+
+	case "BadPups":
 		err = authhelp.InsertSourceToken(context.Background(), dbQueries, s.ID, params.FieldLong, "", nil, params.EncryptionKey)
 
 	case "Twitter":

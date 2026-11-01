@@ -90,7 +90,7 @@ func SyncBySource(sid uuid.UUID, dbQueries *database.Queries, c *common.Client, 
 			return sources.FetchMurrtubePosts(dbQueries, c, source.ID, encryptionKey)
 
 		case "BadPups":
-			return sources.FetchBadpupsPosts(source.UserID, dbQueries, c, source.ID)
+			return sources.FetchBadpupsPosts(dbQueries, c, source.ID, encryptionKey)
 
 		case "TikTok":
 			return sources.FetchTikTokPosts(dbQueries, c, source.UserID, source.ID)

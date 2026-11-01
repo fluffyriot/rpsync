@@ -4,10 +4,14 @@ package common
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"log"
 	"strings"
 	"time"
 
+	"github.com/chromedp/cdproto/cdp"
+	"github.com/chromedp/cdproto/network"
+	"github.com/chromedp/chromedp"
 	"github.com/fluffyriot/rpsync/internal/database"
 	"github.com/google/uuid"
 	"golang.org/x/net/html"
@@ -18,8 +22,9 @@ const (
 	ScraperRateLimit = 3 * time.Second
 	RateLimitWait    = 30 * time.Second
 
-	UserAgentBingbot = "Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)"
-	UserAgentChrome  = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36"
+	UserAgentBingbot         = "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko; compatible; MicrosoftPreview/2.0; +https://aka.ms/MicrosoftPreview) Chrome/W.X.Y.Z Safari/537.36"
+	UserAgentMastodonPreview = "http.rb/ (Mastodon/4.4.26; +http://mastodon.social)"
+	UserAgentChrome          = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36"
 )
 
 func NormalizePagePath(path string) string {
@@ -289,4 +294,86 @@ func UpdateSourceStats(
 	}
 
 	return SaveOrUpdateSourceStats(ctx, dbQueries, sourceID, stats)
+}
+
+func ListenResponseBodies(ctx context.Context, target *chromedp.Target, matches func(string) bool) <-chan []byte {
+	responseEvents, cancelResponses := target.Subscribe("Network.responseReceived")
+	loadingEvents, cancelLoading := target.Subscribe("Network.loadingFinished")
+	bodies := make(chan []byte, 100)
+
+	go func() {
+		defer cancelResponses()
+		defer cancelLoading()
+
+		pending := make(map[network.RequestID]struct{})
+		finished := make(map[network.RequestID]struct{})
+		ignored := make(map[network.RequestID]struct{})
+		fetchBody := func(requestID network.RequestID) {
+			go func() {
+				requestCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+				defer cancel()
+				result, err := cdp.Call(requestCtx, target, network.GetResponseBody, network.GetResponseBodyParams{RequestID: requestID})
+				if err != nil {
+					return
+				}
+				select {
+				case bodies <- result.Body:
+				case <-ctx.Done():
+				}
+			}()
+		}
+		for {
+			select {
+			case event, ok := <-responseEvents:
+				if !ok {
+					return
+				}
+				var received struct {
+					RequestID network.RequestID `json:"requestId"`
+					Response  struct {
+						URL string `json:"url"`
+					} `json:"response"`
+				}
+				if err := json.Unmarshal([]byte(event), &received); err != nil {
+					continue
+				}
+				if matches(received.Response.URL) {
+					if _, ok := finished[received.RequestID]; ok {
+						delete(finished, received.RequestID)
+						fetchBody(received.RequestID)
+					} else {
+						pending[received.RequestID] = struct{}{}
+					}
+				} else if _, ok := finished[received.RequestID]; ok {
+					delete(finished, received.RequestID)
+				} else {
+					ignored[received.RequestID] = struct{}{}
+				}
+			case event, ok := <-loadingEvents:
+				if !ok {
+					return
+				}
+				var loadingFinished struct {
+					RequestID network.RequestID `json:"requestId"`
+				}
+				if err := json.Unmarshal([]byte(event), &loadingFinished); err != nil {
+					continue
+				}
+				if _, ok := ignored[loadingFinished.RequestID]; ok {
+					delete(ignored, loadingFinished.RequestID)
+					continue
+				}
+				if _, ok := pending[loadingFinished.RequestID]; ok {
+					delete(pending, loadingFinished.RequestID)
+					fetchBody(loadingFinished.RequestID)
+				} else {
+					finished[loadingFinished.RequestID] = struct{}{}
+				}
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	return bodies
 }

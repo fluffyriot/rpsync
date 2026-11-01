@@ -104,33 +104,38 @@ func FetchMurrtubePosts(dbQueries *database.Queries, c *common.Client, sourceID 
 	ctx, ctxCancel := chromedp.NewContext(allocCtx)
 	defer ctxCancel()
 
-	if err := chromedp.Run(ctx,
-		network.Enable(),
-		chromedp.ActionFunc(func(ctx context.Context) error {
+	if err := chromedp.Do(ctx,
+		chromedp.Func(func(ctx context.Context, target *chromedp.Target) error {
+			if _, err := cdp.Call(ctx, target, network.Enable, network.EnableParams{}); err != nil {
+				return err
+			}
 			for _, cookie := range cookies {
-				params := network.SetCookie(cookie.Name, cookie.Value).
-					WithDomain(cookie.Domain).
-					WithPath(cookie.Path).
-					WithSecure(cookie.Secure).
-					WithHTTPOnly(cookie.HTTPOnly)
+				secure, httpOnly := cookie.Secure, cookie.HTTPOnly
+				params := network.SetCookieParams{
+					Name:     cookie.Name,
+					Value:    cookie.Value,
+					Domain:   cookie.Domain,
+					Path:     cookie.Path,
+					Secure:   &secure,
+					HTTPOnly: &httpOnly,
+				}
 
 				if cookie.SameSite != nil {
 					switch strings.ToLower(*cookie.SameSite) {
 					case "no_restriction", "none":
-						params = params.WithSameSite(network.CookieSameSiteNone)
+						params.SameSite = network.CookieSameSiteNone
 					case "lax":
-						params = params.WithSameSite(network.CookieSameSiteLax)
+						params.SameSite = network.CookieSameSiteLax
 					case "strict":
-						params = params.WithSameSite(network.CookieSameSiteStrict)
+						params.SameSite = network.CookieSameSiteStrict
 					}
 				}
 
 				if cookie.ExpirationDate != nil {
-					ts := cdp.TimeSinceEpoch(time.Unix(int64(*cookie.ExpirationDate), 0))
-					params = params.WithExpires(&ts)
+					params.Expires = cdp.TimeSinceEpoch(*cookie.ExpirationDate)
 				}
 
-				if err := params.Do(ctx); err != nil {
+				if _, err := cdp.Call(ctx, target, network.SetCookie, params); err != nil {
 					return err
 				}
 			}
@@ -141,7 +146,7 @@ func FetchMurrtubePosts(dbQueries *database.Queries, c *common.Client, sourceID 
 	}
 
 	profileURL := fmt.Sprintf("https://murrtube.net/%s", username)
-	if err := chromedp.Run(ctx,
+	if err := chromedp.Do(ctx,
 		chromedp.Navigate(profileURL),
 		chromedp.Sleep(3*time.Second),
 	); err != nil {
@@ -152,8 +157,7 @@ func FetchMurrtubePosts(dbQueries *database.Queries, c *common.Client, sourceID 
 	sameHeightCount := 0
 	var prevHeight int64
 	for i := 0; i < maxScrolls; i++ {
-		var height int64
-		chromedp.Run(ctx, chromedp.Evaluate(`document.body.scrollHeight`, &height)) //nolint:errcheck
+		height, _ := chromedp.Run(ctx, chromedp.Evaluate[int64](`document.body.scrollHeight`))
 		if height == prevHeight {
 			sameHeightCount++
 			if sameHeightCount >= 3 {
@@ -163,12 +167,12 @@ func FetchMurrtubePosts(dbQueries *database.Queries, c *common.Client, sourceID 
 			sameHeightCount = 0
 		}
 		prevHeight = height
-		chromedp.Run(ctx, chromedp.Evaluate(`window.scrollTo(0, document.body.scrollHeight)`, nil)) //nolint:errcheck
+		_, _ = chromedp.Run(ctx, chromedp.Evaluate[chromedp.Void](`window.scrollTo(0, document.body.scrollHeight)`))
 		time.Sleep(common.ScraperRateLimit)
 	}
 
-	var pageHTML string
-	if err := chromedp.Run(ctx, chromedp.OuterHTML("html", &pageHTML)); err != nil {
+	pageHTML, err := chromedp.Run(ctx, chromedp.OuterHTML("html"))
+	if err != nil {
 		return fmt.Errorf("Murrtube: failed to get page HTML: %w", err)
 	}
 
@@ -216,13 +220,16 @@ func FetchMurrtubePosts(dbQueries *database.Queries, c *common.Client, sourceID 
 		}
 
 		videoURL := "https://murrtube.net/v/" + id
-		var videoHTML string
-		if err := chromedp.Run(ctx,
+		if err := chromedp.Do(ctx,
 			chromedp.Navigate(videoURL),
 			chromedp.Sleep(2*time.Second),
-			chromedp.OuterHTML("html", &videoHTML),
 		); err != nil {
 			log.Printf("Murrtube: failed to navigate to video %s: %v", id, err)
+			continue
+		}
+		videoHTML, err := chromedp.Run(ctx, chromedp.OuterHTML("html"))
+		if err != nil {
+			log.Printf("Murrtube: failed to get video HTML for %s: %v", id, err)
 			continue
 		}
 

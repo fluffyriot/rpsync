@@ -10,7 +10,6 @@ import (
 	"log"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/chromedp/cdproto/cdp"
@@ -181,61 +180,34 @@ func FetchTwitterPosts(dbQueries *database.Queries, c *common.Client, username s
 	ctx, ctxCancel := chromedp.NewContext(allocCtx)
 	defer ctxCancel()
 
-	bodyChan := make(chan []byte, 100)
-	var trackedRequests sync.Map
-
-	chromedp.ListenTarget(ctx, func(ev interface{}) {
-		switch e := ev.(type) {
-		case *network.EventResponseReceived:
-			if strings.Contains(e.Response.URL, "UserTweets") ||
-				strings.Contains(e.Response.URL, "UserOriginalsTimeline") ||
-				strings.Contains(e.Response.URL, "UserRepostsTimeline") {
-				trackedRequests.Store(e.RequestID, struct{}{})
+	if err := chromedp.Do(ctx,
+		chromedp.Func(func(ctx context.Context, target *chromedp.Target) error {
+			if _, err := cdp.Call(ctx, target, network.Enable, network.EnableParams{}); err != nil {
+				return err
 			}
-		case *network.EventLoadingFinished:
-			if _, ok := trackedRequests.LoadAndDelete(e.RequestID); ok {
-				reqID := e.RequestID
-				go func() {
-					ch := chromedp.FromContext(ctx)
-					if ch == nil || ch.Target == nil {
-						return
-					}
-					body, err := network.GetResponseBody(reqID).Do(cdp.WithExecutor(ctx, ch.Target))
-					if err != nil {
-						log.Printf("Twitter: failed to read response body: %v", err)
-						return
-					}
-					select {
-					case bodyChan <- body:
-					default:
-					}
-				}()
-			}
-		}
-	})
-
-	if err := chromedp.Run(ctx,
-		network.Enable(),
-		chromedp.ActionFunc(func(ctx context.Context) error {
 			for _, cookie := range cookies {
-				params := network.SetCookie(cookie.Name, cookie.Value).
-					WithDomain(cookie.Domain).
-					WithPath(cookie.Path).
-					WithSecure(cookie.Secure).
-					WithHTTPOnly(cookie.HTTPOnly)
+				secure, httpOnly := cookie.Secure, cookie.HTTPOnly
+				params := network.SetCookieParams{
+					Name:     cookie.Name,
+					Value:    cookie.Value,
+					Domain:   cookie.Domain,
+					Path:     cookie.Path,
+					Secure:   &secure,
+					HTTPOnly: &httpOnly,
+				}
 
 				if cookie.SameSite != nil {
 					switch *cookie.SameSite {
 					case "no_restriction":
-						params = params.WithSameSite(network.CookieSameSiteNone)
+						params.SameSite = network.CookieSameSiteNone
 					case "lax":
-						params = params.WithSameSite(network.CookieSameSiteLax)
+						params.SameSite = network.CookieSameSiteLax
 					case "strict":
-						params = params.WithSameSite(network.CookieSameSiteStrict)
+						params.SameSite = network.CookieSameSiteStrict
 					}
 				}
 
-				if err := params.Do(ctx); err != nil {
+				if _, err := cdp.Call(ctx, target, network.SetCookie, params); err != nil {
 					return err
 				}
 			}
@@ -244,17 +216,22 @@ func FetchTwitterPosts(dbQueries *database.Queries, c *common.Client, username s
 	); err != nil {
 		return fmt.Errorf("twitter: failed to initialise browser: %w", err)
 	}
+	target := chromedp.FromContext(ctx).Target
+	bodyChan := common.ListenResponseBodies(ctx, target, func(responseURL string) bool {
+		return strings.Contains(responseURL, "UserTweets") ||
+			strings.Contains(responseURL, "UserOriginalsTimeline") ||
+			strings.Contains(responseURL, "UserRepostsTimeline")
+	})
 
 	profileURL := fmt.Sprintf("https://twitter.com/%s", username)
-	if err := chromedp.Run(ctx,
+	if err := chromedp.Do(ctx,
 		chromedp.Navigate(profileURL),
 		chromedp.Sleep(5*time.Second),
 	); err != nil {
 		return fmt.Errorf("twitter: failed to navigate to profile: %w", err)
 	}
 
-	var currentURL string
-	if err := chromedp.Run(ctx, chromedp.Location(&currentURL)); err == nil {
+	if currentURL, err := chromedp.Run(ctx, chromedp.Location()); err == nil {
 		if strings.Contains(currentURL, "login") || strings.Contains(currentURL, "i/flow/login") {
 			return errors.New("twitter: session expired, please re-authenticate with fresh cookies")
 		}
@@ -305,7 +282,7 @@ func FetchTwitterPosts(dbQueries *database.Queries, c *common.Client, username s
 			}
 			previousCount = currentCount
 
-			chromedp.Run(ctx, chromedp.Evaluate(`window.scrollTo(0, document.body.scrollHeight)`, nil)) //nolint:errcheck
+			_, _ = chromedp.Run(ctx, chromedp.Evaluate[chromedp.Void](`window.scrollTo(0, document.body.scrollHeight)`))
 		}
 
 		time.Sleep(common.ScraperRateLimit)
@@ -316,7 +293,7 @@ func FetchTwitterPosts(dbQueries *database.Queries, c *common.Client, username s
 	scrollAndCollect(&allEntries)
 
 	repostsURL := profileURL + "/reposts"
-	if err := chromedp.Run(ctx,
+	if err := chromedp.Do(ctx,
 		chromedp.Navigate(repostsURL),
 		chromedp.Sleep(common.ScraperRateLimit),
 	); err != nil {
