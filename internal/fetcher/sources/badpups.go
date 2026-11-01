@@ -83,7 +83,7 @@ func getBadpupsString(dbQueries *database.Queries, sourceId uuid.UUID) (string, 
 	}
 
 	urlString := fmt.Sprintf(
-		"https://badpups.com/lite/profile/%s/",
+		"https://badpups.com/creators/%s/",
 		username.UserName,
 	)
 
@@ -180,7 +180,7 @@ func FetchBadpupsPosts(dbQueries *database.Queries, c *common.Client, sourceId u
 		}
 	})
 
-	linkPattern := regexp.MustCompile(`^https?://[^/]+/lite/video/[^/]+$`)
+	linkPattern := regexp.MustCompile(`^https?://[^/]+/video/[^/]+$`)
 	viewsRe := regexp.MustCompile(`([\d,]+)\s+views`)
 
 	doc.Find("a").Each(func(_ int, s *goquery.Selection) {
@@ -218,7 +218,7 @@ func FetchBadpupsPosts(dbQueries *database.Queries, c *common.Client, sourceId u
 			return
 		}
 
-		id := strings.TrimPrefix(href, "https://badpups.com/lite/video/")
+		id := strings.TrimPrefix(href, "https://badpups.com/video/")
 
 		if exclusionMap[id] {
 			return
